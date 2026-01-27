@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       data: { ...docData, companyId, uploadedBy: decoded.userId },
     })
 
-    return apiSuccess(document, 201)
+    return apiSuccess(document, undefined, 201)
   } catch (error) {
     console.error('Error creating document:', error)
     return apiError('Error al crear documento', 500)

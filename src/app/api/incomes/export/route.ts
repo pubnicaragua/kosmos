@@ -6,14 +6,14 @@ export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return errorResponse('UNAUTHORIZED', 'Token de autenticación requerido', 401)
+      return errorResponse('Token de autenticación requerido', 401)
     }
 
     const token = authHeader.substring(7)
     const payload = verifyAccessToken(token)
     
     if (!payload) {
-      return errorResponse('UNAUTHORIZED', 'Token inválido o expirado', 401)
+      return errorResponse('Token inválido o expirado', 401)
     }
 
     return successResponse({
@@ -22,6 +22,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Export incomes error:', error)
-    return errorResponse('SERVER_ERROR', 'Error al exportar ingresos', 500)
+    return errorResponse('Error al exportar ingresos', 500)
   }
 }

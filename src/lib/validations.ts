@@ -102,11 +102,86 @@ export const contractSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
   concept: z.string().min(1, 'Concepto requerido'),
   category: z.string().optional(),
-  party: z.string().min(1, 'Parte requerida'),
-  startDate: z.string(),
-  endDate: z.string(),
-  status: z.enum(['ACTIVE', 'EXPIRING_SOON', 'EXPIRED']).optional(),
-  fileUrl: z.string().url('URL inválida').optional(),
+  party: z.string().min(1, 'Contraparte requerida'),
+  startDate: z.string().min(1, 'Fecha de inicio requerida'),
+  endDate: z.string().min(1, 'Fecha de fin requerida'),
+  fileUrl: z.string().optional(),
+  uploadedBy: z.string().optional(),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
+// ============================================
+// SPRINT 3 - CLIENTES, INVENTARIO, TICKETS
+// ============================================
+
+// Clients
+export const clientSchema = z.object({
+  name: z.string().min(1, 'Nombre requerido'),
+  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  taxId: z.string().optional(),
+  status: z.enum(['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO', 'ACTIVO', 'INACTIVO']).optional(),
+  contactName: z.string().optional(),
+  notes: z.string().optional(),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
+// Quotes
+export const quoteItemSchema = z.object({
+  productId: z.string().optional(),
+  description: z.string().min(1, 'Descripción requerida'),
+  quantity: z.number().min(1, 'Cantidad debe ser mayor a 0'),
+  unitPrice: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
+  discount: z.number().min(0).max(100).optional(),
+  tax: z.number().min(0).optional(),
+})
+
+export const quoteSchema = z.object({
+  quoteNumber: z.string().min(1, 'Número de cotización requerido'),
+  clientId: z.string().min(1, 'Cliente requerido'),
+  currency: z.string().default('USD'),
+  validUntil: z.string().min(1, 'Fecha de validez requerida'),
+  notes: z.string().optional(),
+  internalNotes: z.string().optional(),
+  terms: z.string().optional(),
+  items: z.array(quoteItemSchema).min(1, 'Debe agregar al menos un item'),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
+// Products
+export const productSchema = z.object({
+  name: z.string().min(1, 'Nombre requerido'),
+  sku: z.string().min(1, 'SKU requerido'),
+  description: z.string().optional(),
+  categoryId: z.string().optional(),
+  unit: z.string().default('UNI'),
+  stock: z.number().min(0, 'Stock debe ser mayor o igual a 0').optional(),
+  minStock: z.number().min(0).optional(),
+  cost: z.number().min(0, 'Costo debe ser mayor o igual a 0').optional(),
+  price: z.number().min(0, 'Precio debe ser mayor a 0'),
+  isActive: z.boolean().optional(),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
+// Product Categories
+export const productCategorySchema = z.object({
+  name: z.string().min(1, 'Nombre requerido'),
+  description: z.string().optional(),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
+// Tickets
+export const ticketSchema = z.object({
+  title: z.string().min(1, 'Título requerido'),
+  description: z.string().optional(),
+  clientId: z.string().optional(),
+  status: z.enum(['PROCESO1', 'PROCESO2', 'PROCESO3', 'PROCESO4']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  assignedTo: z.string().optional(),
+  amount: z.number().min(0).optional(),
+  dueDate: z.string().optional(),
+  companyId: z.string().min(1, 'Empresa requerida'),
 })
 
 export const contractsFiltersSchema = z.object({

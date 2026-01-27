@@ -38,11 +38,6 @@ export const navigationItems: NavItem[] = [
     href: '/pipeline-ventas',
   },
   {
-    id: 'support',
-    label: 'Tickets y Soporte',
-    href: '/soporte',
-  },
-  {
     id: 'documents',
     label: 'Documentos',
     href: '/documentos',
@@ -58,9 +53,9 @@ export const navigationItems: NavItem[] = [
     href: '/inventario',
   },
   {
-    id: 'hr',
-    label: 'Recursos Humanos',
-    href: '/rrhh',
+    id: 'support',
+    label: 'Tickets & Soporte',
+    href: '/tickets-soporte',
   },
   {
     id: 'system',

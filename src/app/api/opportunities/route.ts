@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return apiSuccess(opportunity, 201)
+    return apiSuccess(opportunity, undefined, 201)
   } catch (error) {
     console.error('Error creating opportunity:', error)
     return apiError('Error al crear oportunidad', 500)

@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return apiSuccess(expense, 201)
+    return apiSuccess(expense, undefined, 201)
   } catch (error) {
     console.error('Error creating expense:', error)
     return apiError('Error al crear gasto', 500)

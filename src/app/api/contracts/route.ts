@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return apiSuccess(contract, 201)
+    return apiSuccess(contract, undefined, 201)
   } catch (error) {
     console.error('Error creating contract:', error)
     return apiError('Error al crear contrato', 500)

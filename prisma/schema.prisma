@@ -31,13 +31,18 @@ model Company {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  userCompanies UserCompany[]
-  incomes       Income[]
-  expenses      Expense[]
-  activities    Activity[]
-  opportunities Opportunity[]
-  documents     Document[]
-  contracts     Contract[]
+  userCompanies     UserCompany[]
+  incomes           Income[]
+  expenses          Expense[]
+  activities        Activity[]
+  opportunities     Opportunity[]
+  documents         Document[]
+  contracts         Contract[]
+  clients           Client[]
+  quotes            Quote[]
+  products          Product[]
+  productCategories ProductCategory[]
+  tickets           Ticket[]
 
   @@map("companies")
 }
@@ -237,4 +242,177 @@ enum ContractStatus {
   ACTIVE
   EXPIRING_SOON
   EXPIRED
+}
+
+// ============================================
+// SPRINT 3 - CLIENTES, INVENTARIO, TICKETS
+// ============================================
+
+model Client {
+  id          String       @id @default(cuid())
+  companyId   String       @map("company_id")
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  taxId       String?      @map("tax_id")
+  status      ClientStatus @default(PROSPECTO)
+  contactName String?      @map("contact_name")
+  notes       String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quotes  Quote[]
+  tickets Ticket[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("clients")
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  quoteNumber   String      @unique @map("quote_number")
+  companyId     String      @map("company_id")
+  clientId      String      @map("client_id")
+  status        QuoteStatus @default(DRAFT)
+  currency      String      @default("USD")
+  subtotal      Float
+  discount      Float       @default(0)
+  tax           Float       @default(0)
+  total         Float
+  validUntil    DateTime    @map("valid_until")
+  notes         String?
+  internalNotes String?     @map("internal_notes")
+  terms         String?
+  createdBy     String      @map("created_by")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client  Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items   QuoteItem[]
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          String   @id @default(cuid())
+  quoteId     String   @map("quote_id")
+  productId   String?  @map("product_id")
+  description String
+  quantity    Int
+  unitPrice   Float    @map("unit_price")
+  discount    Float    @default(0)
+  tax         Float    @default(0)
+  total       Float
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  categoryId  String?  @map("category_id")
+  name        String
+  sku         String
+  description String?
+  unit        String   @default("UNI")
+  stock       Int      @default(0)
+  minStock    Int      @default(0) @map("min_stock")
+  cost        Float    @default(0)
+  price       Float
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  quoteItems QuoteItem[]
+
+  @@unique([companyId, sku])
+  @@index([companyId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductCategory {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("product_categories")
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  companyId   String         @map("company_id")
+  clientId    String?        @map("client_id")
+  title       String
+  description String?
+  status      TicketStatus   @default(PROCESO1)
+  priority    TicketPriority @default(MEDIUM)
+  assignedTo  String?        @map("assigned_to")
+  amount      Float?
+  dueDate     DateTime?      @map("due_date")
+  closedAt    DateTime?      @map("closed_at")
+  createdBy   String         @map("created_by")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([assignedTo])
+  @@map("tickets")
+}
+
+enum ClientStatus {
+  PROSPECTO
+  PROPUESTA
+  NEGOCIACION
+  CALIFICADO
+  ACTIVO
+  INACTIVO
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum TicketStatus {
+  PROCESO1
+  PROCESO2
+  PROCESO3
+  PROCESO4
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }

@@ -10,14 +10,14 @@ export async function POST(request: NextRequest) {
     
     const validation = refreshTokenSchema.safeParse(body)
     if (!validation.success) {
-      return errorResponse('VALIDATION_ERROR', validation.error.errors[0].message, 400)
+      return errorResponse(validation.error.errors[0].message, 400)
     }
 
     const { refreshToken: token } = validation.data
 
     const payload = verifyRefreshToken(token)
     if (!payload) {
-      return errorResponse('INVALID_TOKEN', 'Token de refresco inválido o expirado', 401)
+      return errorResponse('Token de refresco inválido o expirado', 401)
     }
 
     const storedToken = await prisma.refreshToken.findUnique({
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!storedToken || storedToken.expiresAt < new Date()) {
-      return errorResponse('INVALID_TOKEN', 'Token de refresco inválido o expirado', 401)
+      return errorResponse('Token de refresco inválido o expirado', 401)
     }
 
     await prisma.refreshToken.delete({
@@ -49,6 +49,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Refresh token error:', error)
-    return errorResponse('SERVER_ERROR', 'Error al refrescar el token', 500)
+    return errorResponse('Error al refrescar el token', 500)
   }
 }

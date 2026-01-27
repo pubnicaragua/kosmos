@@ -8,28 +8,26 @@ export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return errorResponse('UNAUTHORIZED', 'Token de autenticación requerido', 401)
+      return errorResponse('Token de autenticación requerido', 401)
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
-    
-    if (!payload) {
-      return errorResponse('UNAUTHORIZED', 'Token inválido o expirado', 401)
+    const decoded = verifyAccessToken(token)
+    if (!decoded) {
+      return errorResponse('Token inválido o expirado', 401)
     }
 
     const body = await request.json()
     const validation = selectCompanySchema.safeParse(body)
-    
     if (!validation.success) {
-      return errorResponse('VALIDATION_ERROR', validation.error.errors[0].message, 400)
+      return errorResponse(validation.error.errors[0].message, 400)
     }
 
     const { companyId } = validation.data
 
     const userCompany = await prisma.userCompany.findFirst({
       where: {
-        userId: payload.userId,
+        userId: decoded.userId,
         companyId,
       },
       include: {
@@ -38,7 +36,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!userCompany) {
-      return errorResponse('FORBIDDEN', 'No tienes acceso a esta empresa', 403)
+      return errorResponse('No tienes acceso a esta empresa', 403)
     }
 
     return successResponse({
@@ -52,7 +50,7 @@ export async function POST(request: NextRequest) {
       role: userCompany.role,
     })
   } catch (error) {
-    console.error('Select company error:', error)
-    return errorResponse('SERVER_ERROR', 'Error al seleccionar la empresa', 500)
+    console.error('Error selecting company:', error)
+    return errorResponse('Error al seleccionar empresa', 500)
   }
 }

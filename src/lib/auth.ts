@@ -20,11 +20,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function generateAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as any)
 }
 
 export function generateRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN })
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN } as any)
 }
 
 export function verifyAccessToken(token: string): TokenPayload | null {
@@ -48,4 +48,13 @@ export function getRefreshTokenExpiry(): Date {
     ? parseInt(JWT_REFRESH_EXPIRES_IN) 
     : 7
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+}
+
+export function verifyToken(token: string): TokenPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return decoded
+  } catch (error) {
+    return null
+  }
 }

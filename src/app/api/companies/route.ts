@@ -7,18 +7,17 @@ export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return errorResponse('UNAUTHORIZED', 'Token de autenticación requerido', 401)
+      return errorResponse('Token de autenticación requerido', 401)
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
-    
-    if (!payload) {
-      return errorResponse('UNAUTHORIZED', 'Token inválido o expirado', 401)
+    const decoded = verifyAccessToken(token)
+    if (!decoded) {
+      return errorResponse('Token inválido o expirado', 401)
     }
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: payload.userId },
+      where: { userId: decoded.userId },
       include: {
         company: true,
       },
@@ -36,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return successResponse(companies)
   } catch (error) {
-    console.error('Get companies error:', error)
-    return errorResponse('SERVER_ERROR', 'Error al obtener las empresas', 500)
+    console.error('Error fetching companies:', error)
+    return errorResponse('Error al obtener empresas', 500)
   }
 }

@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return apiSuccess(activity, 201)
+    return apiSuccess(activity, undefined, 201)
   } catch (error) {
     console.error('Error creating activity:', error)
     return apiError('Error al crear actividad', 500)

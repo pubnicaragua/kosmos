@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     
     const validation = loginSchema.safeParse(body)
     if (!validation.success) {
-      return errorResponse('VALIDATION_ERROR', validation.error.errors[0].message, 400)
+      return errorResponse(validation.error.errors[0].message, 400)
     }
 
     const { email, password } = validation.data
@@ -27,12 +27,12 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
-      return errorResponse('INVALID_CREDENTIALS', 'Email o contraseña incorrectos', 401)
+      return errorResponse('Email o contraseña incorrectos', 401)
     }
 
     const isValidPassword = await verifyPassword(password, user.password)
     if (!isValidPassword) {
-      return errorResponse('INVALID_CREDENTIALS', 'Email o contraseña incorrectos', 401)
+      return errorResponse('Email o contraseña incorrectos', 401)
     }
 
     const accessToken = generateAccessToken({ userId: user.id, email: user.email })
@@ -68,6 +68,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Login error:', error)
-    return errorResponse('SERVER_ERROR', 'Error al iniciar sesión', 500)
+    return errorResponse('Error al iniciar sesión', 500)
   }
 }

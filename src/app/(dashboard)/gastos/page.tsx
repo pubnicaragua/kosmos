@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, FormEvent, useCallback } from 'react'
 import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -50,11 +50,7 @@ export default function GastosPage() {
     status: 'PENDING' as const,
   })
 
-  useEffect(() => {
-    fetchData()
-  }, [selectedCompany, selectedPeriod, selectedStatus, currentPage])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
@@ -90,7 +86,11 @@ export default function GastosPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedCompany, selectedPeriod, selectedStatus, currentPage])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

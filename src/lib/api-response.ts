@@ -25,13 +25,17 @@ export function successResponse<T>(data: T, message?: string, status = 200) {
   )
 }
 
-export function errorResponse(error: string, message: string, status = 400) {
+export function errorResponse(error: string, status: number = 400, message?: string) {
   return NextResponse.json(
     {
       success: false,
       error,
-      message,
+      message: message || error,
     } as ApiErrorResponse,
     { status }
   )
 }
+
+// Aliases para compatibilidad con endpoints
+export const apiSuccess = successResponse
+export const apiError = errorResponse
