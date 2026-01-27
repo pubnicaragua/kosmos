@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userCompanies UserCompany[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  logo      String?
+  industry  String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userCompanies UserCompany[]
+  incomes       Income[]
+  expenses      Expense[]
+  activities    Activity[]
+  opportunities Opportunity[]
+  documents     Document[]
+  contracts     Contract[]
+
+  @@map("companies")
+}
+
+model UserCompany {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  companyId String   @map("company_id")
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@map("user_companies")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Income {
+  id        String       @id @default(cuid())
+  companyId String       @map("company_id")
+  refNumber String       @map("ref_number")
+  client    String
+  concept   String
+  method    String
+  amount    Float
+  margin    Float
+  status    IncomeStatus @default(PENDING)
+  date      DateTime
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("incomes")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+}
+
+model Expense {
+  id        String        @id @default(cuid())
+  companyId String        @map("company_id")
+  refNumber String?       @map("ref_number")
+  provider  String
+  concept   String
+  category  String
+  method    String
+  amount    Float
+  status    ExpenseStatus @default(PENDING)
+  date      DateTime
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model Activity {
+  id          String         @id @default(cuid())
+  companyId   String         @map("company_id")
+  type        ActivityType
+  title       String
+  description String?
+  client      String?
+  status      ActivityStatus @default(PENDING)
+  priority    String?
+  assignedTo  String?        @map("assigned_to")
+  dueDate     DateTime       @map("due_date")
+  completedAt DateTime?      @map("completed_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+model Opportunity {
+  id         String           @id @default(cuid())
+  companyId  String           @map("company_id")
+  title      String
+  client     String
+  value      Float
+  stage      OpportunityStage @default(PROSPECTO)
+  status     String           @default("Pendiente")
+  assignedTo String?          @map("assigned_to")
+  closeDate  DateTime?        @map("close_date")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("opportunities")
+}
+
+model Document {
+  id         String       @id @default(cuid())
+  companyId  String       @map("company_id")
+  name       String
+  type       DocumentType
+  concept    String
+  category   String?
+  fileUrl    String       @map("file_url")
+  fileSize   Int          @map("file_size")
+  uploadedBy String       @map("uploaded_by")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Contract {
+  id         String         @id @default(cuid())
+  companyId  String         @map("company_id")
+  contractId String         @map("contract_id")
+  name       String
+  concept    String
+  category   String?
+  party      String
+  startDate  DateTime       @map("start_date")
+  endDate    DateTime       @map("end_date")
+  status     ContractStatus @default(ACTIVE)
+  fileUrl    String?        @map("file_url")
+  uploadedBy String         @map("uploaded_by")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("contracts")
+}
+
+enum IncomeStatus {
+  PAID
+  PENDING
+  CANCELLED
+  ERROR
+}
+
+enum ExpenseStatus {
+  PAID
+  PENDING
+  CANCELLED
+}
+
+enum ActivityType {
+  CALL
+  MEETING
+  QUOTE
+  OTHER
+}
+
+enum ActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum OpportunityStage {
+  PROSPECTO
+  PROPUESTA
+  NEGOCIACION
+  CALIFICADO
+}
+
+enum DocumentType {
+  DOC
+  PDF
+  XLSX
+  PNG
+  OTHER
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
