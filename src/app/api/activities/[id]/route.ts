@@ -3,6 +3,47 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return apiError('Token no proporcionado', 401)
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return apiError('Token inválido', 401)
+    }
+
+    const activity = await prisma.activity.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!activity) {
+      return apiError('Actividad no encontrada', 404)
+    }
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: {
+        userId: decoded.userId,
+        companyId: activity.companyId,
+      },
+    })
+
+    if (!userCompany) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    return apiSuccess(activity)
+  } catch (error) {
+    console.error('Error fetching activity:', error)
+    return apiError('Error al obtener actividad', 500)
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
