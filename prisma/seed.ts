@@ -427,7 +427,7 @@ async function main() {
       createdBy: superAdmin.id,
       items: {
         create: [
-          { productId: productsForQuotes[4].id, description: productsForQuotes[4].name, quantity: 10, unitPrice: 120, discount: 5, tax: 15, total: 1311 },
+          { productId: productsForQuotes[1].id, description: productsForQuotes[1].name, quantity: 10, unitPrice: 120, discount: 5, tax: 15, total: 1311 },
         ],
       },
     },
