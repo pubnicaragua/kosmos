@@ -7,6 +7,8 @@ import { loginSchema } from '@/lib/validations'
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7)
   console.log(`🔐 [LOGIN-API-${requestId}] Nueva solicitud de login recibida`)
+  console.log(`📍 [LOGIN-API-${requestId}] DATABASE_URL configurada:`, process.env.DATABASE_URL ? '✅ Sí' : '❌ No')
+  console.log(`📍 [LOGIN-API-${requestId}] NODE_ENV:`, process.env.NODE_ENV)
   
   try {
     const body = await request.json()
@@ -20,17 +22,27 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = validation.data
     console.log(`🔍 [LOGIN-API-${requestId}] Buscando usuario en BD...`)
+    console.log(`📍 [LOGIN-API-${requestId}] Intentando conectar a Prisma...`)
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        userCompanies: {
-          include: {
-            company: true,
+    let user
+    try {
+      user = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          userCompanies: {
+            include: {
+              company: true,
+            },
           },
         },
-      },
-    })
+      })
+      console.log(`✅ [LOGIN-API-${requestId}] Conexión a BD exitosa`)
+    } catch (dbError) {
+      console.error(`🚨 [LOGIN-API-${requestId}] Error de conexión a BD:`, dbError)
+      console.error(`📍 [LOGIN-API-${requestId}] Error tipo:`, dbError instanceof Error ? dbError.constructor.name : typeof dbError)
+      console.error(`📍 [LOGIN-API-${requestId}] Error mensaje:`, dbError instanceof Error ? dbError.message : String(dbError))
+      throw dbError
+    }
 
     if (!user) {
       console.warn(`⚠️ [LOGIN-API-${requestId}] Usuario no encontrado:`, email)

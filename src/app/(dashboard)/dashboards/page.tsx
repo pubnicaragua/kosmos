@@ -5,6 +5,7 @@ import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
+import { SkeletonDashboard } from '@/components/ui-kit/Skeleton'
 import { Badge } from '@/components/ui-kit/Badge'
 
 interface DashboardData {
@@ -80,11 +81,7 @@ export default function DashboardsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando...</div>
-      </div>
-    )
+    return <SkeletonDashboard />
   }
 
   return (

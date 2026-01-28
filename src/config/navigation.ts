@@ -58,6 +58,11 @@ export const navigationItems: NavItem[] = [
     href: '/tickets-soporte',
   },
   {
+    id: 'deliverables',
+    label: 'Carpeta de Entregables',
+    href: '/entregables',
+  },
+  {
     id: 'system',
     label: 'Sistema',
     href: '/sistema',

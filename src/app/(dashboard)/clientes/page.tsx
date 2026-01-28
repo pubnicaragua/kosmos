@@ -8,6 +8,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Input } from '@/components/ui-kit/Input'
+import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 
 interface Client {
   id: string
@@ -78,8 +79,22 @@ export default function ClientesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+            <div className="h-4 w-96 bg-slate-200 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-32 bg-slate-200 rounded animate-pulse" />
+            <div className="h-10 w-40 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div className="h-10 w-56 bg-slate-200 rounded animate-pulse" />
+          <div className="h-10 w-full bg-slate-200 rounded animate-pulse" />
+        </div>
+        <SkeletonTable rows={10} columns={5} />
       </div>
     )
   }

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import { SkeletonKPI, SkeletonTable } from '@/components/ui-kit/Skeleton'
 
 interface Activity {
   id: string
@@ -156,8 +157,31 @@ export default function ActividadesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-600">Cargando...</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+            <div className="h-4 w-96 bg-slate-200 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-32 bg-slate-200 rounded animate-pulse" />
+            <div className="h-10 w-40 bg-slate-200 rounded animate-pulse" />
+          </div>
+        </div>
+        
+        <div className="flex gap-4">
+          <div className="h-10 w-56 bg-slate-200 rounded animate-pulse" />
+          <div className="h-10 w-56 bg-slate-200 rounded animate-pulse" />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <SkeletonKPI />
+          <SkeletonKPI />
+          <SkeletonKPI />
+          <SkeletonKPI />
+        </div>
+        
+        <SkeletonTable rows={8} columns={7} />
       </div>
     )
   }
@@ -212,7 +236,7 @@ export default function ActividadesPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <KPICard
           title="LLAMADAS"
-          value={summary?.totalCalls.toString() || '0'}
+          value={summary?.totalCalls?.toString() || '0'}
           icon={
             <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -222,7 +246,7 @@ export default function ActividadesPage() {
 
         <KPICard
           title="REUNIONES"
-          value={summary?.totalMeetings.toString() || '0'}
+          value={summary?.totalMeetings?.toString() || '0'}
           icon={
             <svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -232,7 +256,7 @@ export default function ActividadesPage() {
 
         <KPICard
           title="COTIZACIONES"
-          value={summary?.totalQuotes.toString() || '0'}
+          value={summary?.totalQuotes?.toString() || '0'}
           icon={
             <svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -242,7 +266,7 @@ export default function ActividadesPage() {
 
         <KPICard
           title="OTRAS"
-          value={summary?.totalOther.toString() || '0'}
+          value={summary?.totalOther?.toString() || '0'}
           icon={
             <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

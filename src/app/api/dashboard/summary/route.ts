@@ -82,18 +82,33 @@ export async function GET(request: NextRequest) {
       ? ((totalSales._sum.amount || 0) - previousSales._sum.amount) / previousSales._sum.amount * 100
       : 0
 
-    const monthlyData = await prisma.$queryRaw`
-      SELECT 
-        DATE_TRUNC('month', date) as month,
-        SUM(CASE WHEN status = 'PAID' THEN amount ELSE 0 END) as incomes,
-        SUM(CASE WHEN status = 'CANCELLED' THEN amount ELSE 0 END) as expenses
-      FROM incomes
-      WHERE company_id = ANY(${companyIds}::text[])
-      ${startDate ? `AND date >= ${new Date(startDate)}::timestamp` : ''}
-      ${endDate ? `AND date <= ${new Date(endDate)}::timestamp` : ''}
-      GROUP BY month
-      ORDER BY month
-    ` as any[]
+    let monthlyData: any[] = []
+    
+    if (companyIds.length > 0) {
+      try {
+        const query = `
+          SELECT 
+            DATE_TRUNC('month', date) as month,
+            SUM(CASE WHEN status = 'PAID' THEN amount ELSE 0 END) as incomes,
+            SUM(CASE WHEN status = 'CANCELLED' THEN amount ELSE 0 END) as expenses
+          FROM "Income"
+          WHERE "companyId" IN (${companyIds.map((_, i) => `$${i + 1}`).join(', ')})
+          ${startDate ? `AND date >= $${companyIds.length + 1}` : ''}
+          ${endDate ? `AND date >= $${companyIds.length + (startDate ? 2 : 1)}` : ''}
+          GROUP BY month
+          ORDER BY month
+        `
+        
+        const params: any[] = [...companyIds]
+        if (startDate) params.push(new Date(startDate).toISOString())
+        if (endDate) params.push(new Date(endDate).toISOString())
+        
+        monthlyData = await prisma.$queryRawUnsafe(query, ...params) as any[]
+      } catch (queryError) {
+        console.error('Monthly data query error:', queryError)
+        monthlyData = []
+      }
+    }
 
     const companiesPerformance = await prisma.company.findMany({
       where: { id: { in: companyIds } },
