@@ -42,6 +42,7 @@ export default function IngresosPage() {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCompany, selectedPeriod, selectedStatus, currentPage])
 
   const fetchData = async () => {

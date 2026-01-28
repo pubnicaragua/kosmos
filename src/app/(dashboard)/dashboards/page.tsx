@@ -38,10 +38,6 @@ export default function DashboardsPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('quarter')
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [selectedCompany, selectedPeriod])
-
   const fetchDashboardData = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
@@ -66,6 +62,11 @@ export default function DashboardsPage() {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchDashboardData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCompany, selectedPeriod])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

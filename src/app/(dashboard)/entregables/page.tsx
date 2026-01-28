@@ -362,7 +362,9 @@ export default function EntregablesPage() {
             <div key={idx} className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-                  <acceso.icon className="w-6 h-6 text-white" />
+                  <div className="w-6 h-6 text-white">
+                    <acceso.icon />
+                  </div>
                 </div>
                 <h3 className="text-xl font-bold text-slate-800">{acceso.categoria}</h3>
               </div>
