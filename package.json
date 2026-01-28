@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "22.10.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
@@ -27,6 +29,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.18",
     "jsonwebtoken": "^9.0.2",
     "next": "14.2.18",
     "postcss": "^8.4.49",
@@ -39,10 +43,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.7",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "14.2.18",
     "ts-node": "^10.9.2"
   }
 }
