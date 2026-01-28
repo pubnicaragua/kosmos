@@ -19,8 +19,6 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
@@ -41,6 +39,8 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.18",
     "ts-node": "^10.9.2"
