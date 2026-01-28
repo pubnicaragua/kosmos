@@ -5,15 +5,21 @@ import { successResponse, errorResponse } from '@/lib/api-response'
 import { loginSchema } from '@/lib/validations'
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7)
+  console.log(`🔐 [LOGIN-API-${requestId}] Nueva solicitud de login recibida`)
+  
   try {
     const body = await request.json()
+    console.log(`📧 [LOGIN-API-${requestId}] Email solicitado:`, body.email)
     
     const validation = loginSchema.safeParse(body)
     if (!validation.success) {
+      console.error(`❌ [LOGIN-API-${requestId}] Validación fallida:`, validation.error.errors)
       return errorResponse(validation.error.errors[0].message, 400)
     }
 
     const { email, password } = validation.data
+    console.log(`🔍 [LOGIN-API-${requestId}] Buscando usuario en BD...`)
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -27,17 +33,26 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
+      console.warn(`⚠️ [LOGIN-API-${requestId}] Usuario no encontrado:`, email)
       return errorResponse('Email o contraseña incorrectos', 401)
     }
 
+    console.log(`👤 [LOGIN-API-${requestId}] Usuario encontrado:`, user.name)
+    console.log(`🔑 [LOGIN-API-${requestId}] Verificando contraseña...`)
+
     const isValidPassword = await verifyPassword(password, user.password)
     if (!isValidPassword) {
+      console.warn(`⚠️ [LOGIN-API-${requestId}] Contraseña incorrecta para:`, email)
       return errorResponse('Email o contraseña incorrectos', 401)
     }
+
+    console.log(`✅ [LOGIN-API-${requestId}] Contraseña válida`)
+    console.log(`🎫 [LOGIN-API-${requestId}] Generando tokens...`)
 
     const accessToken = generateAccessToken({ userId: user.id, email: user.email })
     const refreshToken = generateRefreshToken({ userId: user.id, email: user.email })
 
+    console.log(`💾 [LOGIN-API-${requestId}] Guardando refresh token en BD...`)
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
@@ -54,6 +69,10 @@ export async function POST(request: NextRequest) {
       role: uc.role,
     }))
 
+    console.log(`🏢 [LOGIN-API-${requestId}] Empresas del usuario:`, companies.length)
+    console.log(`📋 [LOGIN-API-${requestId}] Roles:`, companies.map(c => `${c.name}: ${c.role}`))
+    console.log(`✅ [LOGIN-API-${requestId}] Login exitoso para:`, user.email)
+
     return successResponse({
       accessToken,
       refreshToken,
@@ -67,7 +86,8 @@ export async function POST(request: NextRequest) {
       requiresCompanySelection: companies.length > 1,
     })
   } catch (error) {
-    console.error('Login error:', error)
+    console.error(`🚨 [LOGIN-API-${requestId}] Error crítico:`, error)
+    console.error(`📍 [LOGIN-API-${requestId}] Stack trace:`, error instanceof Error ? error.stack : 'No stack available')
     return errorResponse('Error al iniciar sesión', 500)
   }
 }

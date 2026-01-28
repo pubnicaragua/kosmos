@@ -20,33 +20,61 @@ export interface LoginResponse {
 }
 
 export async function loginUser(email: string, password: string, rememberMe: boolean): Promise<LoginResponse> {
-  const response = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password, rememberMe }),
-  })
+  console.log('🌐 [CLIENT-AUTH] Preparando solicitud de login...')
+  console.log('📊 [CLIENT-AUTH] Configuración:', { email, rememberMe })
 
-  const data = await response.json()
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, rememberMe }),
+    })
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Error al iniciar sesión')
-  }
+    console.log('📡 [CLIENT-AUTH] Respuesta recibida:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok
+    })
 
-  if (data.success) {
-    localStorage.setItem('accessToken', data.data.accessToken)
-    localStorage.setItem('refreshToken', data.data.refreshToken)
-    localStorage.setItem('user', JSON.stringify(data.data.user))
-    
-    if (rememberMe) {
-      localStorage.setItem('rememberMe', 'true')
+    const data = await response.json()
+    console.log('📦 [CLIENT-AUTH] Datos parseados:', { success: data.success, hasData: !!data.data })
+
+    if (!response.ok) {
+      console.error('❌ [CLIENT-AUTH] Error HTTP:', {
+        status: response.status,
+        message: data.message,
+        error: data.error
+      })
+      throw new Error(data.message || 'Error al iniciar sesión')
     }
-    
-    return data.data
-  }
 
-  throw new Error(data.message || 'Error al iniciar sesión')
+    if (data.success) {
+      console.log('💾 [CLIENT-AUTH] Guardando tokens en localStorage...')
+      localStorage.setItem('accessToken', data.data.accessToken)
+      localStorage.setItem('refreshToken', data.data.refreshToken)
+      localStorage.setItem('user', JSON.stringify(data.data.user))
+      
+      if (rememberMe) {
+        console.log('✅ [CLIENT-AUTH] Opción "Recuérdame" activada')
+        localStorage.setItem('rememberMe', 'true')
+      }
+      
+      console.log('✅ [CLIENT-AUTH] Autenticación completada exitosamente')
+      return data.data
+    }
+
+    console.error('❌ [CLIENT-AUTH] Respuesta sin éxito:', data)
+    throw new Error(data.message || 'Error al iniciar sesión')
+  } catch (error) {
+    console.error('🚨 [CLIENT-AUTH] Excepción capturada:', error)
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.error('🌐 [CLIENT-AUTH] Error de red - servidor no disponible')
+      throw new Error('No se pudo conectar con el servidor. Verifica tu conexión.')
+    }
+    throw error
+  }
 }
 
 export function getStoredToken(): string | null {
