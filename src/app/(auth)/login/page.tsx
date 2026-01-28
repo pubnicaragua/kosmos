@@ -142,7 +142,7 @@ export default function LoginPage() {
           <a href="#" className="hover:text-gray-700">Términos</a>
         </div>
         <div className="max-w-7xl mx-auto mt-2 text-xs text-gray-400 text-left">
-          © 2024 CorpCRM. Todos los derechos reservados.
+          © 2026 KosmosCRM. Todos los derechos reservados.
         </div>
       </footer>
     </div>

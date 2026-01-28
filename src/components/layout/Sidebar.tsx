@@ -11,7 +11,7 @@ export function Sidebar() {
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
       <div className="p-4">
         <div className="flex items-center gap-0">
-          <span className="text-xl font-semibold text-primary-light">CORP</span>
+          <span className="text-xl font-semibold text-primary-light">Kosmos</span>
           <span className="text-xl font-semibold text-primary-dark">CRM</span>
         </div>
       </div>

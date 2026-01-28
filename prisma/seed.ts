@@ -7,6 +7,8 @@ async function main() {
   console.log('🌱 Iniciando seed de la base de datos...')
 
   const hashedPassword = await bcrypt.hash('admin123', 10)
+  const managerPassword = await bcrypt.hash('manager123', 10)
+  const userPassword = await bcrypt.hash('user123', 10)
 
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@kosmoscrm.com' },
@@ -14,12 +16,34 @@ async function main() {
     create: {
       email: 'admin@kosmoscrm.com',
       password: hashedPassword,
-      name: 'Super Admin',
+      name: 'Carlos Méndez',
       avatar: null,
     },
   })
 
-  console.log('✅ Usuario SUPER_ADMIN creado:', superAdmin.email)
+  const manager = await prisma.user.upsert({
+    where: { email: 'manager@kosmoscrm.com' },
+    update: {},
+    create: {
+      email: 'manager@kosmoscrm.com',
+      password: managerPassword,
+      name: 'Ana García',
+      avatar: null,
+    },
+  })
+
+  const regularUser = await prisma.user.upsert({
+    where: { email: 'user@kosmoscrm.com' },
+    update: {},
+    create: {
+      email: 'user@kosmoscrm.com',
+      password: userPassword,
+      name: 'Juan Pérez',
+      avatar: null,
+    },
+  })
+
+  console.log('✅ Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
 
   const company1 = await prisma.company.upsert({
     where: { id: 'company-tech-solutions' },
@@ -77,7 +101,37 @@ async function main() {
     },
   })
 
-  console.log('✅ Relaciones usuario-empresa creadas')
+  await prisma.userCompany.upsert({
+    where: {
+      userId_companyId: {
+        userId: manager.id,
+        companyId: company1.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: manager.id,
+      companyId: company1.id,
+      role: 'MANAGER',
+    },
+  })
+
+  await prisma.userCompany.upsert({
+    where: {
+      userId_companyId: {
+        userId: regularUser.id,
+        companyId: company1.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: regularUser.id,
+      companyId: company1.id,
+      role: 'USER',
+    },
+  })
+
+  console.log('✅ Relaciones usuario-empresa creadas (3 usuarios con roles diferentes)')
 
   const incomes = [
     { client: 'Cliente A', concept: 'Desarrollo Web', amount: 15000, margin: 35, method: 'Transferencia', status: 'PAID' as const },
@@ -256,9 +310,164 @@ async function main() {
 
   console.log('✅ 5 contratos creados')
 
+  const clients = [
+    { name: 'Acme Corporation', contactName: 'Roberto Martínez', email: 'roberto@acme.com', phone: '+505 8888-1111', status: 'ACTIVO' as const },
+    { name: 'Global Tech SA', contactName: 'María López', email: 'maria@globaltech.com', phone: '+505 8888-2222', status: 'PROSPECTO' as const },
+    { name: 'Innovate Solutions', contactName: 'Pedro Sánchez', email: 'pedro@innovate.com', phone: '+505 8888-3333', status: 'PROPUESTA' as const },
+    { name: 'Digital Marketing Pro', contactName: 'Laura Fernández', email: 'laura@dmpro.com', phone: '+505 8888-4444', status: 'NEGOCIACION' as const },
+    { name: 'Enterprise Systems', contactName: 'José Ramírez', email: 'jose@enterprise.com', phone: '+505 8888-5555', status: 'CALIFICADO' as const },
+    { name: 'Cloud Services Inc', contactName: 'Carmen Díaz', email: 'carmen@cloudservices.com', phone: '+505 8888-6666', status: 'ACTIVO' as const },
+    { name: 'Tech Startup', contactName: 'Miguel Torres', email: 'miguel@techstartup.com', phone: '+505 8888-7777', status: 'PROSPECTO' as const },
+  ]
+
+  for (const client of clients) {
+    await prisma.client.create({
+      data: {
+        companyId: company1.id,
+        name: client.name,
+        contactName: client.contactName,
+        email: client.email,
+        phone: client.phone,
+        status: client.status,
+      },
+    })
+  }
+
+  console.log('✅ 7 clientes creados')
+
+  const categories = [
+    { name: 'Hardware', description: 'Equipos y componentes físicos' },
+    { name: 'Software', description: 'Licencias y aplicaciones' },
+    { name: 'Servicios', description: 'Servicios profesionales' },
+    { name: 'Consumibles', description: 'Material de oficina y consumibles' },
+  ]
+
+  for (const cat of categories) {
+    await prisma.productCategory.create({
+      data: {
+        companyId: company1.id,
+        name: cat.name,
+        description: cat.description,
+      },
+    })
+  }
+
+  console.log('✅ 4 categorías de productos creadas')
+
+  const hardwareCat = await prisma.productCategory.findFirst({ where: { name: 'Hardware' } })
+  const softwareCat = await prisma.productCategory.findFirst({ where: { name: 'Software' } })
+  const servicesCat = await prisma.productCategory.findFirst({ where: { name: 'Servicios' } })
+
+  const products = [
+    { sku: 'HW-001', name: 'Laptop Dell XPS 15', categoryId: hardwareCat!.id, stock: 15, cost: 1200, price: 1800, description: 'Laptop profesional' },
+    { sku: 'HW-002', name: 'Monitor LG 27"', categoryId: hardwareCat!.id, stock: 8, cost: 250, price: 400, description: 'Monitor 4K' },
+    { sku: 'SW-001', name: 'Licencia Office 365', categoryId: softwareCat!.id, stock: 50, cost: 80, price: 150, description: 'Licencia anual' },
+    { sku: 'SW-002', name: 'Antivirus Kaspersky', categoryId: softwareCat!.id, stock: 30, cost: 40, price: 80, description: 'Protección empresarial' },
+    { sku: 'SV-001', name: 'Consultoría IT', categoryId: servicesCat!.id, stock: 100, cost: 50, price: 120, description: 'Hora de consultoría' },
+    { sku: 'SV-002', name: 'Soporte Técnico', categoryId: servicesCat!.id, stock: 100, cost: 30, price: 75, description: 'Hora de soporte' },
+    { sku: 'HW-003', name: 'Teclado Mecánico', categoryId: hardwareCat!.id, stock: 25, cost: 60, price: 120, description: 'Teclado gaming' },
+    { sku: 'HW-004', name: 'Mouse Inalámbrico', categoryId: hardwareCat!.id, stock: 40, cost: 15, price: 35, description: 'Mouse ergonómico' },
+  ]
+
+  for (const product of products) {
+    await prisma.product.create({
+      data: {
+        companyId: company1.id,
+        categoryId: product.categoryId,
+        sku: product.sku,
+        name: product.name,
+        description: product.description,
+        stock: product.stock,
+        cost: product.cost,
+        price: product.price,
+      },
+    })
+  }
+
+  console.log('✅ 8 productos creados')
+
+  const clientsForQuotes = await prisma.client.findMany({ where: { companyId: company1.id }, take: 3 })
+  const productsForQuotes = await prisma.product.findMany({ where: { companyId: company1.id }, take: 4 })
+
+  const quote1 = await prisma.quote.create({
+    data: {
+      companyId: company1.id,
+      clientId: clientsForQuotes[0].id,
+      quoteNumber: 'COT-2024-001',
+      currency: 'USD',
+      subtotal: 3600,
+      discount: 180,
+      tax: 513,
+      total: 3933,
+      status: 'DRAFT',
+      validUntil: new Date(2024, 11, 31),
+      notes: 'Cotización para equipos de oficina',
+      createdBy: superAdmin.id,
+      items: {
+        create: [
+          { productId: productsForQuotes[0].id, description: productsForQuotes[0].name, quantity: 2, unitPrice: 1800, discount: 5, tax: 15, total: 3591 },
+        ],
+      },
+    },
+  })
+
+  const quote2 = await prisma.quote.create({
+    data: {
+      companyId: company1.id,
+      clientId: clientsForQuotes[1].id,
+      quoteNumber: 'COT-2024-002',
+      currency: 'USD',
+      subtotal: 1200,
+      discount: 60,
+      tax: 171,
+      total: 1311,
+      status: 'SENT',
+      validUntil: new Date(2025, 0, 15),
+      notes: 'Cotización servicios de consultoría',
+      createdBy: superAdmin.id,
+      items: {
+        create: [
+          { productId: productsForQuotes[4].id, description: productsForQuotes[4].name, quantity: 10, unitPrice: 120, discount: 5, tax: 15, total: 1311 },
+        ],
+      },
+    },
+  })
+
+  console.log('✅ 2 cotizaciones creadas')
+
+  const clientsForTickets = await prisma.client.findMany({ where: { companyId: company1.id } })
+
+  const tickets = [
+    { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'HIGH' as const, status: 'PROCESO1' as const, amount: 500 },
+    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIUM' as const, status: 'PROCESO2' as const, amount: 2500 },
+    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'LOW' as const, status: 'PROCESO3' as const, amount: 150 },
+    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'URGENT' as const, status: 'PROCESO1' as const, amount: 800 },
+    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIUM' as const, status: 'PROCESO4' as const, amount: 1200 },
+    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'HIGH' as const, status: 'PROCESO2' as const, amount: 3500 },
+  ]
+
+  for (const ticket of tickets) {
+    if (ticket.clientId) {
+      await prisma.ticket.create({
+        data: {
+          companyId: company1.id,
+          clientId: ticket.clientId,
+          title: ticket.title,
+          description: ticket.description,
+          priority: ticket.priority,
+          status: ticket.status,
+          amount: ticket.amount,
+          createdBy: superAdmin.id,
+        },
+      })
+    }
+  }
+
+  console.log('✅ 6 tickets creados')
+
   console.log('\n🎉 Seed completado exitosamente!')
   console.log('\n📊 Resumen:')
-  console.log('   - 1 usuario SUPER_ADMIN (admin@kosmoscrm.com / admin123)')
+  console.log('   - 3 usuarios (SUPER_ADMIN, MANAGER, USER)')
   console.log('   - 2 empresas')
   console.log('   - 10 ingresos')
   console.log('   - 10 gastos')
@@ -266,9 +475,21 @@ async function main() {
   console.log('   - 10 oportunidades')
   console.log('   - 5 documentos')
   console.log('   - 5 contratos')
+  console.log('   - 7 clientes')
+  console.log('   - 4 categorías de productos')
+  console.log('   - 8 productos')
+  console.log('   - 2 cotizaciones')
+  console.log('   - 6 tickets')
   console.log('\n🔐 Credenciales de acceso:')
-  console.log('   Email: admin@kosmoscrm.com')
-  console.log('   Password: admin123')
+  console.log('\n   👑 SUPER ADMIN (acceso total):')
+  console.log('      Email: admin@kosmoscrm.com')
+  console.log('      Password: admin123')
+  console.log('\n   👔 MANAGER (gestión y reportes):')
+  console.log('      Email: manager@kosmoscrm.com')
+  console.log('      Password: manager123')
+  console.log('\n   👤 USER (operaciones básicas):')
+  console.log('      Email: user@kosmoscrm.com')
+  console.log('      Password: user123')
 }
 
 main()
