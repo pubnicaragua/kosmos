@@ -471,49 +471,54 @@ async function main() {
   const clientsForQuotes = await prisma.client.findMany({ where: { companyId: extel.id }, take: 3 })
   const productsForQuotes = await prisma.product.findMany({ where: { companyId: extel.id }, take: 4 })
 
-  const quote1 = await prisma.quote.create({
-    data: {
-      companyId: extel.id,
-      clientId: clientsForQuotes[0].id,
-      quoteNumber: 'COT-2024-001',
-      currency: 'USD',
-      subtotal: 3600,
-      discount: 180,
-      tax: 513,
-      total: 3933,
-      status: 'DRAFT',
-      validUntil: new Date(2024, 11, 31),
-      notes: 'Cotización para equipos de oficina',
-      createdBy: superAdmin.id,
-      items: {
-        create: [
-          { productId: productsForQuotes[0].id, description: productsForQuotes[0].name, quantity: 2, unitPrice: 1800, discount: 5, tax: 15, total: 3591 },
-        ],
-      },
-    },
-  })
+  if (clientsForQuotes.length > 0 && productsForQuotes.length > 0) {
+    // Eliminar cotizaciones existentes para evitar conflictos
+    await prisma.quote.deleteMany({ where: { quoteNumber: { in: ['COT-2024-001', 'COT-2024-002'] } } })
 
-  const quote2 = await prisma.quote.create({
-    data: {
-      companyId: extel.id,
-      clientId: clientsForQuotes[1].id,
-      quoteNumber: 'COT-2024-002',
-      currency: 'USD',
-      subtotal: 1200,
-      discount: 60,
-      tax: 171,
-      total: 1311,
-      status: 'SENT',
-      validUntil: new Date(2025, 0, 15),
-      notes: 'Cotización servicios de consultoría',
-      createdBy: superAdmin.id,
-      items: {
-        create: [
-          { productId: productsForQuotes[1].id, description: productsForQuotes[1].name, quantity: 10, unitPrice: 120, discount: 5, tax: 15, total: 1311 },
-        ],
+    const quote1 = await prisma.quote.create({
+      data: {
+        companyId: extel.id,
+        clientId: clientsForQuotes[0].id,
+        quoteNumber: 'COT-2024-001',
+        currency: 'USD',
+        subtotal: 3600,
+        discount: 180,
+        tax: 513,
+        total: 3933,
+        status: 'DRAFT',
+        validUntil: new Date(2024, 11, 31),
+        notes: 'Cotización para equipos de oficina',
+        createdBy: superAdmin.id,
+        items: {
+          create: [
+            { productId: productsForQuotes[0].id, description: productsForQuotes[0].name, quantity: 2, unitPrice: 1800, discount: 5, tax: 15, total: 3591 },
+          ],
+        },
       },
-    },
-  })
+    })
+
+    const quote2 = await prisma.quote.create({
+      data: {
+        companyId: extel.id,
+        clientId: clientsForQuotes[1].id,
+        quoteNumber: 'COT-2024-002',
+        currency: 'USD',
+        subtotal: 1200,
+        discount: 60,
+        tax: 171,
+        total: 1311,
+        status: 'SENT',
+        validUntil: new Date(2025, 0, 15),
+        notes: 'Cotización servicios de consultoría',
+        createdBy: superAdmin.id,
+        items: {
+          create: [
+            { productId: productsForQuotes[1].id, description: productsForQuotes[1].name, quantity: 10, unitPrice: 120, discount: 5, tax: 15, total: 1311 },
+          ],
+        },
+      },
+    })
+  }
 
   console.log('✅ 2 cotizaciones creadas')
 
