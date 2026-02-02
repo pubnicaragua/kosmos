@@ -45,43 +45,81 @@ async function main() {
 
   console.log('✅ Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
 
-  const company1 = await prisma.company.upsert({
-    where: { id: 'company-tech-solutions' },
+  // 5 Empresas Reales
+  const extel = await prisma.company.upsert({
+    where: { id: 'company-extel' },
     update: {},
     create: {
-      id: 'company-tech-solutions',
-      name: 'Tech Solutions S.A.',
-      logo: null,
+      id: 'company-extel',
+      name: 'Extel',
+      logo: '/assets/logos/extel.png',
+      industry: 'Telecomunicaciones',
+      isActive: true,
+    },
+  })
+
+  const rapidus = await prisma.company.upsert({
+    where: { id: 'company-rapidus' },
+    update: {},
+    create: {
+      id: 'company-rapidus',
+      name: 'Rapidus',
+      logo: '/assets/logos/rapidus.png',
+      industry: 'Logística y Transporte',
+      isActive: true,
+    },
+  })
+
+  const unitec = await prisma.company.upsert({
+    where: { id: 'company-unitec' },
+    update: {},
+    create: {
+      id: 'company-unitec',
+      name: 'Unitec',
+      logo: '/assets/logos/unitec.png',
+      industry: 'Educación',
+      isActive: true,
+    },
+  })
+
+  const itsi = await prisma.company.upsert({
+    where: { id: 'company-itsi' },
+    update: {},
+    create: {
+      id: 'company-itsi',
+      name: 'itsi',
+      logo: '/assets/logos/itsi.png',
       industry: 'Tecnología',
       isActive: true,
     },
   })
 
-  const company2 = await prisma.company.upsert({
-    where: { id: 'company-marketing-pro' },
+  const hotelMarbella = await prisma.company.upsert({
+    where: { id: 'company-hotel-marbella' },
     update: {},
     create: {
-      id: 'company-marketing-pro',
-      name: 'Marketing Pro Ltd.',
-      logo: null,
-      industry: 'Marketing Digital',
+      id: 'company-hotel-marbella',
+      name: 'Hotel Marbella',
+      logo: '/assets/logos/hotel-marbella.png',
+      industry: 'Hotelería y Turismo',
       isActive: true,
     },
   })
 
-  console.log('✅ Empresas creadas:', company1.name, company2.name)
+  const companies = [extel, rapidus, unitec, itsi, hotelMarbella]
+  console.log('✅ 5 Empresas reales creadas:', companies.map(c => c.name).join(', '))
 
   await prisma.userCompany.upsert({
     where: {
       userId_companyId: {
         userId: superAdmin.id,
-        companyId: company1.id,
+        companyId: extel.id,
       },
     },
     update: {},
     create: {
       userId: superAdmin.id,
-      companyId: company1.id,
+      companyId: extel.id,
       role: 'SUPER_ADMIN',
     },
   })
@@ -90,13 +128,13 @@ async function main() {
     where: {
       userId_companyId: {
         userId: superAdmin.id,
-        companyId: company2.id,
+        companyId: rapidus.id,
       },
     },
     update: {},
     create: {
       userId: superAdmin.id,
-      companyId: company2.id,
+      companyId: rapidus.id,
       role: 'ADMIN',
     },
   })
@@ -105,13 +143,13 @@ async function main() {
     where: {
       userId_companyId: {
         userId: manager.id,
-        companyId: company1.id,
+        companyId: extel.id,
       },
     },
     update: {},
     create: {
       userId: manager.id,
-      companyId: company1.id,
+      companyId: extel.id,
       role: 'MANAGER',
     },
   })
@@ -120,18 +158,62 @@ async function main() {
     where: {
       userId_companyId: {
         userId: regularUser.id,
-        companyId: company1.id,
+        companyId: extel.id,
       },
     },
     update: {},
     create: {
       userId: regularUser.id,
-      companyId: company1.id,
+      companyId: extel.id,
       role: 'USER',
     },
   })
 
   console.log('✅ Relaciones usuario-empresa creadas (3 usuarios con roles diferentes)')
+
+  // Crear 5 usuarios por cada empresa (25 usuarios totales)
+  const usersByCompany = [
+    { company: extel, users: ['maria.rodriguez@extel.com', 'pedro.lopez@extel.com', 'ana.martinez@extel.com', 'luis.garcia@extel.com', 'sofia.hernandez@extel.com'] },
+    { company: rapidus, users: ['juan.perez@rapidus.com', 'laura.sanchez@rapidus.com', 'carlos.diaz@rapidus.com', 'elena.torres@rapidus.com', 'miguel.ruiz@rapidus.com'] },
+    { company: unitec, users: ['roberto.gomez@unitec.edu', 'patricia.morales@unitec.edu', 'diego.castro@unitec.edu', 'valeria.ortiz@unitec.edu', 'fernando.silva@unitec.edu'] },
+    { company: itsi, users: ['andrea.ramirez@itsi.com', 'javier.mendez@itsi.com', 'monica.vargas@itsi.com', 'daniel.cruz@itsi.com', 'isabel.flores@itsi.com'] },
+    { company: hotelMarbella, users: ['ricardo.jimenez@hotelmarbella.com', 'gabriela.reyes@hotelmarbella.com', 'antonio.navarro@hotelmarbella.com', 'carmen.rojas@hotelmarbella.com', 'pablo.guerrero@hotelmarbella.com'] },
+  ]
+
+  for (const { company, users } of usersByCompany) {
+    for (let i = 0; i < users.length; i++) {
+      const email = users[i]
+      const name = email.split('@')[0].split('.').map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' ')
+      
+      const user = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: {
+          email,
+          password: userPassword,
+          name,
+          avatar: null,
+        },
+      })
+
+      await prisma.userCompany.upsert({
+        where: {
+          userId_companyId: {
+            userId: user.id,
+            companyId: company.id,
+          },
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          companyId: company.id,
+          role: i === 0 ? 'ADMIN' : i === 1 ? 'MANAGER' : 'USER',
+        },
+      })
+    }
+  }
+
+  console.log('✅ 25 usuarios adicionales creados (5 por empresa)')
 
   const incomes = [
     { client: 'Cliente A', concept: 'Desarrollo Web', amount: 15000, margin: 35, method: 'Transferencia', status: 'PAID' as const },
@@ -149,7 +231,7 @@ async function main() {
   for (const income of incomes) {
     await prisma.income.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         refNumber: `ING-${Math.floor(Math.random() * 10000)}`,
         client: income.client,
         concept: income.concept,
@@ -180,7 +262,7 @@ async function main() {
   for (const expense of expenses) {
     await prisma.expense.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         refNumber: `EXP-${Math.floor(Math.random() * 10000)}`,
         provider: expense.provider,
         concept: expense.concept,
@@ -211,7 +293,7 @@ async function main() {
   for (const activity of activities) {
     await prisma.activity.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         type: activity.type,
         title: activity.title,
         description: `Descripción de ${activity.title}`,
@@ -243,7 +325,7 @@ async function main() {
   for (const opp of opportunities) {
     await prisma.opportunity.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         title: opp.title,
         client: opp.client,
         value: opp.value,
@@ -268,7 +350,7 @@ async function main() {
   for (const doc of documents) {
     await prisma.document.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         name: doc.name,
         type: doc.type,
         concept: doc.concept,
@@ -293,7 +375,7 @@ async function main() {
   for (const contract of contracts) {
     await prisma.contract.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         contractId: contract.contractId,
         name: contract.name,
         concept: 'Servicios',
@@ -323,7 +405,7 @@ async function main() {
   for (const client of clients) {
     await prisma.client.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         name: client.name,
         contactName: client.contactName,
         email: client.email,
@@ -345,7 +427,7 @@ async function main() {
   for (const cat of categories) {
     await prisma.productCategory.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         name: cat.name,
         description: cat.description,
       },
@@ -372,7 +454,7 @@ async function main() {
   for (const product of products) {
     await prisma.product.create({
       data: {
-        companyId: company1.id,
+        companyId: extel.id,
         categoryId: product.categoryId,
         sku: product.sku,
         name: product.name,
@@ -386,12 +468,12 @@ async function main() {
 
   console.log('✅ 8 productos creados')
 
-  const clientsForQuotes = await prisma.client.findMany({ where: { companyId: company1.id }, take: 3 })
-  const productsForQuotes = await prisma.product.findMany({ where: { companyId: company1.id }, take: 4 })
+  const clientsForQuotes = await prisma.client.findMany({ where: { companyId: extel.id }, take: 3 })
+  const productsForQuotes = await prisma.product.findMany({ where: { companyId: extel.id }, take: 4 })
 
   const quote1 = await prisma.quote.create({
     data: {
-      companyId: company1.id,
+      companyId: extel.id,
       clientId: clientsForQuotes[0].id,
       quoteNumber: 'COT-2024-001',
       currency: 'USD',
@@ -413,7 +495,7 @@ async function main() {
 
   const quote2 = await prisma.quote.create({
     data: {
-      companyId: company1.id,
+      companyId: extel.id,
       clientId: clientsForQuotes[1].id,
       quoteNumber: 'COT-2024-002',
       currency: 'USD',
@@ -435,7 +517,7 @@ async function main() {
 
   console.log('✅ 2 cotizaciones creadas')
 
-  const clientsForTickets = await prisma.client.findMany({ where: { companyId: company1.id } })
+  const clientsForTickets = await prisma.client.findMany({ where: { companyId: extel.id } })
 
   const tickets = [
     { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'HIGH' as const, status: 'PROCESO1' as const, amount: 500 },
@@ -450,7 +532,7 @@ async function main() {
     if (ticket.clientId) {
       await prisma.ticket.create({
         data: {
-          companyId: company1.id,
+          companyId: extel.id,
           clientId: ticket.clientId,
           title: ticket.title,
           description: ticket.description,
@@ -465,10 +547,58 @@ async function main() {
 
   console.log('✅ 6 tickets creados')
 
+  // Crear campañas de marketing para cada empresa
+  const marketingCampaigns = [
+    // Extel - Telecomunicaciones
+    { companyId: extel.id, name: 'Lanzamiento 5G Nicaragua', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 50000, spent: 32000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas y consumidores urbanos', metrics: 'Alcance: 500K, CTR: 3.2%, Conversiones: 1200' },
+    { companyId: extel.id, name: 'Campaña Fibra Óptica', channel: 'REDES_SOCIALES', status: 'COMPLETADA', budget: 25000, spent: 24500, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 5, 30), targetAudience: 'Hogares y oficinas', metrics: 'Engagement: 15%, Leads: 850' },
+    { companyId: extel.id, name: 'Email Marketing Corporativo', channel: 'EMAIL', status: 'EN_CURSO', budget: 8000, spent: 3200, startDate: new Date(2024, 6, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas B2B', metrics: 'Open Rate: 28%, Click Rate: 12%' },
+    
+    // Rapidus - Logística
+    { companyId: rapidus.id, name: 'Rapidus Express 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 35000, spent: 18000, startDate: new Date(2024, 1, 1), endDate: new Date(2024, 10, 30), targetAudience: 'E-commerce y retailers', metrics: 'Impresiones: 2M, CTR: 2.8%' },
+    { companyId: rapidus.id, name: 'Campaña Envíos Gratis', channel: 'REDES_SOCIALES', status: 'PAUSADA', budget: 15000, spent: 8500, startDate: new Date(2024, 3, 1), endDate: new Date(2024, 8, 30), targetAudience: 'Consumidores finales', metrics: 'Alcance: 300K, Engagement: 8%' },
+    { companyId: rapidus.id, name: 'Contenido Blog Logística', channel: 'CONTENIDO', status: 'EN_CURSO', budget: 12000, spent: 7200, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas logística', metrics: 'Visitas: 45K, Tiempo: 3.5min' },
+    
+    // Unitec - Educación
+    { companyId: unitec.id, name: 'Matrícula 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'COMPLETADA', budget: 45000, spent: 43000, startDate: new Date(2023, 10, 1), endDate: new Date(2024, 1, 28), targetAudience: 'Estudiantes bachillerato', metrics: 'Leads: 2500, Matrículas: 850' },
+    { companyId: unitec.id, name: 'Campaña Redes Sociales', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 20000, spent: 12000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Jóvenes 17-25 años', metrics: 'Seguidores: +15K, Engagement: 12%' },
+    { companyId: unitec.id, name: 'Open House Virtual', channel: 'EVENTOS', status: 'PLANIFICACION', budget: 18000, spent: 0, startDate: new Date(2024, 9, 1), endDate: new Date(2024, 10, 30), targetAudience: 'Prospectos y padres', metrics: 'Pendiente' },
+    
+    // itsi - Tecnología
+    { companyId: itsi.id, name: 'Soluciones Cloud 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 40000, spent: 25000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas medianas y grandes', metrics: 'Leads: 180, Demos: 45' },
+    { companyId: itsi.id, name: 'Webinars Tecnología', channel: 'EVENTOS', status: 'EN_CURSO', budget: 15000, spent: 9000, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 11, 31), targetAudience: 'CTOs y gerentes IT', metrics: 'Asistentes: 320, Leads: 85' },
+    { companyId: itsi.id, name: 'Email Drip Campaign', channel: 'EMAIL', status: 'EN_CURSO', budget: 10000, spent: 4500, startDate: new Date(2024, 4, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Base de datos clientes', metrics: 'Open: 32%, Conversión: 8%' },
+    
+    // Hotel Marbella - Hotelería
+    { companyId: hotelMarbella.id, name: 'Temporada Alta 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 30000, spent: 18000, startDate: new Date(2024, 5, 1), endDate: new Date(2024, 8, 30), targetAudience: 'Turistas nacionales e internacionales', metrics: 'Reservas: 450, ROI: 280%' },
+    { companyId: hotelMarbella.id, name: 'Redes Sociales Turismo', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 12000, spent: 7500, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Viajeros 25-55 años', metrics: 'Alcance: 250K, Engagement: 10%' },
+    { companyId: hotelMarbella.id, name: 'Alianzas Agencias Viaje', channel: 'OTRO', status: 'PLANIFICACION', budget: 20000, spent: 0, startDate: new Date(2024, 8, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Agencias de viaje', metrics: 'Pendiente' },
+  ]
+
+  for (const campaign of marketingCampaigns) {
+    await prisma.marketingCampaign.create({
+      data: {
+        companyId: campaign.companyId,
+        name: campaign.name,
+        channel: campaign.channel as any,
+        status: campaign.status as any,
+        budget: campaign.budget,
+        spent: campaign.spent,
+        startDate: campaign.startDate,
+        endDate: campaign.endDate,
+        targetAudience: campaign.targetAudience,
+        metrics: campaign.metrics,
+        createdBy: superAdmin.id,
+      },
+    })
+  }
+
+  console.log('✅ 15 campañas de marketing creadas (3 por empresa)')
+
   console.log('\n🎉 Seed completado exitosamente!')
   console.log('\n📊 Resumen:')
-  console.log('   - 3 usuarios (SUPER_ADMIN, MANAGER, USER)')
-  console.log('   - 2 empresas')
+  console.log('   - 28 usuarios (3 base + 25 distribuidos en empresas)')
+  console.log('   - 5 empresas reales (Extel, Rapidus, Unitec, itsi, Hotel Marbella)')
   console.log('   - 10 ingresos')
   console.log('   - 10 gastos')
   console.log('   - 10 actividades')
@@ -480,6 +610,7 @@ async function main() {
   console.log('   - 8 productos')
   console.log('   - 2 cotizaciones')
   console.log('   - 6 tickets')
+  console.log('   - 15 campañas de marketing')
   console.log('\n🔐 Credenciales de acceso:')
   console.log('\n   👑 SUPER ADMIN (acceso total):')
   console.log('      Email: admin@kosmoscrm.com')
