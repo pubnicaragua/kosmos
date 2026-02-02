@@ -255,6 +255,10 @@ model Client {
   email       String?
   phone       String?
   address     String?
+  city        String?
+  country     String?
+  ruc         String?
+  cedula      String?
   taxId       String?      @map("tax_id")
   status      ClientStatus @default(PROSPECTO)
   contactName String?      @map("contact_name")
@@ -272,23 +276,25 @@ model Client {
 }
 
 model Quote {
-  id            String      @id @default(cuid())
-  quoteNumber   String      @unique @map("quote_number")
-  companyId     String      @map("company_id")
-  clientId      String      @map("client_id")
-  status        QuoteStatus @default(DRAFT)
-  currency      String      @default("USD")
+  id            String        @id @default(cuid())
+  quoteNumber   String        @unique @map("quote_number")
+  companyId     String        @map("company_id")
+  clientId      String        @map("client_id")
+  status        QuoteStatus   @default(DRAFT)
+  currency      String        @default("USD")
   subtotal      Float
-  discount      Float       @default(0)
-  tax           Float       @default(0)
+  discount      Float         @default(0)
+  tax           Float         @default(0)
   total         Float
-  validUntil    DateTime    @map("valid_until")
+  paymentMethod PaymentMethod @default(CONTADO) @map("payment_method")
+  taxApplies    Boolean       @default(true) @map("tax_applies")
+  validUntil    DateTime      @map("valid_until")
   notes         String?
-  internalNotes String?     @map("internal_notes")
+  internalNotes String?       @map("internal_notes")
   terms         String?
-  createdBy     String      @map("created_by")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  createdBy     String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client  Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -415,4 +421,9 @@ enum TicketPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+enum PaymentMethod {
+  CONTADO
+  CREDITO
 }

@@ -3,8 +3,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: {
-    default: 'KOSMOS CRM - Sistema de Gestión Empresarial',
-    template: '%s | KOSMOS CRM'
+    default: 'KosmosCRM',
+    template: '%s | KosmosCRM'
   },
   description: 'Sistema CRM multi-empresa profesional para gestión de clientes, ventas, inventario, tickets y más. Optimiza tu negocio con KOSMOS.',
   keywords: ['CRM', 'gestión empresarial', 'clientes', 'ventas', 'inventario', 'tickets', 'cotizaciones', 'multi-empresa'],
