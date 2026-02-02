@@ -20,10 +20,38 @@ interface MarketingCampaign {
 }
 
 const STATUS_COLUMNS = [
-  { id: 'PLANIFICACION', label: 'Planificación', color: 'bg-gray-100' },
-  { id: 'EN_CURSO', label: 'En Curso', color: 'bg-blue-100' },
-  { id: 'PAUSADA', label: 'Pausada', color: 'bg-yellow-100' },
-  { id: 'COMPLETADA', label: 'Completada', color: 'bg-green-100' },
+  { 
+    id: 'PLANIFICACION', 
+    label: 'Planificación', 
+    color: 'bg-gradient-to-br from-slate-100 to-slate-200',
+    borderColor: 'border-slate-300',
+    textColor: 'text-slate-700',
+    badgeColor: 'bg-slate-500'
+  },
+  { 
+    id: 'EN_CURSO', 
+    label: 'En Curso', 
+    color: 'bg-gradient-to-br from-blue-100 to-blue-200',
+    borderColor: 'border-blue-400',
+    textColor: 'text-blue-700',
+    badgeColor: 'bg-blue-500'
+  },
+  { 
+    id: 'PAUSADA', 
+    label: 'Pausada', 
+    color: 'bg-gradient-to-br from-amber-100 to-amber-200',
+    borderColor: 'border-amber-400',
+    textColor: 'text-amber-700',
+    badgeColor: 'bg-amber-500'
+  },
+  { 
+    id: 'COMPLETADA', 
+    label: 'Completada', 
+    color: 'bg-gradient-to-br from-emerald-100 to-emerald-200',
+    borderColor: 'border-emerald-400',
+    textColor: 'text-emerald-700',
+    badgeColor: 'bg-emerald-500'
+  },
 ]
 
 const CHANNEL_ICONS: Record<string, any> = {
@@ -119,15 +147,19 @@ export default function MarketingPage() {
               </div>
               
               <div className="flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[500px]">
-                {columnCampaigns.map((campaign) => (
+                {columnCampaigns.map((campaign, index) => (
                   <div
                     key={campaign.id}
-                    className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-200"
+                    className="bg-white rounded-lg p-4 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 hover:scale-[1.02] hover:-translate-y-1 animate-fadeIn"
+                    style={{ 
+                      borderLeftColor: STATUS_COLUMNS.find(c => c.id === column.id)?.badgeColor.replace('bg-', ''),
+                      animationDelay: `${index * 50}ms`
+                    }}
                     onClick={() => router.push(`/marketing/${campaign.id}`)}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm">{campaign.name}</h4>
-                      <div className="text-gray-500">
+                      <h4 className="font-semibold text-gray-900 text-sm line-clamp-1">{campaign.name}</h4>
+                      <div className={`p-2 rounded-lg ${STATUS_COLUMNS.find(c => c.id === column.id)?.color} transition-transform hover:rotate-12`}>
                         {getChannelIcon(campaign.channel)}
                       </div>
                     </div>
@@ -139,25 +171,36 @@ export default function MarketingPage() {
                     )}
                     
                     {campaign.budget && (
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="text-gray-500">Presupuesto:</span>
+                      <div className="flex items-center justify-between text-xs mb-2 p-2 bg-gray-50 rounded">
+                        <span className="text-gray-500 flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" />
+                          Presupuesto:
+                        </span>
                         <span className="font-semibold text-gray-900">
                           ${campaign.budget.toLocaleString()}
                         </span>
                       </div>
                     )}
                     
-                    {campaign.spent > 0 && (
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="text-gray-500">Gastado:</span>
-                        <span className="font-semibold text-red-600">
-                          ${campaign.spent.toLocaleString()}
-                        </span>
+                    {campaign.spent > 0 && campaign.budget && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-gray-500">Gastado:</span>
+                          <span className="font-semibold text-primary">
+                            ${campaign.spent.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min((campaign.spent / campaign.budget) * 100, 100)}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                     
                     {campaign.startDate && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-3">
+                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
                         <Calendar className="w-3 h-3" />
                         <span>{new Date(campaign.startDate).toLocaleDateString()}</span>
                       </div>
