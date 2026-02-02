@@ -31,18 +31,19 @@ model Company {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  userCompanies     UserCompany[]
-  incomes           Income[]
-  expenses          Expense[]
-  activities        Activity[]
-  opportunities     Opportunity[]
-  documents         Document[]
-  contracts         Contract[]
-  clients           Client[]
-  quotes            Quote[]
-  products          Product[]
-  productCategories ProductCategory[]
-  tickets           Ticket[]
+  userCompanies       UserCompany[]
+  incomes             Income[]
+  expenses            Expense[]
+  activities          Activity[]
+  opportunities       Opportunity[]
+  documents           Document[]
+  contracts           Contract[]
+  clients             Client[]
+  quotes              Quote[]
+  products            Product[]
+  productCategories   ProductCategory[]
+  tickets             Ticket[]
+  marketingCampaigns  MarketingCampaign[]
 
   @@map("companies")
 }
@@ -392,6 +393,32 @@ model Ticket {
   @@map("tickets")
 }
 
+model MarketingCampaign {
+  id          String           @id @default(cuid())
+  companyId   String           @map("company_id")
+  name        String
+  description String?
+  channel     MarketingChannel
+  status      MarketingStatus  @default(PLANIFICACION)
+  budget      Float?
+  spent       Float            @default(0)
+  startDate   DateTime?        @map("start_date")
+  endDate     DateTime?        @map("end_date")
+  targetAudience String?       @map("target_audience")
+  metrics     String?
+  assignedTo  String?          @map("assigned_to")
+  createdBy   String           @map("created_by")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([channel])
+  @@map("marketing_campaigns")
+}
+
 enum ClientStatus {
   PROSPECTO
   PROPUESTA
@@ -426,4 +453,21 @@ enum TicketPriority {
 enum PaymentMethod {
   CONTADO
   CREDITO
+}
+
+enum MarketingStatus {
+  PLANIFICACION
+  EN_CURSO
+  PAUSADA
+  COMPLETADA
+  CANCELADA
+}
+
+enum MarketingChannel {
+  REDES_SOCIALES
+  EMAIL
+  PUBLICIDAD_DIGITAL
+  CONTENIDO
+  EVENTOS
+  OTRO
 }

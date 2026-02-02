@@ -22,6 +22,8 @@ export default function NuevaCotizacionPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedClient, setSelectedClient] = useState('')
   const [currency, setCurrency] = useState('USD')
+  const [paymentMethod, setPaymentMethod] = useState<'CONTADO' | 'CREDITO'>('CONTADO')
+  const [taxApplies, setTaxApplies] = useState(true)
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
   const [validUntil, setValidUntil] = useState('')
   const [seller, setSeller] = useState('')
@@ -54,7 +56,8 @@ export default function NuevaCotizacionPage() {
     const subtotal = item.quantity * item.unitPrice
     const discountAmount = subtotal * (item.discount / 100)
     const taxableAmount = subtotal - discountAmount
-    const taxAmount = taxableAmount * (item.tax / 100)
+    // Solo aplicar IVA si taxApplies es true
+    const taxAmount = taxApplies ? taxableAmount * (item.tax / 100) : 0
     updated[index].total = taxableAmount + taxAmount
     
     setItems(updated)
@@ -72,7 +75,8 @@ export default function NuevaCotizacionPage() {
     return sum + (itemSubtotal * (item.discount / 100))
   }, 0)
   const taxableAmount = subtotal - totalDiscount
-  const totalTax = taxableAmount * 0.15
+  // Solo aplicar IVA si taxApplies es true
+  const totalTax = taxApplies ? taxableAmount * 0.15 : 0
   const total = taxableAmount + totalTax
 
   const handleSave = async (isDraft: boolean) => {
@@ -96,6 +100,8 @@ export default function NuevaCotizacionPage() {
           companyId: selectedCompany,
           clientId: selectedClient,
           currency,
+          paymentMethod,
+          taxApplies,
           validUntil,
           notes: clientNotes,
           internalNotes,
@@ -308,6 +314,45 @@ export default function NuevaCotizacionPage() {
                     $ USD
                   </button>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pago</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setPaymentMethod('CONTADO')}
+                    className={`px-4 py-2 rounded-lg font-medium ${paymentMethod === 'CONTADO' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Contado
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod('CREDITO')}
+                    className={`px-4 py-2 rounded-lg font-medium ${paymentMethod === 'CREDITO' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    Crédito
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Aplicar IVA</label>
+                <button
+                  onClick={() => setTaxApplies(!taxApplies)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border-2 transition-colors ${
+                    taxApplies 
+                      ? 'bg-green-50 border-green-500' 
+                      : 'bg-gray-50 border-gray-300'
+                  }`}
+                >
+                  <span className={`font-medium ${taxApplies ? 'text-green-700' : 'text-gray-600'}`}>
+                    {taxApplies ? 'SÍ APLICA IVA' : 'NO APLICA IVA'}
+                  </span>
+                  <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    taxApplies ? 'bg-green-500' : 'bg-gray-300'
+                  }`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      taxApplies ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </div>
+                </button>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de emisión</label>

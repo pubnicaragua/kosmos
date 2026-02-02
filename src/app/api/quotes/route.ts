@@ -62,7 +62,10 @@ export async function POST(request: NextRequest) {
     const itemsData = validatedData.items.map((item) => {
       const itemSubtotal = item.quantity * item.unitPrice
       const itemDiscount = itemSubtotal * ((item.discount || 0) / 100)
-      const itemTax = (itemSubtotal - itemDiscount) * ((item.tax || 0) / 100)
+      // Solo aplicar IVA si taxApplies es true
+      const itemTax = validatedData.taxApplies 
+        ? (itemSubtotal - itemDiscount) * ((item.tax || 0) / 100)
+        : 0
       const itemTotal = itemSubtotal - itemDiscount + itemTax
 
       subtotal += itemSubtotal
@@ -88,6 +91,8 @@ export async function POST(request: NextRequest) {
         companyId: validatedData.companyId,
         clientId: validatedData.clientId,
         currency: validatedData.currency,
+        paymentMethod: validatedData.paymentMethod,
+        taxApplies: validatedData.taxApplies,
         subtotal,
         discount: totalDiscount,
         tax: totalTax,
