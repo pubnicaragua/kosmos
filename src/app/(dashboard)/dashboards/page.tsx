@@ -37,6 +37,8 @@ export default function DashboardsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('quarter')
+  const [companies, setCompanies] = useState<any[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   const fetchDashboardData = async () => {
     const token = localStorage.getItem('accessToken')
@@ -64,6 +66,27 @@ export default function DashboardsPage() {
   }
 
   useEffect(() => {
+    const fetchCompanies = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch('/api/companies', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        const result = await response.json()
+        if (result.success) {
+          setCompanies(result.data)
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
+
+  useEffect(() => {
     fetchDashboardData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCompany, selectedPeriod])
@@ -81,6 +104,33 @@ export default function DashboardsPage() {
     return new Intl.NumberFormat('es-ES').format(value)
   }
 
+  const handleExportReport = () => {
+    const activeCompany = localStorage.getItem('activeCompany')
+    const companyName = activeCompany ? JSON.parse(activeCompany).name : 'Todas las empresas'
+    
+    const reportData = {
+      empresa: companyName,
+      periodo: selectedPeriod === 'month' ? 'Este mes' : selectedPeriod === 'quarter' ? 'Este trimestre' : 'Este año',
+      fecha: new Date().toLocaleDateString('es-ES'),
+      kpis: data?.kpis,
+    }
+
+    const dataStr = JSON.stringify(reportData, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `informe-dashboard-${companyName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleSearchClients = () => {
+    if (searchQuery.trim()) {
+      window.location.href = `/clientes?search=${encodeURIComponent(searchQuery)}`
+    }
+  }
+
   if (isLoading) {
     return <SkeletonDashboard />
   }
@@ -92,7 +142,7 @@ export default function DashboardsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Dashboard Coorporativo</h1>
           <p className="text-sm text-gray-500 mt-1">Vista consolidada de rendimiento corporativo</p>
         </div>
-        <Button>
+        <Button onClick={handleExportReport}>
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
@@ -101,10 +151,25 @@ export default function DashboardsPage() {
       </div>
 
       <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Buscar clientes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearchClients()}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          />
+          <Button onClick={handleSearchClients} variant="outline">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </Button>
+        </div>
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map(c => ({ value: c.id, label: c.name }))
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
@@ -123,57 +188,65 @@ export default function DashboardsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KPICard
-          title="VENTAS TOTALES"
-          value={formatCurrency(data?.kpis.totalSales || 0)}
-          change={data?.kpis.salesGrowth || 0}
-          changeLabel="VS PERIODO ANTERIOR"
-          trend={data?.kpis.salesGrowth && data.kpis.salesGrowth > 0 ? 'up' : 'down'}
-          icon={
-            <svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        />
+        <div onClick={() => window.location.href = '/ingresos'} className="cursor-pointer">
+          <KPICard
+            title="VENTAS TOTALES"
+            value={formatCurrency(data?.kpis.totalSales || 0)}
+            change={data?.kpis.salesGrowth || 0}
+            changeLabel="VS PERIODO ANTERIOR"
+            trend={data?.kpis.salesGrowth && data.kpis.salesGrowth > 0 ? 'up' : 'down'}
+            icon={
+              <svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          />
+        </div>
 
-        <KPICard
-          title="GASTOS OPERATIVOS"
-          value={formatCurrency(data?.kpis.operationalExpenses || 0)}
-          change={data?.kpis.expensesChange || 0}
-          changeLabel="VS PERIODO ANTERIOR"
-          trend={data?.kpis.expensesChange && data.kpis.expensesChange < 0 ? 'up' : 'down'}
-          icon={
-            <svg className="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-            </svg>
-          }
-        />
+        <div onClick={() => window.location.href = '/gastos'} className="cursor-pointer">
+          <KPICard
+            title="GASTOS OPERATIVOS"
+            value={formatCurrency(data?.kpis.operationalExpenses || 0)}
+            change={data?.kpis.expensesChange || 0}
+            changeLabel="VS PERIODO ANTERIOR"
+            trend={data?.kpis.expensesChange && data.kpis.expensesChange < 0 ? 'up' : 'down'}
+            icon={
+              <svg className="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+            }
+          />
+        </div>
 
-        <KPICard
-          title="VALOR PIPELINE"
-          value={formatCurrency(data?.kpis.pipelineValue || 0)}
-          change={data?.kpis.pipelineChange || 0}
-          changeLabel="SIN CAMBIOS"
-          trend="neutral"
-          icon={
-            <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          }
-        />
+        <div onClick={() => window.location.href = '/pipeline-ventas'} className="cursor-pointer">
+          <KPICard
+            title="VALOR PIPELINE"
+            value={formatCurrency(data?.kpis.pipelineValue || 0)}
+            change={data?.kpis.pipelineChange || 0}
+            changeLabel="SIN CAMBIOS"
+            trend="neutral"
+            icon={
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            }
+          />
+        </div>
 
-        <KPICard
-          title="CLIENTES ACTIVOS"
-          value={formatNumber(data?.kpis.activeClients || 0)}
-          change={data?.kpis.clientsGrowth || 0}
-          changeLabel="36 NUEVOS ESTE MES"
-          trend={data?.kpis.clientsGrowth && data.kpis.clientsGrowth > 0 ? 'up' : 'neutral'}
-          icon={
-            <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          }
-        />
+        <div onClick={() => window.location.href = '/clientes'} className="cursor-pointer">
+          <KPICard
+            title="CLIENTES ACTIVOS"
+            value={formatNumber(data?.kpis.activeClients || 0)}
+            change={data?.kpis.clientsGrowth || 0}
+            changeLabel="36 NUEVOS ESTE MES"
+            trend={data?.kpis.clientsGrowth && data.kpis.clientsGrowth > 0 ? 'up' : 'neutral'}
+            icon={
+              <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            }
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
