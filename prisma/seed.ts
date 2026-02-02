@@ -425,8 +425,17 @@ async function main() {
   ]
 
   for (const cat of categories) {
-    await prisma.productCategory.create({
-      data: {
+    await prisma.productCategory.upsert({
+      where: {
+        companyId_name: {
+          companyId: extel.id,
+          name: cat.name,
+        },
+      },
+      update: {
+        description: cat.description,
+      },
+      create: {
         companyId: extel.id,
         name: cat.name,
         description: cat.description,
@@ -436,9 +445,9 @@ async function main() {
 
   console.log('✅ 4 categorías de productos creadas')
 
-  const hardwareCat = await prisma.productCategory.findFirst({ where: { name: 'Hardware' } })
-  const softwareCat = await prisma.productCategory.findFirst({ where: { name: 'Software' } })
-  const servicesCat = await prisma.productCategory.findFirst({ where: { name: 'Servicios' } })
+  const hardwareCat = await prisma.productCategory.findFirst({ where: { name: 'Hardware', companyId: extel.id } })
+  const softwareCat = await prisma.productCategory.findFirst({ where: { name: 'Software', companyId: extel.id } })
+  const servicesCat = await prisma.productCategory.findFirst({ where: { name: 'Servicios', companyId: extel.id } })
 
   const products = [
     { sku: 'HW-001', name: 'Laptop Dell XPS 15', categoryId: hardwareCat!.id, stock: 15, cost: 1200, price: 1800, description: 'Laptop profesional' },
@@ -452,8 +461,22 @@ async function main() {
   ]
 
   for (const product of products) {
-    await prisma.product.create({
-      data: {
+    await prisma.product.upsert({
+      where: {
+        companyId_sku: {
+          companyId: extel.id,
+          sku: product.sku,
+        },
+      },
+      update: {
+        categoryId: product.categoryId,
+        name: product.name,
+        description: product.description,
+        stock: product.stock,
+        cost: product.cost,
+        price: product.price,
+      },
+      create: {
         companyId: extel.id,
         categoryId: product.categoryId,
         sku: product.sku,
