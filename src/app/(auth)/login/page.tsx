@@ -284,7 +284,7 @@ export default function LoginPage() {
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Limitación de Responsabilidad</h3>
             <p className="text-sm">
-              KosmosCRM se proporciona "tal cual" y no garantizamos que el servicio esté libre de errores o interrupciones. No nos hacemos responsables de daños indirectos o consecuentes.
+              KosmosCRM se proporciona &quot;tal cual&quot; y no garantizamos que el servicio esté libre de errores o interrupciones. No nos hacemos responsables de daños indirectos o consecuentes.
             </p>
           </div>
           
