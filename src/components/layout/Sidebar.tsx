@@ -75,7 +75,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center gap-0">
-            <span className="text-xl font-bold text-blue-600">CORP</span>
+            <span className="text-xl font-bold text-blue-600">KOSMOS</span>
             <span className="text-xl font-bold text-gray-800">CRM</span>
           </div>
         </div>
