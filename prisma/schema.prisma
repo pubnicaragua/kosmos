@@ -76,18 +76,26 @@ model RefreshToken {
 }
 
 model Income {
-  id        String       @id @default(cuid())
-  companyId String       @map("company_id")
-  refNumber String       @map("ref_number")
-  client    String
-  concept   String
-  method    String
-  amount    Float
-  margin    Float
-  status    IncomeStatus @default(PENDING)
-  date      DateTime
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id                    String       @id @default(cuid())
+  companyId             String       @map("company_id")
+  refNumber             String       @map("ref_number")
+  client                String
+  concept               String
+  method                String
+  amount                Float
+  margin                Float
+  status                IncomeStatus @default(PENDING)
+  date                  DateTime
+  folio                 String?
+  documento             String?
+  origen                String?
+  currency              String?      @default("USD")
+  amountSecondary       Float?       @map("amount_secondary")
+  currencySecondary     String?      @map("currency_secondary")
+  exchangeRate          Float?       @map("exchange_rate")
+  customFields          Json?        @map("custom_fields")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -250,22 +258,31 @@ enum ContractStatus {
 // ============================================
 
 model Client {
-  id          String       @id @default(cuid())
-  companyId   String       @map("company_id")
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  city        String?
-  country     String?
-  ruc         String?
-  cedula      String?
-  taxId       String?      @map("tax_id")
-  status      ClientStatus @default(PROSPECTO)
-  contactName String?      @map("contact_name")
-  notes       String?
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id             String       @id @default(cuid())
+  companyId      String       @map("company_id")
+  name           String
+  email          String?
+  phone          String?
+  phone2         String?
+  address        String?
+  city           String?
+  country        String?
+  ruc            String?
+  cedula         String?
+  taxId          String?      @map("tax_id")
+  status         ClientStatus @default(PROSPECTO)
+  contactName    String?      @map("contact_name")
+  notes          String?
+  alias          String?
+  contribuyente  String?
+  sucursal       String?
+  codigoInterno  String?      @map("codigo_interno")
+  telefonoTutor  String?      @map("telefono_tutor")
+  curso          String?
+  origen         String?
+  customFields   Json?        @map("custom_fields")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   quotes  Quote[]

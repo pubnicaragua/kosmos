@@ -1,7 +1,7 @@
 'use client'
 
 import type { Metadata } from 'next'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -33,13 +33,26 @@ const STATUS_TABS = [
   { id: 'CALIFICADO', label: 'CALIFICADO' },
 ]
 
+interface Company {
+  id: string
+  name: string
+  logo: string | null
+}
+
 export default function ClientesPage() {
   const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importIncomes, setImportIncomes] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importResult, setImportResult] = useState<any>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -68,7 +81,76 @@ export default function ClientesPage() {
 
   useEffect(() => {
     fetchData()
+    fetchCompanies()
   }, [fetchData])
+
+  const fetchCompanies = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!importFile) {
+      alert('Por favor selecciona un archivo')
+      return
+    }
+
+    if (selectedCompany === 'all') {
+      alert('Por favor selecciona una empresa')
+      return
+    }
+
+    setIsImporting(true)
+    setImportResult(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      formData.append('companyId', selectedCompany)
+      formData.append('importIncomes', importIncomes.toString())
+
+      const token = localStorage.getItem('accessToken')
+      const response = await fetch('/api/clients/import', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setImportResult(result.data)
+        fetchData()
+        setTimeout(() => {
+          setShowImportModal(false)
+          setImportFile(null)
+          setImportIncomes(false)
+          setImportResult(null)
+        }, 5000)
+      } else {
+        alert(`Error: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Import error:', error)
+      alert('Error al importar archivo')
+    } finally {
+      setIsImporting(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'warning' | 'success'> = {
@@ -112,6 +194,12 @@ export default function ClientesPage() {
           <p className="text-sm text-gray-500 mt-1">Administra tu base de clientes, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={() => setShowImportModal(true)}>
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            IMPORTAR
+          </Button>
           <Button variant="outline" onClick={() => router.push('/clientes/editar')}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -137,7 +225,10 @@ export default function ClientesPage() {
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map(company => ({
+              value: company.id,
+              label: company.name
+            }))
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
@@ -310,6 +401,189 @@ export default function ClientesPage() {
           </button>
         </div>
       </div>
+
+      {/* Modal de Importación */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Importar Clientes desde Excel</h2>
+                <button 
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                    setImportResult(null)
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {!importResult ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Seleccionar Empresa
+                    </label>
+                    <Select
+                      options={[
+                        { value: 'all', label: 'Selecciona una empresa' },
+                        ...companies.map(company => ({
+                          value: company.id,
+                          label: company.name
+                        }))
+                      ]}
+                      value={selectedCompany}
+                      onChange={(e) => setSelectedCompany(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Archivo Excel
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                      />
+                      {!importFile ? (
+                        <div onClick={() => fileInputRef.current?.click()} className="cursor-pointer">
+                          <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <p className="text-sm text-gray-600 mb-1">Click para seleccionar archivo</p>
+                          <p className="text-xs text-gray-500">Formatos: .xlsx, .xls</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-3">
+                          <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-gray-900">{importFile.name}</p>
+                            <p className="text-xs text-gray-500">{(importFile.size / 1024).toFixed(2)} KB</p>
+                          </div>
+                          <button
+                            onClick={() => setImportFile(null)}
+                            className="ml-auto text-red-500 hover:text-red-700"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="importIncomes"
+                      checked={importIncomes}
+                      onChange={(e) => setImportIncomes(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <label htmlFor="importIncomes" className="text-sm text-gray-700 cursor-pointer">
+                      <span className="font-medium">Importar ingresos</span>
+                      <span className="block text-xs text-gray-500 mt-1">
+                        Si el archivo contiene datos de ingresos (folio, documento, montos), se importarán automáticamente
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-900 mb-2">📋 Información</h3>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>• El sistema detecta automáticamente las columnas del Excel</li>
+                      <li>• Soporta múltiples formatos de columnas por empresa</li>
+                      <li>• Los clientes duplicados serán omitidos</li>
+                      <li>• Campos no reconocidos se guardan como datos personalizados</li>
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <svg className="w-8 h-8 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h3 className="font-medium text-green-900">¡Importación Exitosa!</h3>
+                      <p className="text-sm text-green-700 mt-1">Los datos se han importado correctamente</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">Clientes Importados</p>
+                      <p className="text-2xl font-bold text-blue-600">{importResult.clients.imported}</p>
+                      {importResult.clients.skipped > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">{importResult.clients.skipped} omitidos (duplicados)</p>
+                      )}
+                    </div>
+
+                    {importResult.hasIncomes && (
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-1">Ingresos Importados</p>
+                        <p className="text-2xl font-bold text-green-600">{importResult.incomes.imported}</p>
+                        {importResult.incomes.skipped > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">{importResult.incomes.skipped} omitidos</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-500 text-center">Esta ventana se cerrará automáticamente en 5 segundos...</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportFile(null)
+                  setImportResult(null)
+                }}
+                disabled={isImporting}
+              >
+                Cancelar
+              </Button>
+              {!importResult && (
+                <Button
+                  onClick={handleImport}
+                  disabled={!importFile || selectedCompany === 'all' || isImporting}
+                >
+                  {isImporting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Importando...
+                    </>
+                  ) : (
+                    'Importar'
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
