@@ -24,7 +24,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updated = await prisma.opportunity.update({
       where: { id: params.id },
       data: {
-        ...body,
+        title: body.title,
+        client: body.client,
+        value: typeof body.value === 'number' ? body.value : undefined,
+        stage: body.stage,
+        status: body.status,
+        assignedTo: body.assignedTo,
         closeDate: body.closeDate ? new Date(body.closeDate) : undefined,
       },
     })

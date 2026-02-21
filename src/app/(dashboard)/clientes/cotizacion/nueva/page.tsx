@@ -17,15 +17,27 @@ interface QuoteItem {
   total: number
 }
 
+interface Company {
+  id: string
+  name: string
+}
+
+interface ClientOption {
+  id: string
+  name: string
+}
+
 export default function NuevaCotizacionPage() {
   const router = useRouter()
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [clients, setClients] = useState<ClientOption[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedClient, setSelectedClient] = useState('')
   const [currency, setCurrency] = useState('USD')
   const [paymentMethod, setPaymentMethod] = useState<'CONTADO' | 'CREDITO'>('CONTADO')
   const [taxApplies, setTaxApplies] = useState(true)
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
-  const [validUntil, setValidUntil] = useState('')
+  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
   const [seller, setSeller] = useState('')
   const [clientNotes, setClientNotes] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
@@ -34,6 +46,90 @@ export default function NuevaCotizacionPage() {
     { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }
   ])
   const [globalDiscount, setGlobalDiscount] = useState(0)
+
+  const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
+    const subtotalValue = item.quantity * item.unitPrice
+    const discountAmount = subtotalValue * (item.discount / 100)
+    const taxableValue = subtotalValue - discountAmount
+    const taxAmount = applyTax ? taxableValue * (item.tax / 100) : 0
+    return taxableValue + taxAmount
+  }
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch('/api/companies', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        const data = await response.json()
+        if (!data.success) return
+
+        setCompanies(data.data)
+
+        const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+        if (activeCompany?.id) {
+          setSelectedCompany(activeCompany.id)
+        } else if (data.data.length > 0) {
+          setSelectedCompany(data.data[0].id)
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
+
+  useEffect(() => {
+    if (selectedCompany === 'all') {
+      setClients([])
+      setSelectedClient('')
+      return
+    }
+
+    const fetchClients = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const params = new URLSearchParams({ companyId: selectedCompany })
+        const response = await fetch(`/api/clients?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        const data = await response.json()
+        if (!data.success) return
+
+        const fetchedClients = data.data as ClientOption[]
+        setClients(fetchedClients)
+        if (fetchedClients.length > 0) {
+          setSelectedClient((current) => {
+            if (current && fetchedClients.some((client) => client.id === current)) {
+              return current
+            }
+            return fetchedClients[0].id
+          })
+        } else {
+          setSelectedClient('')
+        }
+      } catch (error) {
+        console.error('Error fetching clients:', error)
+      }
+    }
+
+    fetchClients()
+  }, [selectedCompany])
+
+  useEffect(() => {
+    setItems((prev) => prev.map((item) => ({
+      ...item,
+      total: recalculateItemTotal(item, taxApplies),
+    })))
+  }, [taxApplies])
 
   const addItem = () => {
     setItems([...items, {
@@ -51,14 +147,7 @@ export default function NuevaCotizacionPage() {
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
     const updated = [...items]
     updated[index] = { ...updated[index], [field]: value }
-    
-    const item = updated[index]
-    const subtotal = item.quantity * item.unitPrice
-    const discountAmount = subtotal * (item.discount / 100)
-    const taxableAmount = subtotal - discountAmount
-    // Solo aplicar IVA si taxApplies es true
-    const taxAmount = taxApplies ? taxableAmount * (item.tax / 100) : 0
-    updated[index].total = taxableAmount + taxAmount
+    updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     
     setItems(updated)
   }
@@ -245,7 +334,7 @@ export default function NuevaCotizacionPage() {
                         />
                       </td>
                       <td className="py-2 px-2 text-center">
-                        <span className="text-sm text-primary font-medium">IVA 15%</span>
+                        <span className="text-sm text-primary font-medium">{taxApplies ? 'IVA 15%' : 'NO APLICA IVA'}</span>
                       </td>
                       <td className="py-2 px-2 text-right">
                         <span className="text-sm font-medium text-gray-900">
@@ -283,7 +372,7 @@ export default function NuevaCotizacionPage() {
                 <span className="font-semibold">-{totalDiscount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex items-center justify-between text-lg">
-                <span className="font-medium text-gray-700">IVA (15%)</span>
+                <span className="font-medium text-gray-700">{taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</span>
                 <span className="font-semibold text-gray-900">{totalTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex items-center justify-between text-2xl pt-3 border-t border-gray-200">
@@ -298,6 +387,33 @@ export default function NuevaCotizacionPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-sm font-medium text-gray-700 mb-4">DETALLES GENERALES</h3>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+                <Select
+                  options={[
+                    { value: 'all', label: 'Seleccionar empresa' },
+                    ...companies.map((company) => ({ value: company.id, label: company.name })),
+                  ]}
+                  value={selectedCompany}
+                  onChange={(e) => {
+                    setSelectedCompany(e.target.value)
+                    setSelectedClient('')
+                  }}
+                  fullWidth
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+                <Select
+                  options={[
+                    { value: '', label: clients.length ? 'Seleccionar cliente' : 'Sin clientes disponibles' },
+                    ...clients.map((client) => ({ value: client.id, label: client.name })),
+                  ]}
+                  value={selectedClient}
+                  onChange={(e) => setSelectedClient(e.target.value)}
+                  fullWidth
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Moneda</label>
                 <div className="grid grid-cols-2 gap-2">

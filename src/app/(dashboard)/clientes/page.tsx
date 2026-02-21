@@ -1,6 +1,5 @@
 'use client'
 
-import type { Metadata } from 'next'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
+import { Modal } from '@/components/ui-kit/Modal'
 
 interface Client {
   id: string
@@ -39,7 +39,21 @@ interface Company {
   logo: string | null
 }
 
+interface ClientFormData {
+  name: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  country: string
+  ruc: string
+  cedula: string
+  contactName: string
+  status: Client['status']
+}
+
 export default function ClientesPage() {
+  const ITEMS_PER_PAGE = 10
   const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -47,11 +61,27 @@ export default function ClientesPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importIncomes, setImportIncomes] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [importResult, setImportResult] = useState<any>(null)
+  const [viewingClient, setViewingClient] = useState<Client | null>(null)
+  const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [isSavingClient, setIsSavingClient] = useState(false)
+  const [clientForm, setClientForm] = useState<ClientFormData>({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    country: '',
+    ruc: '',
+    cedula: '',
+    contactName: '',
+    status: 'PROSPECTO',
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -83,6 +113,10 @@ export default function ClientesPage() {
     fetchData()
     fetchCompanies()
   }, [fetchData])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedCompany, selectedStatus, searchTerm])
 
   const fetchCompanies = async () => {
     const token = localStorage.getItem('accessToken')
@@ -152,6 +186,81 @@ export default function ClientesPage() {
     }
   }
 
+  const openEditModal = (client: Client) => {
+    setEditingClient(client)
+    setClientForm({
+      name: client.name || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      city: client.city || '',
+      country: client.country || '',
+      ruc: client.ruc || '',
+      cedula: client.cedula || '',
+      contactName: client.contactName || '',
+      status: client.status,
+    })
+  }
+
+  const handleUpdateClient = async () => {
+    if (!editingClient) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      setIsSavingClient(true)
+
+      const response = await fetch(`/api/clients/${editingClient.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientForm),
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo actualizar el cliente')
+        return
+      }
+
+      setEditingClient(null)
+      await fetchData()
+    } catch (error) {
+      console.error('Error updating client:', error)
+      alert('Error al actualizar cliente')
+    } finally {
+      setIsSavingClient(false)
+    }
+  }
+
+  const handleDeleteClient = async (clientId: string) => {
+    const confirmed = window.confirm('¿Seguro que deseas eliminar este cliente?')
+    if (!confirmed) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setClients((prev) => prev.filter((client) => client.id !== clientId))
+      } else {
+        alert(data.error || 'No se pudo eliminar el cliente')
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      alert('Error al eliminar cliente')
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'warning' | 'success'> = {
       PROSPECTO: 'default',
@@ -163,6 +272,15 @@ export default function ClientesPage() {
     }
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
+
+  const totalPages = Math.max(1, Math.ceil(clients.length / ITEMS_PER_PAGE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const paginatedClients = clients.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE
+  )
+  const showingFrom = clients.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1
+  const showingTo = clients.length === 0 ? 0 : Math.min(safeCurrentPage * ITEMS_PER_PAGE, clients.length)
 
   if (isLoading) {
     return (
@@ -199,12 +317,6 @@ export default function ClientesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             IMPORTAR
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/clientes/editar')}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            EDITAR
           </Button>
           <Button variant="outline" onClick={() => router.push('/clientes/multiagregado')}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,7 +388,7 @@ export default function ClientesPage() {
               </tr>
             </thead>
             <tbody>
-              {clients.map((client) => (
+              {paginatedClients.map((client) => (
                 <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-4">
                     <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
@@ -350,18 +462,18 @@ export default function ClientesPage() {
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="text-primary hover:text-primary-dark">
+                      <button className="text-primary hover:text-primary-dark" onClick={() => setViewingClient(client)}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </button>
-                      <button className="text-gray-600 hover:text-gray-900">
+                      <button className="text-gray-600 hover:text-gray-900" onClick={() => openEditModal(client)}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
-                      <button className="text-error hover:text-error-dark">
+                      <button className="text-error hover:text-error-dark" onClick={() => handleDeleteClient(client.id)}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -383,24 +495,142 @@ export default function ClientesPage() {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Mostrando 1 a {clients.length} de {clients.length} resultados
+          Mostrando {showingFrom} a {showingTo} de {clients.length} resultados
         </div>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
-            &lt;
-          </button>
-          <button className="px-3 py-1 bg-primary text-white rounded">1</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">2</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">3</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
-            ...
-          </button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">8</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">
-            &gt;
-          </button>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={safeCurrentPage <= 1}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-gray-600 px-2">
+            Página {safeCurrentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={safeCurrentPage >= totalPages}
+          >
+            Siguiente
+          </Button>
         </div>
       </div>
+
+      <Modal
+        isOpen={!!viewingClient}
+        onClose={() => setViewingClient(null)}
+        title={viewingClient ? `Cliente: ${viewingClient.name}` : 'Detalle de cliente'}
+        size="md"
+      >
+        {viewingClient && (
+          <div className="space-y-3 text-sm text-gray-700">
+            <div><strong>Empresa:</strong> {viewingClient.company?.name || 'N/A'}</div>
+            <div><strong>Nombre:</strong> {viewingClient.name}</div>
+            <div><strong>Email:</strong> {viewingClient.email || 'N/A'}</div>
+            <div><strong>Teléfono:</strong> {viewingClient.phone || 'N/A'}</div>
+            <div><strong>Dirección:</strong> {viewingClient.address || 'N/A'}</div>
+            <div><strong>Ciudad:</strong> {viewingClient.city || 'N/A'}</div>
+            <div><strong>País:</strong> {viewingClient.country || 'N/A'}</div>
+            <div><strong>RUC:</strong> {viewingClient.ruc || 'N/A'}</div>
+            <div><strong>Cédula:</strong> {viewingClient.cedula || 'N/A'}</div>
+            <div><strong>Contacto:</strong> {viewingClient.contactName || 'N/A'}</div>
+            <div><strong>Estado:</strong> {viewingClient.status}</div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!editingClient}
+        onClose={() => setEditingClient(null)}
+        title={editingClient ? `Editar: ${editingClient.name}` : 'Editar cliente'}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Nombre"
+              value={clientForm.name}
+              onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+              fullWidth
+              required
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={clientForm.email}
+              onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Teléfono"
+              value={clientForm.phone}
+              onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Contacto"
+              value={clientForm.contactName}
+              onChange={(e) => setClientForm({ ...clientForm, contactName: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Dirección"
+              value={clientForm.address}
+              onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Ciudad"
+              value={clientForm.city}
+              onChange={(e) => setClientForm({ ...clientForm, city: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="País"
+              value={clientForm.country}
+              onChange={(e) => setClientForm({ ...clientForm, country: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="RUC"
+              value={clientForm.ruc}
+              onChange={(e) => setClientForm({ ...clientForm, ruc: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Cédula"
+              value={clientForm.cedula}
+              onChange={(e) => setClientForm({ ...clientForm, cedula: e.target.value })}
+              fullWidth
+            />
+            <Select
+              label="Estado"
+              options={[
+                { value: 'PROSPECTO', label: 'Prospecto' },
+                { value: 'PROPUESTA', label: 'Propuesta' },
+                { value: 'NEGOCIACION', label: 'Negociación' },
+                { value: 'CALIFICADO', label: 'Calificado' },
+                { value: 'ACTIVO', label: 'Activo' },
+                { value: 'INACTIVO', label: 'Inactivo' },
+              ]}
+              value={clientForm.status}
+              onChange={(e) => setClientForm({ ...clientForm, status: e.target.value as Client['status'] })}
+              fullWidth
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setEditingClient(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateClient} disabled={isSavingClient}>
+              {isSavingClient ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal de Importación */}
       {showImportModal && (

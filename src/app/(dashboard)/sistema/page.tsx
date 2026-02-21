@@ -1,10 +1,18 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
 export default function SistemaPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    router.replace('/sistema/ajustes')
+  }, [router])
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">Sistema / Configuración</h1>
-      <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-600">Módulo de Sistema y Configuración - Placeholder</p>
-      </div>
+    <div className="flex items-center justify-center min-h-[200px]">
+      <p className="text-gray-500">Redirigiendo...</p>
     </div>
   )
 }

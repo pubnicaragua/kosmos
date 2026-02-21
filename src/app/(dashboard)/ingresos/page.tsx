@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -8,9 +9,17 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 
+const FILTERS_STORAGE_KEY = 'ingresosFilters'
+
+interface CompanyOption {
+  id: string
+  name: string
+}
+
 interface Income {
   id: string
   company: string
+  companyId: string
   refNumber: string
   client: string
   concept: string
@@ -19,6 +28,20 @@ interface Income {
   margin: number
   status: 'PAID' | 'PENDING' | 'CANCELLED' | 'ERROR'
   date: string
+}
+
+interface IncomeRowDraft {
+  tempId: number
+  sourceId?: string
+  companyId: string
+  date: string
+  refNumber: string
+  client: string
+  concept: string
+  method: string
+  amount: string
+  margin: string
+  status: Income['status']
 }
 
 interface IncomeSummary {
@@ -33,26 +56,122 @@ interface IncomeSummary {
 export default function IngresosPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [summary, setSummary] = useState<IncomeSummary | null>(null)
+  const [companies, setCompanies] = useState<CompanyOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isImporting, setIsImporting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [filtersLoaded, setFiltersLoaded] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [draftRows, setDraftRows] = useState<IncomeRowDraft[]>([])
+  const [editingRows, setEditingRows] = useState<Record<string, IncomeRowDraft>>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const getDateRangeByPeriod = (period: string) => {
+    const endDate = new Date()
+    const startDate = new Date(endDate)
+
+    if (period === 'month') {
+      startDate.setMonth(startDate.getMonth() - 1)
+    } else if (period === 'quarter') {
+      startDate.setMonth(startDate.getMonth() - 3)
+    } else {
+      startDate.setFullYear(startDate.getFullYear() - 1)
+    }
+
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    }
+  }
 
   useEffect(() => {
+    const stored = localStorage.getItem(FILTERS_STORAGE_KEY)
+    const urlParams = new URLSearchParams(window.location.search)
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (parsed.company) setSelectedCompany(parsed.company)
+        if (parsed.period) setSelectedPeriod(parsed.period)
+        if (parsed.status) setSelectedStatus(parsed.status)
+      } catch {
+        // noop
+      }
+    }
+
+    const companyParam = urlParams.get('companyId')
+    const periodParam = urlParams.get('period')
+    const statusParam = urlParams.get('status')
+
+    if (companyParam) setSelectedCompany(companyParam)
+    if (periodParam) setSelectedPeriod(periodParam)
+    if (statusParam) setSelectedStatus(statusParam)
+
+    setFiltersLoaded(true)
+  }, [])
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch('/api/companies', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        const data = await response.json()
+
+        if (data.success) {
+          setCompanies(data.data)
+        }
+      } catch (error) {
+        console.error('Error fetching companies:', error)
+      }
+    }
+
+    fetchCompanies()
+  }, [])
+
+  useEffect(() => {
+    if (!filtersLoaded) return
+
+    localStorage.setItem(
+      FILTERS_STORAGE_KEY,
+      JSON.stringify({
+        company: selectedCompany,
+        period: selectedPeriod,
+        status: selectedStatus,
+      })
+    )
+
+    const params = new URLSearchParams()
+    if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+    if (selectedStatus !== 'all') params.set('status', selectedStatus)
+    if (selectedPeriod) params.set('period', selectedPeriod)
+    const nextUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname
+    window.history.replaceState({}, '', nextUrl)
+
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCompany, selectedPeriod, selectedStatus, currentPage])
+  }, [filtersLoaded, selectedCompany, selectedPeriod, selectedStatus, currentPage])
 
   const fetchData = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
     try {
+      setIsLoading(true)
       const params = new URLSearchParams()
+      const { startDate, endDate } = getDateRangeByPeriod(selectedPeriod)
+
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      params.append('startDate', startDate)
+      params.append('endDate', endDate)
       params.append('page', currentPage.toString())
       params.append('limit', '10')
 
@@ -80,6 +199,275 @@ export default function IngresosPage() {
       console.error('Error fetching incomes:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleExport = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    setIsExporting(true)
+    try {
+      const params = new URLSearchParams()
+      const { startDate, endDate } = getDateRangeByPeriod(selectedPeriod)
+
+      if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+      if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      params.append('startDate', startDate)
+      params.append('endDate', endDate)
+
+      const response = await fetch(`/api/incomes/export?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (!data.success) return
+
+      const rows = data.data.data as Array<Record<string, unknown>>
+      if (!rows || rows.length === 0) {
+        alert('No hay ingresos para exportar con los filtros actuales')
+        return
+      }
+
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Ingresos')
+      XLSX.writeFile(workbook, `ingresos_${new Date().toISOString().split('T')[0]}.xlsx`)
+    } catch (error) {
+      console.error('Error exporting incomes:', error)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const resolveDefaultCompanyId = () => {
+    if (selectedCompany !== 'all') return selectedCompany
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || companies[0]?.id || ''
+  }
+
+  const addInlineRow = () => {
+    const companyId = resolveDefaultCompanyId()
+    if (!companyId) {
+      alert('Selecciona una empresa antes de agregar una fila')
+      return
+    }
+
+    setDraftRows((prev) => [
+      ...prev,
+      {
+        tempId: Date.now(),
+        companyId,
+        date: new Date().toISOString().split('T')[0],
+        refNumber: '',
+        client: '',
+        concept: '',
+        method: '',
+        amount: '',
+        margin: '',
+        status: 'PENDING',
+      },
+    ])
+  }
+
+  const updateDraftRow = (
+    tempId: number,
+    field: keyof IncomeRowDraft,
+    value: string
+  ) => {
+    setDraftRows((prev) =>
+      prev.map((row) =>
+        row.tempId === tempId ? { ...row, [field]: value } : row
+      )
+    )
+  }
+
+  const updateEditingRow = (
+    incomeId: string,
+    field: keyof IncomeRowDraft,
+    value: string
+  ) => {
+    setEditingRows((prev) => ({
+      ...prev,
+      [incomeId]: {
+        ...prev[incomeId],
+        [field]: value,
+      },
+    }))
+  }
+
+  const startEditingRow = (income: Income) => {
+    setEditingRows((prev) => ({
+      ...prev,
+      [income.id]: {
+        tempId: Date.now(),
+        sourceId: income.id,
+        companyId: income.companyId,
+        date: income.date.split('T')[0],
+        refNumber: income.refNumber,
+        client: income.client,
+        concept: income.concept,
+        method: income.method,
+        amount: String(income.amount),
+        margin: String(income.margin),
+        status: income.status,
+      },
+    }))
+  }
+
+  const cancelEditingRow = (incomeId: string) => {
+    setEditingRows((prev) => {
+      const next = { ...prev }
+      delete next[incomeId]
+      return next
+    })
+  }
+
+  const saveRow = async (row: IncomeRowDraft, mode: 'create' | 'update') => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    if (!row.companyId || !row.client || !row.concept || !row.method || row.amount === '' || !row.date) {
+      alert('Completa empresa, fecha, cliente, concepto, método y monto')
+      return
+    }
+
+    const amount = Number(row.amount)
+    const margin = Number(row.margin || 0)
+    if (!Number.isFinite(amount)) {
+      alert('El monto no es válido')
+      return
+    }
+
+    try {
+      const endpoint = mode === 'create' ? '/api/incomes' : `/api/incomes/${row.sourceId}`
+      const response = await fetch(endpoint, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId: row.companyId,
+          date: row.date,
+          refNumber: row.refNumber || `REF-${Date.now()}`,
+          client: row.client,
+          concept: row.concept,
+          method: row.method,
+          amount,
+          margin: Number.isFinite(margin) ? margin : 0,
+          status: row.status,
+        }),
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo guardar el ingreso')
+        return
+      }
+
+      if (mode === 'create') {
+        setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))
+      } else if (row.sourceId) {
+        cancelEditingRow(row.sourceId)
+      }
+
+      fetchData()
+    } catch (error) {
+      console.error('Error saving income row:', error)
+      alert('Error al guardar el ingreso')
+    }
+  }
+
+  const deleteIncome = async (incomeId: string) => {
+    const confirmed = window.confirm('¿Deseas eliminar este ingreso?')
+    if (!confirmed) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/incomes/${incomeId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo eliminar el ingreso')
+        return
+      }
+
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting income:', error)
+      alert('Error al eliminar el ingreso')
+    }
+  }
+
+  const handleRowKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+    row: IncomeRowDraft,
+    mode: 'create' | 'update'
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveRow(row, mode)
+    } else if (e.key === 'Delete' && e.ctrlKey) {
+      e.preventDefault()
+      if (mode === 'create') {
+        setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))
+      } else if (row.sourceId) {
+        deleteIncome(row.sourceId)
+      }
+    }
+  }
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const token = localStorage.getItem('accessToken')
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    const companyId = selectedCompany !== 'all' ? selectedCompany : activeCompany.id
+
+    if (!token || !companyId) {
+      alert('Selecciona una empresa válida antes de importar')
+      return
+    }
+
+    setIsImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('companyId', companyId)
+
+      const response = await fetch('/api/incomes/import', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        alert(`Importación completada. Importados: ${data.data.imported} | Omitidos: ${data.data.skipped}`)
+        fetchData()
+      } else {
+        alert(data.message || data.error || 'No se pudo importar el archivo')
+      }
+    } catch (error) {
+      console.error('Error importing incomes:', error)
+      alert('Ocurrió un error al importar ingresos')
+    } finally {
+      setIsImporting(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -139,18 +527,31 @@ export default function IngresosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestión de facturación y entradas de dinero</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={addInlineRow}>
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            AGREGAR FILA
+          </Button>
+          <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            IMPORTAR INGRESOS
+            {isImporting ? 'IMPORTANDO...' : 'IMPORTAR INGRESOS'}
           </Button>
-          <Button>
+          <Button onClick={handleExport} disabled={isExporting}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            EXPORTAR INGRESOS
+            {isExporting ? 'EXPORTANDO...' : 'EXPORTAR INGRESOS'}
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImportFile}
+          />
         </div>
       </div>
 
@@ -201,7 +602,7 @@ export default function IngresosPage() {
             <Select
               options={[
                 { value: 'all', label: 'TODAS LAS EMPRESAS' },
-                { value: 'company1', label: 'Tech Solutions' },
+                ...companies.map((company) => ({ value: company.id, label: company.name })),
               ]}
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
@@ -218,12 +619,18 @@ export default function IngresosPage() {
               className="w-56"
             />
           </div>
-          <Button variant="outline" size="sm">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            TODOS LOS ESTADOS
-          </Button>
+          <Select
+            options={[
+              { value: 'all', label: 'TODOS LOS ESTADOS' },
+              { value: 'PAID', label: 'Pagado' },
+              { value: 'PENDING', label: 'Pendiente' },
+              { value: 'CANCELLED', label: 'Anulado' },
+              { value: 'ERROR', label: 'Error' },
+            ]}
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="w-56"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -239,41 +646,258 @@ export default function IngresosPage() {
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MONTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ESTADO</th>
+                <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
               </tr>
             </thead>
             <tbody>
-              {incomes.map((income) => (
-                <tr key={income.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="text-sm font-medium text-gray-900">{income.company}</div>
+              {draftRows.map((row) => (
+                <tr key={row.tempId} className="border-b border-blue-100 bg-blue-50/40">
+                  <td className="py-2 px-2">
+                    <select
+                      value={row.companyId}
+                      onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>{company.name}</option>
+                      ))}
+                    </select>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">
-                      {new Date(income.date).toLocaleDateString('es-ES')}
+                  <td className="py-2 px-2">
+                    <input
+                      type="date"
+                      value={row.date}
+                      onChange={(e) => updateDraftRow(row.tempId, 'date', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <input
+                      value={row.refNumber}
+                      onChange={(e) => updateDraftRow(row.tempId, 'refNumber', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="REF-001"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <input
+                      value={row.client}
+                      onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Cliente"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <input
+                      value={row.concept}
+                      onChange={(e) => updateDraftRow(row.tempId, 'concept', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Concepto"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <input
+                      value={row.method}
+                      onChange={(e) => updateDraftRow(row.tempId, 'method', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Método"
+                    />
+                  </td>
+                  <td className="py-2 px-2 text-right">
+                    <input
+                      type="number"
+                      value={row.amount}
+                      onChange={(e) => updateDraftRow(row.tempId, 'amount', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="py-2 px-2 text-right">
+                    <input
+                      type="number"
+                      value={row.margin}
+                      onChange={(e) => updateDraftRow(row.tempId, 'margin', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <select
+                      value={row.status}
+                      onChange={(e) => updateDraftRow(row.tempId, 'status', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      <option value="PAID">Pagado</option>
+                      <option value="PENDING">Pendiente</option>
+                      <option value="CANCELLED">Anulado</option>
+                      <option value="ERROR">Error</option>
+                    </select>
+                  </td>
+                  <td className="py-2 px-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <Button size="sm" onClick={() => saveRow(row, 'create')}>Guardar</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))}
+                      >
+                        Quitar
+                      </Button>
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">{income.refNumber}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm font-medium text-gray-900">{income.client}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">{income.concept}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">{income.method}</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm font-semibold text-gray-900">{formatCurrency(income.amount)}</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm font-semibold text-gray-900">{formatCurrency(income.margin)}</div>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    {getStatusBadge(income.status)}
-                  </td>
                 </tr>
+              ))}
+              {incomes.map((income) => (
+                editingRows[income.id] ? (
+                  <tr key={income.id} className="border-b border-blue-100 bg-blue-50/30">
+                    <td className="py-2 px-2">
+                      <select
+                        value={editingRows[income.id].companyId}
+                        onChange={(e) => updateEditingRow(income.id, 'companyId', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>{company.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        type="date"
+                        value={editingRows[income.id].date}
+                        onChange={(e) => updateEditingRow(income.id, 'date', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        value={editingRows[income.id].refNumber}
+                        onChange={(e) => updateEditingRow(income.id, 'refNumber', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        value={editingRows[income.id].client}
+                        onChange={(e) => updateEditingRow(income.id, 'client', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        value={editingRows[income.id].concept}
+                        onChange={(e) => updateEditingRow(income.id, 'concept', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        value={editingRows[income.id].method}
+                        onChange={(e) => updateEditingRow(income.id, 'method', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      <input
+                        type="number"
+                        value={editingRows[income.id].amount}
+                        onChange={(e) => updateEditingRow(income.id, 'amount', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                      />
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      <input
+                        type="number"
+                        value={editingRows[income.id].margin}
+                        onChange={(e) => updateEditingRow(income.id, 'margin', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={editingRows[income.id].status}
+                        onChange={(e) => updateEditingRow(income.id, 'status', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="PAID">Pagado</option>
+                        <option value="PENDING">Pendiente</option>
+                        <option value="CANCELLED">Anulado</option>
+                        <option value="ERROR">Error</option>
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button size="sm" onClick={() => saveRow(editingRows[income.id], 'update')}>Guardar</Button>
+                        <Button size="sm" variant="outline" onClick={() => cancelEditingRow(income.id)}>Cancelar</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={income.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-gray-900">{income.company}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">
+                        {new Date(income.date).toLocaleDateString('es-ES')}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{income.refNumber}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-gray-900">{income.client}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{income.concept}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{income.method}</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm font-semibold text-gray-900">{formatCurrency(income.amount)}</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm font-semibold text-gray-900">{formatCurrency(income.margin)}</div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {getStatusBadge(income.status)}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditingRow(income)}>
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => deleteIncome(income.id)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>

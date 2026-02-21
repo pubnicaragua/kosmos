@@ -16,6 +16,7 @@ interface ProductRow {
   sku: string
   cost: number
   price: number
+  netMargin: number
   isNew?: boolean
 }
 
@@ -24,14 +25,38 @@ interface Category {
   name: string
 }
 
+interface Company {
+  id: string
+  name: string
+  logo: string | null
+}
+
 export default function InventarioEdicionPage() {
   const router = useRouter()
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [companies, setCompanies] = useState<Company[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [rows, setRows] = useState<ProductRow[]>([
-    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', description: '', sku: '', cost: 0, price: 0, isNew: true },
+    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [])
 
   const fetchCategories = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -51,6 +76,10 @@ export default function InventarioEdicionPage() {
   }, [selectedCompany])
 
   useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
+
+  useEffect(() => {
     fetchCategories()
   }, [fetchCategories])
 
@@ -65,6 +94,7 @@ export default function InventarioEdicionPage() {
       sku: '',
       cost: 0,
       price: 0,
+      netMargin: 0,
       isNew: true,
     }
     setRows([...rows, newRow])
@@ -113,13 +143,19 @@ export default function InventarioEdicionPage() {
             sku: row.sku,
             cost: row.cost,
             price: row.price,
+            netMargin: row.netMargin,
           })),
         }),
       })
 
       const data = await response.json()
       if (data.success) {
-        alert(`${data.data.count} productos creados exitosamente`)
+        const skipped = data.data?.skipped || 0
+        if (skipped > 0) {
+          alert(`${data.data.count} productos creados. ${skipped} omitidos por SKU duplicado.`)
+        } else {
+          alert(`${data.data.count} productos creados exitosamente`)
+        }
         router.push('/inventario')
       } else {
         alert('Error al guardar productos')
@@ -133,16 +169,14 @@ export default function InventarioEdicionPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIndex: number) => {
-    if (e.key === 'Tab') {
+    if (e.key === 'Enter') {
       e.preventDefault()
-      const inputs = document.querySelectorAll('input, select')
-      const currentIndex = Array.from(inputs).findIndex(el => el === e.target)
-      const nextInput = inputs[currentIndex + 1] as HTMLElement
-      if (nextInput) nextInput.focus()
-    } else if (e.key === 'Enter') {
       if (rowIndex === rows.length - 1) {
         addRow()
       }
+    } else if (e.key === 'Delete' && e.ctrlKey) {
+      e.preventDefault()
+      deleteRow(rowIndex)
     }
   }
 
@@ -187,7 +221,7 @@ export default function InventarioEdicionPage() {
           <Select
             options={[
               { value: 'all', label: 'TODAS LAS EMPRESAS' },
-              { value: 'company1', label: 'Tech Solutions' },
+              ...companies.map((company) => ({ value: company.id, label: company.name })),
             ]}
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
@@ -206,6 +240,7 @@ export default function InventarioEdicionPage() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">SKU</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">COSTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32">MARGEN %</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-20"></th>
               </tr>
             </thead>
@@ -285,6 +320,17 @@ export default function InventarioEdicionPage() {
                       fullWidth
                     />
                   </td>
+                  <td className="py-3 px-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={row.netMargin}
+                      onChange={(e) => updateRow(index, 'netMargin', parseFloat(e.target.value) || 0)}
+                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      placeholder={index === rows.length - 1 ? 'Margen %...' : '0.00'}
+                      fullWidth
+                    />
+                  </td>
                   <td className="py-3 px-4 text-center">
                     <button
                       onClick={() => deleteRow(index)}
@@ -306,8 +352,8 @@ export default function InventarioEdicionPage() {
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center gap-4">
               <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">TAB</kbd> Siguiente celda</span>
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">CNTRL + ALT + SUPR</kbd> Borrar fila</span>
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">ENTER</kbd> Confirmar</span>
+              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">CTRL + DELETE</kbd> Borrar fila</span>
+              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">ENTER</kbd> Agregar nueva fila</span>
               <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">↑</kbd> <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">↓</kbd> Navegar entre filas</span>
             </div>
             <button

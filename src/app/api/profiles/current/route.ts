@@ -55,3 +55,39 @@ export async function GET(request: NextRequest) {
     return errorResponse('Error al obtener el perfil', 500)
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return errorResponse('Token de autenticación requerido', 401)
+    }
+
+    const token = authHeader.substring(7)
+    const payload = verifyAccessToken(token)
+    if (!payload) {
+      return errorResponse('Token inválido o expirado', 401)
+    }
+
+    const body = await request.json()
+    const { name, avatar } = body
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return errorResponse('El nombre es requerido', 400)
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: payload.userId },
+      data: {
+        name: name.trim(),
+        ...(avatar !== undefined ? { avatar } : {}),
+      },
+      select: { id: true, email: true, name: true, avatar: true },
+    })
+
+    return successResponse(updated)
+  } catch (error) {
+    console.error('Update profile error:', error)
+    return errorResponse('Error al actualizar el perfil', 500)
+  }
+}

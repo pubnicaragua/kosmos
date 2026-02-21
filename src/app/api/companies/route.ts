@@ -23,6 +23,29 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    const isSuperAdmin = userCompanies.some((uc) => uc.role === 'SUPER_ADMIN')
+
+    if (isSuperAdmin) {
+      const allCompanies = await prisma.company.findMany({
+        orderBy: { name: 'asc' },
+      })
+
+      return successResponse(
+        allCompanies.map((company) => {
+          const userCompany = userCompanies.find((uc) => uc.companyId === company.id)
+          return {
+            id: company.id,
+            name: company.name,
+            logo: company.logo,
+            industry: company.industry,
+            isActive: company.isActive,
+            role: userCompany?.role || 'SUPER_ADMIN',
+            createdAt: company.createdAt,
+          }
+        })
+      )
+    }
+
     const companies = userCompanies.map(uc => ({
       id: uc.company.id,
       name: uc.company.name,

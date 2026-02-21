@@ -35,7 +35,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (!campaign) return apiError('Campaña no encontrada', 404)
 
-    return apiSuccess(campaign)
+    const userCompany = await prisma.userCompany.findFirst({
+      where: { userId: decoded.userId, companyId: campaign.companyId },
+    })
+
+    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+
+    const creator = await prisma.user.findUnique({
+      where: { id: campaign.createdBy },
+      select: { name: true },
+    })
+
+    return apiSuccess({
+      ...campaign,
+      createdByName: creator?.name || campaign.createdBy,
+    })
   } catch (error) {
     console.error('Error fetching marketing campaign:', error)
     return apiError('Error al obtener campaña', 500)

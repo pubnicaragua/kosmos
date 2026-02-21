@@ -2,7 +2,6 @@
 
 export interface LoginResponse {
   accessToken: string
-  refreshToken: string
   user: {
     id: string
     email: string
@@ -53,7 +52,6 @@ export async function loginUser(email: string, password: string, rememberMe: boo
     if (data.success) {
       console.log('💾 [CLIENT-AUTH] Guardando tokens en localStorage...')
       localStorage.setItem('accessToken', data.data.accessToken)
-      localStorage.setItem('refreshToken', data.data.refreshToken)
       localStorage.setItem('user', JSON.stringify(data.data.user))
       
       if (rememberMe) {

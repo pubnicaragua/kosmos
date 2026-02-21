@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, FormEvent } from 'react'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
+import { Modal } from '@/components/ui-kit/Modal'
+import { Input } from '@/components/ui-kit/Input'
+import * as XLSX from 'xlsx'
 
 interface Ticket {
   id: string
@@ -14,8 +17,31 @@ interface Ticket {
   priority: string
   amount: number | null
   dueDate: string | null
-  client: { name: string } | null
+  company: { name: string }
+  client: { id: string; name: string } | null
   assignedTo: string | null
+}
+
+interface Company {
+  id: string
+  name: string
+  logo: string | null
+}
+
+interface ClientOption {
+  id: string
+  name: string
+}
+
+interface TicketFormData {
+  title: string
+  description: string
+  clientId: string
+  status: Ticket['status']
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  assignedTo: string
+  amount: string
+  dueDate: string
 }
 
 const COLUMNS = [
@@ -27,9 +53,63 @@ const COLUMNS = [
 
 export default function TicketsSoportePage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [clients, setClients] = useState<ClientOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [formData, setFormData] = useState<TicketFormData>({
+    title: '',
+    description: '',
+    clientId: '',
+    status: 'PROCESO1',
+    priority: 'MEDIUM',
+    assignedTo: '',
+    amount: '',
+    dueDate: new Date().toISOString().split('T')[0],
+  })
+
+  const getPeriodRange = (period: string) => {
+    const endDate = new Date()
+    endDate.setHours(23, 59, 59, 999)
+
+    const startDate = new Date(endDate)
+    if (period === 'month') {
+      startDate.setMonth(startDate.getMonth() - 1)
+    } else if (period === 'quarter') {
+      startDate.setMonth(startDate.getMonth() - 3)
+    } else {
+      startDate.setFullYear(startDate.getFullYear() - 1)
+    }
+    startDate.setHours(0, 0, 0, 0)
+
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+    }
+  }
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [])
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -37,9 +117,12 @@ export default function TicketsSoportePage() {
 
     try {
       const params = new URLSearchParams()
+      const { startDate, endDate } = getPeriodRange(selectedPeriod)
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+      params.append('startDate', startDate)
+      params.append('endDate', endDate)
 
-      const response = await fetch(`/api/tickets?${params}`, {
+      const response = await fetch(`/api/tickets?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       })
 
@@ -52,11 +135,164 @@ export default function TicketsSoportePage() {
     } finally {
       setIsLoading(false)
     }
+  }, [selectedCompany, selectedPeriod])
+
+  const fetchClients = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const params = new URLSearchParams()
+      if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+
+      const response = await fetch(`/api/clients?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setClients((data.data || []).map((client: any) => ({ id: client.id, name: client.name })))
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+    }
   }, [selectedCompany])
+
+  useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    fetchClients()
+  }, [fetchClients])
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      clientId: '',
+      status: 'PROCESO1',
+      priority: 'MEDIUM',
+      assignedTo: '',
+      amount: '',
+      dueDate: new Date().toISOString().split('T')[0],
+    })
+    setEditingTicketId(null)
+  }
+
+  const openCreateModal = () => {
+    resetForm()
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (ticket: Ticket) => {
+    setEditingTicketId(ticket.id)
+    setFormData({
+      title: ticket.title,
+      description: ticket.description || '',
+      clientId: ticket.client?.id || '',
+      status: ticket.status,
+      priority: (ticket.priority as TicketFormData['priority']) || 'MEDIUM',
+      assignedTo: ticket.assignedTo || '',
+      amount: ticket.amount !== null ? String(ticket.amount) : '',
+      dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
+    })
+    setIsModalOpen(true)
+  }
+
+  const openSelectedTicketForEdit = () => {
+    if (!selectedTicketId) {
+      alert('Selecciona un ticket para editar')
+      return
+    }
+
+    const targetTicket = tickets.find((ticket) => ticket.id === selectedTicketId)
+    if (!targetTicket) {
+      alert('Ticket no encontrado')
+      return
+    }
+
+    openEditModal(targetTicket)
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    const fallbackCompanyId = activeCompany?.id || companies[0]?.id
+    const targetCompanyId = selectedCompany !== 'all' ? selectedCompany : fallbackCompanyId
+
+    if (!editingTicketId && !targetCompanyId) {
+      alert('Selecciona una empresa para crear el ticket')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+
+      const response = await fetch(editingTicketId ? `/api/tickets/${editingTicketId}` : '/api/tickets', {
+        method: editingTicketId ? 'PUT' : 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description || null,
+          clientId: formData.clientId || null,
+          status: formData.status,
+          priority: formData.priority,
+          assignedTo: formData.assignedTo || null,
+          amount: formData.amount ? parseFloat(formData.amount) : null,
+          dueDate: formData.dueDate || null,
+          ...(editingTicketId ? {} : { companyId: targetCompanyId }),
+        }),
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo guardar el ticket')
+        return
+      }
+
+      setIsModalOpen(false)
+      resetForm()
+      fetchData()
+    } catch (error) {
+      console.error('Error saving ticket:', error)
+      alert('Error al guardar ticket')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleExport = () => {
+    if (!tickets.length) {
+      alert('No hay tickets para exportar')
+      return
+    }
+
+    const rows = tickets.map((ticket) => ({
+      Titulo: ticket.title,
+      Empresa: ticket.company?.name || '',
+      Cliente: ticket.client?.name || '',
+      Estado: ticket.status,
+      Prioridad: ticket.priority,
+      Monto: ticket.amount ?? '',
+      FechaVencimiento: ticket.dueDate ? new Date(ticket.dueDate).toLocaleDateString('es-ES') : '',
+      Asignado: ticket.assignedTo || '',
+    }))
+
+    const workbook = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets')
+    XLSX.writeFile(workbook, `tickets_soporte_${Date.now()}.xlsx`)
+  }
 
   const getTicketsByStatus = (status: string) => {
     return tickets.filter(t => t.status === status)
@@ -126,19 +362,19 @@ export default function TicketsSoportePage() {
           <p className="text-sm text-gray-500 mt-1">Gestión visual de oportunidades activas y priorización de cierre.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             EXPORTAR
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={openSelectedTicketForEdit}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             EDITAR
           </Button>
-          <Button>
+          <Button onClick={openCreateModal}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -151,18 +387,22 @@ export default function TicketsSoportePage() {
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map((company) => ({ value: company.id, label: company.name })),
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
           className="w-56"
         />
-        <div className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="text-sm text-gray-700">ÚLTIMO MES</span>
-        </div>
+        <Select
+          options={[
+            { value: 'month', label: 'ÚLTIMO MES' },
+            { value: 'quarter', label: 'ÚLTIMO TRIMESTRE' },
+            { value: 'year', label: 'ÚLTIMO AÑO' },
+          ]}
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
+          className="w-56"
+        />
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -198,11 +438,26 @@ export default function TicketsSoportePage() {
                     <div
                       key={ticket.id}
                       draggable
+                      onClick={() => setSelectedTicketId(ticket.id)}
                       onDragStart={() => handleDragStart(ticket.id)}
-                      className="bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-shadow"
+                      className={`bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-shadow ${
+                        selectedTicketId === ticket.id ? 'border-primary ring-1 ring-primary/40' : 'border-gray-200'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <Badge variant="warning">Pendiente</Badge>
+                        <Badge variant="warning">{ticket.status}</Badge>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditModal(ticket)
+                          }}
+                          className="text-gray-500 hover:text-gray-900"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
                       </div>
                       <h4 className="font-medium text-gray-900 mb-2">{ticket.title}</h4>
                       <div className="text-sm text-gray-600 mb-3">
@@ -239,6 +494,96 @@ export default function TicketsSoportePage() {
           )
         })}
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          resetForm()
+        }}
+        title={editingTicketId ? 'Editar Ticket' : 'Nuevo Ticket'}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Título"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+            fullWidth
+          />
+          <Input
+            label="Descripción"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            fullWidth
+          />
+          <Select
+            label="Cliente"
+            options={[
+              { value: '', label: 'Sin cliente' },
+              ...clients.map((client) => ({ value: client.id, label: client.name })),
+            ]}
+            value={formData.clientId}
+            onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+            fullWidth
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Estado"
+              options={COLUMNS.map((column) => ({ value: column.id, label: column.label }))}
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as Ticket['status'] })}
+              fullWidth
+            />
+            <Select
+              label="Prioridad"
+              options={[
+                { value: 'LOW', label: 'Baja' },
+                { value: 'MEDIUM', label: 'Media' },
+                { value: 'HIGH', label: 'Alta' },
+                { value: 'URGENT', label: 'Urgente' },
+              ]}
+              value={formData.priority}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value as TicketFormData['priority'] })}
+              fullWidth
+            />
+          </div>
+          <Input
+            label="Asignado a"
+            value={formData.assignedTo}
+            onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+            fullWidth
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Monto"
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Fecha límite"
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              fullWidth
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" onClick={() => {
+              setIsModalOpen(false)
+              resetForm()
+            }}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Guardando...' : editingTicketId ? 'Guardar Cambios' : 'Crear Ticket'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

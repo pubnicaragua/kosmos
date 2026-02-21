@@ -23,7 +23,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const updated = await prisma.product.update({
       where: { id: params.id },
-      data: body,
+      data: {
+        name: body.name,
+        sku: body.sku,
+        description: body.description,
+        categoryId: body.categoryId,
+        unit: body.unit,
+        stock: body.stock,
+        minStock: body.minStock,
+        cost: body.cost,
+        price: body.price,
+        netMargin: body.netMargin,
+        isActive: body.isActive,
+      },
       include: { category: { select: { name: true } } },
     })
 

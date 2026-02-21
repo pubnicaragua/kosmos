@@ -3,6 +3,20 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+function getContractStatus(endDate: Date): 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' {
+  const today = new Date()
+  const end = new Date(endDate)
+
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const endStart = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+
+  if (endStart < todayStart) return 'EXPIRED'
+
+  const diffTime = endStart.getTime() - todayStart.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays <= 30 ? 'EXPIRING_SOON' : 'ACTIVE'
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -24,9 +38,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updated = await prisma.contract.update({
       where: { id: params.id },
       data: {
-        ...body,
+        contractId: body.contractId,
+        name: body.name,
+        concept: body.concept,
+        category: body.category,
+        party: body.party,
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
+        fileUrl: body.fileUrl,
+        status: getContractStatus(body.endDate ? new Date(body.endDate) : contract.endDate),
       },
     })
 

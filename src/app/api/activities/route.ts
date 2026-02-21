@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const type = searchParams.get('type')
     const status = searchParams.get('status')
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '50', 10)
+    const skip = (page - 1) * limit
 
     const userCompanies = await prisma.userCompany.findMany({
       where: { userId: decoded.userId },
@@ -34,13 +37,18 @@ export async function GET(request: NextRequest) {
     if (type) where.type = type
     if (status) where.status = status
 
-    const activities = await prisma.activity.findMany({
-      where,
-      include: {
-        company: { select: { name: true } },
-      },
-      orderBy: { dueDate: 'asc' },
-    })
+    const [total, activities] = await Promise.all([
+      prisma.activity.count({ where }),
+      prisma.activity.findMany({
+        where,
+        include: {
+          company: { select: { name: true } },
+        },
+        orderBy: { dueDate: 'asc' },
+        skip,
+        take: limit,
+      }),
+    ])
 
     const formattedActivities = activities.map((activity: any) => ({
       id: activity.id,
@@ -56,7 +64,15 @@ export async function GET(request: NextRequest) {
       completedAt: activity.completedAt?.toISOString(),
     }))
 
-    return apiSuccess(formattedActivities)
+    return apiSuccess({
+      data: formattedActivities,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
   } catch (error) {
     console.error('Error fetching activities:', error)
     return apiError('Error al obtener actividades', 500)

@@ -110,7 +110,7 @@ export const navigationSections: NavSection[] = [
       {
         id: 'system',
         label: 'Ajustes',
-        href: '/sistema',
+        href: '/sistema/ajustes',
         icon: 'Settings',
       },
     ],

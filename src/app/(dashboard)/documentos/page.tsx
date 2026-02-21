@@ -22,20 +22,58 @@ interface Document {
   company: { name: string }
 }
 
+interface Company {
+  id: string
+  name: string
+}
+
 export default function DocumentosPage() {
+  type DocumentFormData = {
+    name: string
+    type: Document['type']
+    concept: string
+    category: string
+    fileUrl: string
+  }
+
   const [documents, setDocuments] = useState<Document[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedType, setSelectedType] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null)
+  const [formData, setFormData] = useState<DocumentFormData>({
     name: '',
-    type: 'PDF' as const,
+    type: 'PDF',
     concept: '',
     category: 'General',
     fileUrl: '',
   })
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+
+        const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+        if (activeCompany?.id && (selectedCompany === 'all' || !selectedCompany)) {
+          setSelectedCompany(activeCompany.id)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [selectedCompany])
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -64,32 +102,67 @@ export default function DocumentosPage() {
   }, [selectedCompany, selectedType, currentPage])
 
   useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
+
+  useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const openCreateModal = () => {
+    setEditingDocumentId(null)
+    setFormData({
+      name: '',
+      type: 'PDF',
+      concept: '',
+      category: 'General',
+      fileUrl: '',
+    })
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (document: Document) => {
+    setEditingDocumentId(document.id)
+    setFormData({
+      name: document.name,
+      type: document.type,
+      concept: document.concept,
+      category: document.category || 'General',
+      fileUrl: document.fileUrl || '',
+    })
+    setIsModalOpen(true)
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('accessToken')
+    if (!token) return
+
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const targetCompanyId = selectedCompany !== 'all' ? selectedCompany : activeCompany.id
+
+    if (!editingDocumentId && !targetCompanyId) {
+      alert('Selecciona una empresa para subir el documento')
+      return
+    }
 
     try {
-      const response = await fetch('/api/documents', {
-        method: 'POST',
+      const response = await fetch(editingDocumentId ? `/api/documents/${editingDocumentId}` : '/api/documents', {
+        method: editingDocumentId ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...formData,
-          companyId: activeCompany.id,
-          fileSize: 1024000,
-          uploadedBy: user.email,
+          ...(editingDocumentId ? {} : { companyId: targetCompanyId, fileSize: 1024000 }),
         }),
       })
 
-      if (response.ok) {
+      const data = await response.json()
+      if (data.success) {
         setIsModalOpen(false)
+        setEditingDocumentId(null)
         fetchData()
         setFormData({
           name: '',
@@ -98,10 +171,100 @@ export default function DocumentosPage() {
           category: 'General',
           fileUrl: '',
         })
+      } else {
+        alert(data.error || (editingDocumentId ? 'No se pudo actualizar el documento' : 'No se pudo subir el documento'))
       }
     } catch (error) {
       console.error('Error creating document:', error)
+      alert(editingDocumentId ? 'Error al actualizar documento' : 'Error al subir documento')
     }
+  }
+
+  const handleExport = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const params = new URLSearchParams()
+      if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+
+      const response = await fetch(`/api/documents/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        alert(result.error || 'No se pudo exportar')
+        return
+      }
+
+      const rows = result.data.data as Array<Record<string, string | number | null>>
+      if (!rows.length) {
+        alert('No hay documentos para exportar')
+        return
+      }
+
+      const headers = Object.keys(rows[0])
+      const csvLines = [
+        headers.join(','),
+        ...rows.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header] ?? ''
+              const text = String(value).replace(/"/g, '""')
+              return `"${text}"`
+            })
+            .join(',')
+        ),
+      ]
+
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', result.data.filename || `documentos_${Date.now()}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting documents:', error)
+      alert('Error al exportar documentos')
+    }
+  }
+
+  const handleDelete = async (documentId: string) => {
+    const confirmed = window.confirm('¿Seguro que deseas eliminar este documento?')
+    if (!confirmed) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/documents/${documentId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId))
+      } else {
+        alert(data.error || 'No se pudo eliminar el documento')
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error)
+      alert('Error al eliminar documento')
+    }
+  }
+
+  const handleDownload = (documentUrl: string) => {
+    if (!documentUrl) {
+      alert('Documento sin URL de descarga')
+      return
+    }
+
+    window.open(documentUrl, '_blank')
   }
 
   const getFileIcon = (type: string) => {
@@ -147,13 +310,13 @@ export default function DocumentosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona y organiza todos los documentos corporativos.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             DESCARGAR DOCUMENTOS
           </Button>
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button onClick={openCreateModal}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
@@ -166,7 +329,10 @@ export default function DocumentosPage() {
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map((company) => ({
+              value: company.id,
+              label: company.name,
+            })),
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
@@ -269,12 +435,17 @@ export default function DocumentosPage() {
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="text-primary hover:text-primary-dark">
+                      <button className="text-primary hover:text-primary-dark" onClick={() => handleDownload(doc.fileUrl)}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                       </button>
-                      <button className="text-error hover:text-error-dark">
+                      <button className="text-gray-600 hover:text-gray-900" onClick={() => openEditModal(doc)}>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button className="text-error hover:text-error-dark" onClick={() => handleDelete(doc.id)}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -294,7 +465,14 @@ export default function DocumentosPage() {
         )}
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Subir Documento">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingDocumentId(null)
+        }}
+        title={editingDocumentId ? 'Editar Documento' : 'Subir Documento'}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Nombre del Documento"
@@ -343,11 +521,18 @@ export default function DocumentosPage() {
             </p>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsModalOpen(false)
+                setEditingDocumentId(null)
+              }}
+            >
               Cancelar
             </Button>
             <Button type="submit">
-              Subir Documento
+              {editingDocumentId ? 'Guardar Cambios' : 'Subir Documento'}
             </Button>
           </div>
         </form>

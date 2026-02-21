@@ -16,10 +16,32 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const categoryId = searchParams.get('categoryId')
     const stockFilter = searchParams.get('stockFilter')
+    const search = searchParams.get('search')
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '10', 10)
+    const safePage = Number.isNaN(page) || page < 1 ? 1 : page
+    const safeLimit = Number.isNaN(limit) || limit < 1 ? 10 : Math.min(limit, 100)
+    const skip = (safePage - 1) * safeLimit
+
+    const userCompanies = await prisma.userCompany.findMany({
+      where: { userId: decoded.userId },
+      select: { companyId: true },
+    })
+    const companyIds = userCompanies.map((uc) => uc.companyId)
+
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
 
     const where: any = {}
-    if (companyId) where.companyId = companyId
+    where.companyId = companyId || { in: companyIds }
     if (categoryId) where.categoryId = categoryId
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+      ]
+    }
     
     if (stockFilter === 'high') {
       where.stock = { gte: 100 }
@@ -27,16 +49,29 @@ export async function GET(request: NextRequest) {
       where.stock = { lte: 20 }
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        category: { select: { name: true } },
-        company: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: { select: { name: true } },
+          company: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+      prisma.product.count({ where }),
+    ])
 
-    return apiSuccess(products)
+    return apiSuccess({
+      data: products,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+      },
+    })
   } catch (error) {
     console.error('Error fetching products:', error)
     return apiError('Error al obtener productos', 500)

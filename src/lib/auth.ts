@@ -3,8 +3,24 @@ import bcrypt from 'bcryptjs'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d'
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h'
+const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d'
+
+function parseDurationToSeconds(duration: string, fallbackSeconds: number): number {
+  const value = duration.trim().toLowerCase()
+  const match = value.match(/^(\d+)([smhd])$/)
+  if (!match) return fallbackSeconds
+
+  const amount = parseInt(match[1], 10)
+  const unit = match[2]
+
+  if (unit === 's') return amount
+  if (unit === 'm') return amount * 60
+  if (unit === 'h') return amount * 60 * 60
+  if (unit === 'd') return amount * 24 * 60 * 60
+
+  return fallbackSeconds
+}
 
 export interface TokenPayload {
   userId: string
@@ -44,10 +60,16 @@ export function verifyRefreshToken(token: string): TokenPayload | null {
 }
 
 export function getRefreshTokenExpiry(): Date {
-  const days = JWT_REFRESH_EXPIRES_IN.includes('d') 
-    ? parseInt(JWT_REFRESH_EXPIRES_IN) 
-    : 7
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+  const refreshSeconds = parseDurationToSeconds(JWT_REFRESH_EXPIRES_IN, 30 * 24 * 60 * 60)
+  return new Date(Date.now() + refreshSeconds * 1000)
+}
+
+export function getAccessTokenMaxAgeSeconds(): number {
+  return parseDurationToSeconds(JWT_EXPIRES_IN, 8 * 60 * 60)
+}
+
+export function getRefreshTokenMaxAgeSeconds(): number {
+  return parseDurationToSeconds(JWT_REFRESH_EXPIRES_IN, 30 * 24 * 60 * 60)
 }
 
 export function verifyToken(token: string): TokenPayload | null {

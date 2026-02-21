@@ -24,13 +24,21 @@ interface Contract {
   company: { name: string }
 }
 
+interface Company {
+  id: string
+  name: string
+}
+
 export default function ContratosPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingContractId, setEditingContractId] = useState<string | null>(null)
+  const [viewingContract, setViewingContract] = useState<Contract | null>(null)
   const [formData, setFormData] = useState({
     contractId: '',
     name: '',
@@ -41,6 +49,29 @@ export default function ContratosPage() {
     endDate: '',
     fileUrl: '',
   })
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+
+        const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+        if (activeCompany?.id && (selectedCompany === 'all' || !selectedCompany)) {
+          setSelectedCompany(activeCompany.id)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [selectedCompany])
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -69,45 +100,163 @@ export default function ContratosPage() {
   }, [selectedCompany, selectedStatus, currentPage])
 
   useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
+
+  useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  const resetFormData = useCallback(() => {
+    setFormData({
+      contractId: '',
+      name: '',
+      concept: '',
+      category: 'Operativo',
+      party: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      fileUrl: '',
+    })
+  }, [])
+
+  const openCreateModal = () => {
+    setEditingContractId(null)
+    resetFormData()
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (contract: Contract) => {
+    setEditingContractId(contract.id)
+    setFormData({
+      contractId: contract.contractId,
+      name: contract.name,
+      concept: contract.concept,
+      category: contract.category || 'Operativo',
+      party: contract.party,
+      startDate: new Date(contract.startDate).toISOString().split('T')[0],
+      endDate: new Date(contract.endDate).toISOString().split('T')[0],
+      fileUrl: contract.fileUrl || '',
+    })
+    setIsModalOpen(true)
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('accessToken')
+    if (!token) return
+
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const fallbackCompanyId = activeCompany?.id || companies[0]?.id
+    const targetCompanyId = selectedCompany !== 'all' ? selectedCompany : fallbackCompanyId
+
+    if (!targetCompanyId && !editingContractId) {
+      alert('Selecciona una empresa para guardar el contrato')
+      return
+    }
 
     try {
-      const response = await fetch('/api/contracts', {
-        method: 'POST',
+      const response = await fetch(editingContractId ? `/api/contracts/${editingContractId}` : '/api/contracts', {
+        method: editingContractId ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...formData,
-          companyId: activeCompany.id,
-          uploadedBy: user.email,
+          ...(editingContractId ? {} : { companyId: targetCompanyId }),
         }),
       })
 
-      if (response.ok) {
+      const data = await response.json()
+
+      if (data.success) {
         setIsModalOpen(false)
         fetchData()
-        setFormData({
-          contractId: '',
-          name: '',
-          concept: '',
-          category: 'Operativo',
-          party: '',
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: '',
-          fileUrl: '',
-        })
+      } else {
+        alert(data.error || 'No se pudo guardar el contrato')
       }
     } catch (error) {
       console.error('Error creating contract:', error)
+      alert('Error al guardar contrato')
+    }
+  }
+
+  const handleDelete = async (contractId: string) => {
+    const confirmed = window.confirm('¿Seguro que deseas eliminar este contrato?')
+    if (!confirmed) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/contracts/${contractId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setContracts((prev) => prev.filter((contract) => contract.id !== contractId))
+      } else {
+        alert(data.error || 'No se pudo eliminar el contrato')
+      }
+    } catch (error) {
+      console.error('Error deleting contract:', error)
+      alert('Error al eliminar contrato')
+    }
+  }
+
+  const handleExport = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const params = new URLSearchParams()
+      if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+
+      const response = await fetch(`/api/contracts/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        alert(result.error || 'No se pudo exportar')
+        return
+      }
+
+      const rows = result.data.data as Array<Record<string, string | number | null>>
+      if (!rows.length) {
+        alert('No hay contratos para exportar')
+        return
+      }
+
+      const headers = Object.keys(rows[0])
+      const csvLines = [
+        headers.join(','),
+        ...rows.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header] ?? ''
+              const text = String(value).replace(/"/g, '""')
+              return `"${text}"`
+            })
+            .join(',')
+        ),
+      ]
+
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', result.data.filename || `contratos_${Date.now()}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error exporting contracts:', error)
+      alert('Error al exportar contratos')
     }
   }
 
@@ -165,13 +314,13 @@ export default function ContratosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona contratos corporativos y recibe alertas de vencimiento.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             DESCARGAR
           </Button>
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button onClick={openCreateModal}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -184,7 +333,10 @@ export default function ContratosPage() {
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map((company) => ({
+              value: company.id,
+              label: company.name,
+            })),
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
@@ -301,18 +453,18 @@ export default function ContratosPage() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button className="text-primary hover:text-primary-dark">
+                        <button className="text-primary hover:text-primary-dark" onClick={() => setViewingContract(contract)}>
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900">
+                        <button className="text-gray-600 hover:text-gray-900" onClick={() => openEditModal(contract)}>
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
-                        <button className="text-error hover:text-error-dark">
+                        <button className="text-error hover:text-error-dark" onClick={() => handleDelete(contract.id)}>
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
@@ -333,7 +485,12 @@ export default function ContratosPage() {
         )}
       </Card>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nuevo Contrato" size="lg">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingContractId ? 'Editar Contrato' : 'Nuevo Contrato'}
+        size="lg"
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -409,10 +566,38 @@ export default function ContratosPage() {
               Cancelar
             </Button>
             <Button type="submit">
-              Crear Contrato
+              {editingContractId ? 'Guardar Cambios' : 'Crear Contrato'}
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!viewingContract}
+        onClose={() => setViewingContract(null)}
+        title={`Contrato ${viewingContract?.contractId || ''}`}
+        size="md"
+      >
+        {viewingContract && (
+          <div className="space-y-3 text-sm text-gray-700">
+            <div><strong>Empresa:</strong> {viewingContract.company?.name || 'N/A'}</div>
+            <div><strong>Nombre:</strong> {viewingContract.name}</div>
+            <div><strong>Concepto:</strong> {viewingContract.concept}</div>
+            <div><strong>Categoría:</strong> {viewingContract.category || 'N/A'}</div>
+            <div><strong>Contraparte:</strong> {viewingContract.party}</div>
+            <div><strong>Inicio:</strong> {new Date(viewingContract.startDate).toLocaleDateString('es-ES')}</div>
+            <div><strong>Fin:</strong> {new Date(viewingContract.endDate).toLocaleDateString('es-ES')}</div>
+            <div><strong>Estado:</strong> {viewingContract.status}</div>
+            {viewingContract.fileUrl && (
+              <div>
+                <strong>Archivo:</strong>{' '}
+                <a href={viewingContract.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                  Abrir documento
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   )

@@ -3,6 +3,20 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+function getContractStatus(endDate: Date): 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' {
+  const today = new Date()
+  const end = new Date(endDate)
+
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const endStart = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+
+  if (endStart < todayStart) return 'EXPIRED'
+
+  const diffTime = endStart.getTime() - todayStart.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays <= 30 ? 'EXPIRING_SOON' : 'ACTIVE'
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -21,6 +35,10 @@ export async function GET(request: NextRequest) {
     })
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = { companyId: companyId || { in: companyIds } }
     if (status) where.status = status
 
@@ -30,20 +48,7 @@ export async function GET(request: NextRequest) {
       orderBy: { endDate: 'asc' },
     })
 
-    return apiSuccess(contracts.map((contract: any) => ({
-      id: contract.id,
-      company: contract.company.name,
-      contractId: contract.contractId,
-      name: contract.name,
-      concept: contract.concept,
-      category: contract.category,
-      party: contract.party,
-      startDate: contract.startDate.toISOString(),
-      endDate: contract.endDate.toISOString(),
-      status: contract.status,
-      fileUrl: contract.fileUrl,
-      uploadedBy: contract.uploadedBy,
-    })))
+    return apiSuccess(contracts)
   } catch (error) {
     console.error('Error fetching contracts:', error)
     return apiError('Error al obtener contratos', 500)
@@ -60,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { companyId, ...contractData } = body
+    const endDate = new Date(contractData.endDate)
 
     const userCompany = await prisma.userCompany.findFirst({
       where: { userId: decoded.userId, companyId },
@@ -72,7 +78,8 @@ export async function POST(request: NextRequest) {
         ...contractData,
         companyId,
         startDate: new Date(contractData.startDate),
-        endDate: new Date(contractData.endDate),
+        endDate,
+        status: getContractStatus(endDate),
         uploadedBy: decoded.userId,
       },
     })

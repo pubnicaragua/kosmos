@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
+import { Select } from '@/components/ui-kit/Select'
 import { Plus, TrendingUp, Mail, Share2, Calendar, DollarSign } from 'lucide-react'
 
 interface MarketingCampaign {
@@ -63,17 +64,19 @@ const CHANNEL_ICONS: Record<string, any> = {
   OTRO: Calendar,
 }
 
+interface Company {
+  id: string
+  name: string
+}
+
 export default function MarketingPage() {
   const router = useRouter()
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
 
-  useEffect(() => {
-    fetchCampaigns()
-  }, [selectedCompany])
-
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
@@ -94,7 +97,29 @@ export default function MarketingPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedCompany])
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) setCompanies(data.data)
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
+
+  useEffect(() => {
+    fetchCampaigns()
+  }, [fetchCampaigns])
 
   const getCampaignsByStatus = (status: string) => {
     return campaigns.filter(c => c.status === status)
@@ -125,10 +150,21 @@ export default function MarketingPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Marketing</h1>
           <p className="text-sm text-gray-500 mt-1">Gestiona tus campañas de marketing y analiza su rendimiento</p>
         </div>
-        <Button onClick={() => router.push('/marketing/nueva')}>
-          <Plus className="w-5 h-5 mr-2" />
-          NUEVA CAMPAÑA
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select
+            options={[
+              { value: 'all', label: 'TODAS LAS EMPRESAS' },
+              ...companies.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            value={selectedCompany}
+            onChange={(e) => setSelectedCompany(e.target.value)}
+            className="w-52"
+          />
+          <Button onClick={() => router.push('/marketing/nueva')}>
+            <Plus className="w-5 h-5 mr-2" />
+            NUEVA CAMPAÑA
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

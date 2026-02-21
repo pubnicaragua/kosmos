@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7)
     const payload = verifyAccessToken(token)
-    
+
     if (!payload) {
       return errorResponse('Token inválido o expirado', 401)
     }
@@ -93,5 +93,95 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Get incomes error:', error)
     return errorResponse('Error al obtener los ingresos', 500)
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return errorResponse('Token de autenticacion requerido', 401)
+    }
+
+    const token = authHeader.substring(7)
+    const payload = verifyAccessToken(token)
+
+    if (!payload) {
+      return errorResponse('Token invalido o expirado', 401)
+    }
+
+    const body = await request.json()
+    const {
+      companyId,
+      refNumber,
+      client,
+      concept,
+      method,
+      amount,
+      margin,
+      status,
+      date,
+    } = body
+
+    if (!companyId || !client || !concept || !method || amount === undefined || !date) {
+      return errorResponse('Campos requeridos incompletos', 400)
+    }
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: {
+        userId: payload.userId,
+        companyId,
+      },
+    })
+
+    if (!userCompany) {
+      return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const normalizedAmount = Number(amount)
+    const normalizedMargin = margin === undefined || margin === null || margin === '' ? 0 : Number(margin)
+    if (!Number.isFinite(normalizedAmount)) {
+      return errorResponse('Monto invalido', 400)
+    }
+
+    const income = await prisma.income.create({
+      data: {
+        companyId,
+        refNumber: String(refNumber || `REF-${Date.now()}`),
+        client: String(client),
+        concept: String(concept),
+        method: String(method),
+        amount: normalizedAmount,
+        margin: Number.isFinite(normalizedMargin) ? normalizedMargin : 0,
+        status: status || 'PENDING',
+        date: new Date(date),
+      },
+      include: {
+        company: {
+          select: { name: true },
+        },
+      },
+    })
+
+    return successResponse(
+      {
+        id: income.id,
+        company: income.company.name,
+        companyId: income.companyId,
+        refNumber: income.refNumber,
+        client: income.client,
+        concept: income.concept,
+        method: income.method,
+        amount: income.amount,
+        margin: income.margin,
+        status: income.status,
+        date: income.date,
+      },
+      'Ingreso creado correctamente',
+      201
+    )
+  } catch (error) {
+    console.error('Create income error:', error)
+    return errorResponse('Error al crear ingreso', 500)
   }
 }

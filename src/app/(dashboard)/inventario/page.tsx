@@ -17,7 +17,15 @@ interface Product {
   stock: number
   cost: number
   price: number
+  netMargin: number | null
   category: { name: string } | null
+  company: { name: string } | null
+}
+
+interface Company {
+  id: string
+  name: string
+  logo: string | null
 }
 
 const STOCK_TABS = [
@@ -27,12 +35,34 @@ const STOCK_TABS = [
 ]
 
 export default function InventarioPage() {
+  const ITEMS_PER_PAGE = 10
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedTab, setSelectedTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+
+  const fetchCompanies = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/companies', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setCompanies(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching companies:', error)
+    }
+  }, [])
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -42,31 +72,60 @@ export default function InventarioPage() {
       const params = new URLSearchParams()
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedTab !== 'all') params.append('stockFilter', selectedTab)
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
+      params.append('page', currentPage.toString())
+      params.append('limit', ITEMS_PER_PAGE.toString())
 
-      const response = await fetch(`/api/products?${params}`, {
+      const response = await fetch(`/api/products?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
       })
 
       const data = await response.json()
       if (data.success) {
-        setProducts(data.data)
+        setProducts(data.data.data || [])
+        setTotalItems(data.data.pagination?.total || 0)
+        setTotalPages(data.data.pagination?.totalPages || 1)
       }
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedTab])
+  }, [selectedCompany, selectedTab, searchTerm, currentPage])
+
+  useEffect(() => {
+    fetchCompanies()
+  }, [fetchCompanies])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  const filteredProducts = products.filter(product =>
-    searchTerm === '' ||
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedCompany, selectedTab, searchTerm])
+
+  const showingFrom = totalItems === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1
+  const showingTo = totalItems === 0 ? 0 : Math.min(currentPage * ITEMS_PER_PAGE, totalItems)
+
+  const visiblePages = (() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, index) => index + 1)
+
+    const pages = new Set<number>([1, totalPages])
+    pages.add(currentPage)
+    if (currentPage - 1 > 1) pages.add(currentPage - 1)
+    if (currentPage + 1 < totalPages) pages.add(currentPage + 1)
+
+    return Array.from(pages).sort((a, b) => a - b)
+  })()
+
+  const handleMermas = () => {
+    setSelectedTab('low')
+  }
+
+  const handleImportOrUpdate = () => {
+    router.push('/inventario/edicion')
+  }
 
   if (isLoading) {
     return (
@@ -99,13 +158,13 @@ export default function InventarioPage() {
           <p className="text-sm text-gray-500 mt-1">Administra tu inventario de productos, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleMermas}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             MERMAS
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleImportOrUpdate}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -124,7 +183,7 @@ export default function InventarioPage() {
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },
-            { value: 'company1', label: 'Tech Solutions' },
+            ...companies.map((company) => ({ value: company.id, label: company.name })),
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
@@ -181,10 +240,11 @@ export default function InventarioPage() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">SKU</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRECIO</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN NETO %</th>
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-4 px-4">
                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
@@ -215,13 +275,20 @@ export default function InventarioPage() {
                   <td className="py-4 px-4 text-right">
                     <div className="text-sm font-medium text-gray-900">{product.price} $</div>
                   </td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="text-sm font-medium text-gray-900">
+                      {product.netMargin !== null && product.netMargin !== undefined
+                        ? `${product.netMargin.toFixed(2)}%`
+                        : '-'}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {filteredProducts.length === 0 && (
+        {products.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             No se encontraron productos
           </div>
@@ -230,16 +297,41 @@ export default function InventarioPage() {
 
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          Mostrando 1 a {filteredProducts.length} de 42 resultados
+          Mostrando {showingFrom} a {showingTo} de {totalItems} resultados
         </div>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">&lt;</button>
-          <button className="px-3 py-1 bg-primary text-white rounded">1</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">2</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">3</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">...</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">8</button>
-          <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50">&gt;</button>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          {visiblePages.map((page, index) => {
+            const previousPage = visiblePages[index - 1]
+            const hasGap = previousPage && page - previousPage > 1
+
+            return (
+              <div key={page} className="flex items-center gap-2">
+                {hasGap && <span className="text-gray-500">...</span>}
+                <button
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded ${
+                    currentPage === page ? 'bg-primary text-white' : 'border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              </div>
+            )
+          })}
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
         </div>
       </div>
     </div>

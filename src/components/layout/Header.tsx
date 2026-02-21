@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export function Header() {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
@@ -29,10 +31,14 @@ export function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-full">
+          <button
+            type="button"
+            onClick={() => router.push('/sistema/monitor')}
+            className="flex items-center gap-2 px-3 py-1.5 bg-success/10 rounded-full hover:bg-success/20 transition-colors"
+          >
             <div className="w-2 h-2 bg-success rounded-full"></div>
             <span className="text-sm font-medium text-success">Sistema Operativo</span>
-          </div>
+          </button>
           
           <button className="p-2 hover:bg-gray-100 rounded-lg relative">
             <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

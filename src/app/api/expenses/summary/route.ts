@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
+    const startDateParam = searchParams.get('startDate')
+    const endDateParam = searchParams.get('endDate')
 
     const userCompanies = await prisma.userCompany.findMany({
       where: { userId: decoded.userId },
@@ -25,8 +27,27 @@ export async function GET(request: NextRequest) {
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
 
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = {
       companyId: companyId || { in: companyIds },
+    }
+
+    const hasCustomRange = Boolean(startDateParam || endDateParam)
+    if (hasCustomRange) {
+      where.date = {}
+      if (startDateParam) {
+        const startDate = new Date(startDateParam)
+        startDate.setHours(0, 0, 0, 0)
+        where.date.gte = startDate
+      }
+      if (endDateParam) {
+        const endDate = new Date(endDateParam)
+        endDate.setHours(23, 59, 59, 999)
+        where.date.lte = endDate
+      }
     }
 
     const now = new Date()
@@ -34,11 +55,11 @@ export async function GET(request: NextRequest) {
     const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
 
-    const [thisMonthExpenses, lastMonthExpenses, pendingExpenses] = await Promise.all([
+    const [currentRangeExpenses, previousRangeExpenses, pendingExpenses, paidExpenses] = await Promise.all([
       prisma.expense.aggregate({
         where: {
           ...where,
-          date: { gte: firstDayThisMonth },
+          ...(hasCustomRange ? {} : { date: { gte: firstDayThisMonth } }),
         },
         _sum: { amount: true },
         _count: true,
@@ -46,7 +67,9 @@ export async function GET(request: NextRequest) {
       prisma.expense.aggregate({
         where: {
           ...where,
-          date: { gte: firstDayLastMonth, lte: lastDayLastMonth },
+          ...(hasCustomRange
+            ? { date: { gte: firstDayLastMonth, lte: lastDayLastMonth } }
+            : { date: { gte: firstDayLastMonth, lte: lastDayLastMonth } }),
         },
         _sum: { amount: true },
       }),
@@ -54,26 +77,26 @@ export async function GET(request: NextRequest) {
         where: {
           ...where,
           status: 'PENDING',
+          ...(hasCustomRange ? {} : { date: { gte: firstDayThisMonth } }),
         },
         _sum: { amount: true },
         _count: true,
       }),
+      prisma.expense.aggregate({
+        where: {
+          ...where,
+          status: 'PAID',
+          ...(hasCustomRange ? {} : { date: { gte: firstDayThisMonth } }),
+        },
+        _sum: { amount: true },
+      }),
     ])
 
-    const totalExpenses = thisMonthExpenses._sum.amount || 0
-    const lastMonthTotal = lastMonthExpenses._sum.amount || 0
+    const totalExpenses = currentRangeExpenses._sum.amount || 0
+    const lastMonthTotal = previousRangeExpenses._sum.amount || 0
     const growth = lastMonthTotal > 0 
       ? ((totalExpenses - lastMonthTotal) / lastMonthTotal) * 100 
       : 0
-
-    const paidExpenses = await prisma.expense.aggregate({
-      where: {
-        ...where,
-        status: 'PAID',
-        date: { gte: firstDayThisMonth },
-      },
-      _sum: { amount: true },
-    })
 
     return apiSuccess({
       totalExpenses,

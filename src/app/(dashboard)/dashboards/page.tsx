@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { SkeletonDashboard } from '@/components/ui-kit/Skeleton'
 import { Badge } from '@/components/ui-kit/Badge'
+import * as XLSX from 'xlsx'
 
 interface DashboardData {
   kpis: {
@@ -18,6 +20,7 @@ interface DashboardData {
     pipelineChange: number
     activeClients: number
     clientsGrowth: number
+    newClientsThisPeriod?: number
   }
   monthlyData: Array<{
     month: string
@@ -26,6 +29,7 @@ interface DashboardData {
   }>
   performanceByCompany: Array<{
     company: string
+    industry?: string
     sales: number
     growth: number
     status: string
@@ -33,6 +37,7 @@ interface DashboardData {
 }
 
 export default function DashboardsPage() {
+  const router = useRouter()
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
@@ -40,13 +45,35 @@ export default function DashboardsPage() {
   const [companies, setCompanies] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
+  const getDateRangeByPeriod = (period: string) => {
+    const endDate = new Date()
+    const startDate = new Date(endDate)
+
+    if (period === 'month') {
+      startDate.setMonth(startDate.getMonth() - 1)
+    } else if (period === 'quarter') {
+      startDate.setMonth(startDate.getMonth() - 3)
+    } else {
+      startDate.setFullYear(startDate.getFullYear() - 1)
+    }
+
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    }
+  }
+
   const fetchDashboardData = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
     try {
       const params = new URLSearchParams()
+      const { startDate, endDate } = getDateRangeByPeriod(selectedPeriod)
+
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+      params.append('startDate', startDate)
+      params.append('endDate', endDate)
       
       const response = await fetch(`/api/dashboard/summary?${params}`, {
         headers: {
@@ -77,6 +104,11 @@ export default function DashboardsPage() {
         const result = await response.json()
         if (result.success) {
           setCompanies(result.data)
+
+          const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+          if (activeCompany?.id && result.data.some((company: any) => company.id === activeCompany.id)) {
+            setSelectedCompany(activeCompany.id)
+          }
         }
       } catch (error) {
         console.error('Error fetching companies:', error)
@@ -105,30 +137,75 @@ export default function DashboardsPage() {
   }
 
   const handleExportReport = () => {
-    const activeCompany = localStorage.getItem('activeCompany')
-    const companyName = activeCompany ? JSON.parse(activeCompany).name : 'Todas las empresas'
-    
-    const reportData = {
-      empresa: companyName,
-      periodo: selectedPeriod === 'month' ? 'Este mes' : selectedPeriod === 'quarter' ? 'Este trimestre' : 'Este año',
-      fecha: new Date().toLocaleDateString('es-ES'),
-      kpis: data?.kpis,
-    }
+    const selectedCompanyName =
+      selectedCompany === 'all'
+        ? 'Todas las empresas'
+        : companies.find((company) => company.id === selectedCompany)?.name || 'Empresa'
 
-    const dataStr = JSON.stringify(reportData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `informe-dashboard-${companyName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
-    link.click()
-    URL.revokeObjectURL(url)
+    const periodLabel = selectedPeriod === 'month' ? 'Este mes' : selectedPeriod === 'quarter' ? 'Este trimestre' : 'Este año'
+    const generatedAt = new Date().toLocaleString('es-ES')
+
+    const summaryRows = [
+      { Campo: 'Empresa', Valor: selectedCompanyName },
+      { Campo: 'Período', Valor: periodLabel },
+      { Campo: 'Generado', Valor: generatedAt },
+      { Campo: 'Ventas Totales', Valor: data?.kpis.totalSales || 0 },
+      { Campo: 'Crecimiento Ventas (%)', Valor: Number((data?.kpis.salesGrowth || 0).toFixed(2)) },
+      { Campo: 'Gastos Operativos', Valor: data?.kpis.operationalExpenses || 0 },
+      { Campo: 'Variación Gastos (%)', Valor: Number((data?.kpis.expensesChange || 0).toFixed(2)) },
+      { Campo: 'Pipeline', Valor: data?.kpis.pipelineValue || 0 },
+      { Campo: 'Clientes Activos', Valor: data?.kpis.activeClients || 0 },
+    ]
+
+    const monthlyRows = (data?.monthlyData || []).map((row) => ({
+      Mes: row.month,
+      Ingresos: row.incomes,
+      Gastos: row.expenses,
+    }))
+
+    const companyRows = (data?.performanceByCompany || []).map((row) => ({
+      Empresa: row.company,
+      Ventas: row.sales,
+      Crecimiento: Number(row.growth.toFixed(2)),
+      Estado: row.status,
+    }))
+
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryRows), 'Resumen')
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(monthlyRows), 'Ingresos vs Gastos')
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(companyRows), 'Empresas')
+
+    XLSX.writeFile(
+      workbook,
+      `informe-dashboard-${selectedCompanyName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`
+    )
   }
+
+  const chartRows = (data?.monthlyData || []).map((row) => {
+    const [year, month] = row.month.split('-').map(Number)
+    const monthDate = Number.isFinite(year) && Number.isFinite(month) ? new Date(year, (month || 1) - 1, 1) : new Date()
+    const label = monthDate.toLocaleDateString('es-ES', { month: 'short' })
+
+    return {
+      ...row,
+      label: label.charAt(0).toUpperCase() + label.slice(1),
+    }
+  })
+
+  const maxChartValue = chartRows.reduce((max, row) => Math.max(max, row.incomes, row.expenses), 0) || 1
 
   const handleSearchClients = () => {
     if (searchQuery.trim()) {
-      window.location.href = `/clientes?search=${encodeURIComponent(searchQuery)}`
+      router.push(`/clientes?search=${encodeURIComponent(searchQuery)}`)
     }
+  }
+
+  const handleKpiDrillDown = (basePath: string) => {
+    const params = new URLSearchParams()
+    if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+    params.set('period', selectedPeriod)
+    const query = params.toString()
+    router.push(query ? `${basePath}?${query}` : basePath)
   }
 
   if (isLoading) {
@@ -188,7 +265,7 @@ export default function DashboardsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div onClick={() => window.location.href = '/ingresos'} className="cursor-pointer">
+        <div onClick={() => handleKpiDrillDown('/ingresos')} className="cursor-pointer">
           <KPICard
             title="VENTAS TOTALES"
             value={formatCurrency(data?.kpis.totalSales || 0)}
@@ -203,7 +280,7 @@ export default function DashboardsPage() {
           />
         </div>
 
-        <div onClick={() => window.location.href = '/gastos'} className="cursor-pointer">
+        <div onClick={() => handleKpiDrillDown('/gastos')} className="cursor-pointer">
           <KPICard
             title="GASTOS OPERATIVOS"
             value={formatCurrency(data?.kpis.operationalExpenses || 0)}
@@ -218,7 +295,7 @@ export default function DashboardsPage() {
           />
         </div>
 
-        <div onClick={() => window.location.href = '/pipeline-ventas'} className="cursor-pointer">
+        <div onClick={() => handleKpiDrillDown('/pipeline-ventas')} className="cursor-pointer">
           <KPICard
             title="VALOR PIPELINE"
             value={formatCurrency(data?.kpis.pipelineValue || 0)}
@@ -233,12 +310,12 @@ export default function DashboardsPage() {
           />
         </div>
 
-        <div onClick={() => window.location.href = '/clientes'} className="cursor-pointer">
+        <div onClick={() => handleKpiDrillDown('/clientes')} className="cursor-pointer">
           <KPICard
             title="CLIENTES ACTIVOS"
             value={formatNumber(data?.kpis.activeClients || 0)}
             change={data?.kpis.clientsGrowth || 0}
-            changeLabel="36 NUEVOS ESTE MES"
+            changeLabel={`${data?.kpis.newClientsThisPeriod || 0} NUEVOS EN PERIODO`}
             trend={data?.kpis.clientsGrowth && data.kpis.clientsGrowth > 0 ? 'up' : 'neutral'}
             icon={
               <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -268,21 +345,27 @@ export default function DashboardsPage() {
             </div>
           </div>
           <div className="h-64 flex items-end justify-between gap-2">
-            {['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'].map((month, i) => (
-              <div key={month} className="flex-1 flex flex-col items-center gap-2">
+            {chartRows.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
+                No hay datos para el periodo seleccionado
+              </div>
+            ) : (
+              chartRows.map((row) => (
+              <div key={row.month} className="flex-1 flex flex-col items-center gap-2">
                 <div className="w-full flex gap-1">
-                  <div 
+                  <div
                     className="flex-1 bg-success rounded-t"
-                    style={{ height: `${120 + Math.random() * 80}px` }}
+                    style={{ height: `${Math.max((row.incomes / maxChartValue) * 220, 4)}px` }}
                   ></div>
-                  <div 
+                  <div
                     className="flex-1 bg-error rounded-t"
-                    style={{ height: `${80 + Math.random() * 60}px` }}
+                    style={{ height: `${Math.max((row.expenses / maxChartValue) * 220, 4)}px` }}
                   ></div>
                 </div>
-                <span className="text-xs text-gray-500">{month}</span>
+                <span className="text-xs text-gray-500">{row.label}</span>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </Card>
 
@@ -307,7 +390,7 @@ export default function DashboardsPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Tecnología</span>
+                      <span className="text-xs text-gray-500">{company.industry || 'Sin industria'}</span>
                       <div className="flex items-center gap-1">
                         <span className="text-sm font-semibold text-gray-900">{formatCurrency(company.sales)}</span>
                         <span className={`text-xs ${company.growth > 0 ? 'text-success' : 'text-error'}`}>

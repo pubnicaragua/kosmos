@@ -32,8 +32,18 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const channel = searchParams.get('channel')
 
+    const userCompanies = await prisma.userCompany.findMany({
+      where: { userId: decoded.userId },
+      select: { companyId: true },
+    })
+
+    const companyIds = userCompanies.map((uc) => uc.companyId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = {}
-    if (companyId) where.companyId = companyId
+    where.companyId = companyId || { in: companyIds }
     if (status) where.status = status
     if (channel) where.channel = channel
 

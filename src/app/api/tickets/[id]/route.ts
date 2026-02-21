@@ -23,8 +23,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const updated = await prisma.ticket.update({
       where: { id: params.id },
-      data: body,
-      include: { client: { select: { name: true } } },
+      data: {
+        title: body.title,
+        description: body.description,
+        clientId: body.clientId,
+        status: body.status,
+        priority: body.priority,
+        assignedTo: body.assignedTo,
+        amount: body.amount,
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      },
+      include: { client: { select: { id: true, name: true } } },
     })
 
     return apiSuccess(updated)

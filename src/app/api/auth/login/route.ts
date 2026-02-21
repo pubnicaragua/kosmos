@@ -1,8 +1,19 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyPassword, generateAccessToken, generateRefreshToken, getRefreshTokenExpiry } from '@/lib/auth'
+import {
+  verifyPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  getRefreshTokenExpiry,
+  getAccessTokenMaxAgeSeconds,
+  getRefreshTokenMaxAgeSeconds,
+} from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { loginSchema } from '@/lib/validations'
+
+const ACCESS_TOKEN_COOKIE = 'accessToken'
+const REFRESH_TOKEN_COOKIE = 'refreshToken'
+const REMEMBER_ME_COOKIE = 'rememberMe'
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7)
@@ -20,7 +31,7 @@ export async function POST(request: NextRequest) {
       return errorResponse(validation.error.errors[0].message, 400)
     }
 
-    const { email, password } = validation.data
+    const { email, password, rememberMe = false } = validation.data
     console.log(`🔍 [LOGIN-API-${requestId}] Buscando usuario en BD...`)
     console.log(`📍 [LOGIN-API-${requestId}] Intentando conectar a Prisma...`)
 
@@ -85,9 +96,8 @@ export async function POST(request: NextRequest) {
     console.log(`📋 [LOGIN-API-${requestId}] Roles:`, companies.map(c => `${c.name}: ${c.role}`))
     console.log(`✅ [LOGIN-API-${requestId}] Login exitoso para:`, user.email)
 
-    return successResponse({
+    const response = successResponse({
       accessToken,
-      refreshToken,
       user: {
         id: user.id,
         email: user.email,
@@ -97,6 +107,36 @@ export async function POST(request: NextRequest) {
       companies,
       requiresCompanySelection: companies.length > 1,
     })
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+    }
+
+    const accessTokenMaxAge = getAccessTokenMaxAgeSeconds()
+    const refreshTokenMaxAge = getRefreshTokenMaxAgeSeconds()
+
+    response.cookies.set(ACCESS_TOKEN_COOKIE, accessToken, {
+      ...cookieOptions,
+      maxAge: accessTokenMaxAge,
+    })
+
+    response.cookies.set(REFRESH_TOKEN_COOKIE, refreshToken, {
+      ...cookieOptions,
+      ...(rememberMe ? { maxAge: refreshTokenMaxAge } : {}),
+    })
+
+    response.cookies.set(REMEMBER_ME_COOKIE, rememberMe ? 'true' : 'false', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      ...(rememberMe ? { maxAge: refreshTokenMaxAge } : {}),
+    })
+
+    return response
   } catch (error) {
     console.error(`🚨 [LOGIN-API-${requestId}] Error crítico:`, error)
     console.error(`📍 [LOGIN-API-${requestId}] Stack trace:`, error instanceof Error ? error.stack : 'No stack available')

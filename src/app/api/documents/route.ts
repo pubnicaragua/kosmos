@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
     })
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = { companyId: companyId || { in: companyIds } }
     if (type) where.type = type
 
@@ -30,18 +34,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return apiSuccess(documents.map((doc: any) => ({
-      id: doc.id,
-      company: doc.company.name,
-      name: doc.name,
-      type: doc.type,
-      concept: doc.concept,
-      category: doc.category,
-      fileUrl: doc.fileUrl,
-      fileSize: doc.fileSize,
-      uploadedBy: doc.uploadedBy,
-      createdAt: doc.createdAt.toISOString(),
-    })))
+    return apiSuccess(documents)
   } catch (error) {
     console.error('Error fetching documents:', error)
     return apiError('Error al obtener documentos', 500)

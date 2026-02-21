@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const filters = {
       companyId: searchParams.get('companyId') || undefined,
       status: searchParams.get('status') || undefined,
+      provider: searchParams.get('provider') || undefined,
       startDate: searchParams.get('startDate') || undefined,
       endDate: searchParams.get('endDate') || undefined,
       page: searchParams.get('page') || '1',
@@ -37,6 +38,10 @@ export async function GET(request: NextRequest) {
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
 
+    if (filters.companyId && !companyIds.includes(filters.companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = {
       companyId: filters.companyId || { in: companyIds },
     }
@@ -45,10 +50,22 @@ export async function GET(request: NextRequest) {
       where.status = filters.status
     }
 
+    if (filters.provider) {
+      where.provider = { contains: filters.provider, mode: 'insensitive' }
+    }
+
     if (filters.startDate || filters.endDate) {
       where.date = {}
-      if (filters.startDate) where.date.gte = new Date(filters.startDate)
-      if (filters.endDate) where.date.lte = new Date(filters.endDate)
+      if (filters.startDate) {
+        const startDate = new Date(filters.startDate)
+        startDate.setHours(0, 0, 0, 0)
+        where.date.gte = startDate
+      }
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate)
+        endDate.setHours(23, 59, 59, 999)
+        where.date.lte = endDate
+      }
     }
 
     const [expenses, total] = await Promise.all([

@@ -3,6 +3,43 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const body = await request.json()
+    const document = await prisma.document.findUnique({ where: { id: params.id } })
+    if (!document) return apiError('Documento no encontrado', 404)
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: { userId: decoded.userId, companyId: document.companyId },
+    })
+
+    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+
+    const updated = await prisma.document.update({
+      where: { id: params.id },
+      data: {
+        name: body.name,
+        type: body.type,
+        concept: body.concept,
+        category: body.category,
+        fileUrl: body.fileUrl,
+      },
+      include: { company: { select: { name: true } } },
+    })
+
+    return apiSuccess(updated)
+  } catch (error) {
+    console.error('Error updating document:', error)
+    return apiError('Error al actualizar documento', 500)
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')

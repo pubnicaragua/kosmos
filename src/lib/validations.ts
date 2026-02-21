@@ -43,6 +43,7 @@ export const expenseSchema = z.object({
 export const expensesFiltersSchema = z.object({
   companyId: z.string().optional(),
   status: z.enum(['PAID', 'PENDING', 'CANCELLED']).optional(),
+  provider: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   page: z.string().optional(),
@@ -166,6 +167,7 @@ export const productSchema = z.object({
   minStock: z.number().min(0).optional(),
   cost: z.number().min(0, 'Costo debe ser mayor o igual a 0').optional(),
   price: z.number().min(0, 'Precio debe ser mayor a 0'),
+  netMargin: z.number().min(0).max(100).optional(),
   isActive: z.boolean().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })

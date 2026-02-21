@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
+    const type = searchParams.get('type')
+    const status = searchParams.get('status')
 
     const userCompanies = await prisma.userCompany.findMany({
       where: { userId: decoded.userId },
@@ -25,9 +27,15 @@ export async function GET(request: NextRequest) {
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
 
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = {
       companyId: companyId || { in: companyIds },
     }
+    if (type) where.type = type
+    if (status) where.status = status
 
     const activities = await prisma.activity.findMany({
       where,
@@ -52,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     return apiSuccess({
       data: csvData,
-      filename: `actividades_${new Date().toISOString().split('T')[0]}.csv`,
+      filename: `actividades_${new Date().toISOString().split('T')[0]}.xlsx`,
     })
   } catch (error) {
     console.error('Error exporting activities:', error)

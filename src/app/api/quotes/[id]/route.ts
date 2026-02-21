@@ -3,6 +3,27 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+const DISCOUNT_APPROVAL_MARKER = '[DISCOUNT_APPROVAL_AUDIT]'
+
+function extractDiscountApproval(internalNotes?: string | null) {
+  if (!internalNotes) return null
+
+  const markerIndex = internalNotes.lastIndexOf(DISCOUNT_APPROVAL_MARKER)
+  if (markerIndex === -1) return null
+
+  const rawPayload = internalNotes
+    .slice(markerIndex + DISCOUNT_APPROVAL_MARKER.length)
+    .trim()
+
+  if (!rawPayload) return null
+
+  try {
+    return JSON.parse(rawPayload)
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -28,7 +49,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
 
-    return apiSuccess(quote)
+    return apiSuccess({
+      ...quote,
+      discountApproval: extractDiscountApproval(quote.internalNotes),
+    })
   } catch (error) {
     console.error('Error fetching quote:', error)
     return apiError('Error al obtener cotización', 500)
@@ -53,16 +77,48 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
 
+    if ('status' in body || 'approvalAction' in body) {
+      return apiError('Usa el endpoint de estado para aprobar/rechazar o cambiar estado', 400)
+    }
+
+    if ('companyId' in body || 'createdBy' in body) {
+      return apiError('No se permite actualizar campos protegidos', 400)
+    }
+
+    if (typeof body.clientId === 'string' && body.clientId !== quote.clientId) {
+      const targetClient = await prisma.client.findUnique({ where: { id: body.clientId } })
+      if (!targetClient || targetClient.companyId !== quote.companyId) {
+        return apiError('El cliente no pertenece a la misma empresa de la cotización', 400)
+      }
+    }
+
+    const updateData: Record<string, unknown> = {
+      clientId: typeof body.clientId === 'string' ? body.clientId : undefined,
+      currency: typeof body.currency === 'string' ? body.currency : undefined,
+      subtotal: typeof body.subtotal === 'number' ? body.subtotal : undefined,
+      discount: typeof body.discount === 'number' ? body.discount : undefined,
+      tax: typeof body.tax === 'number' ? body.tax : undefined,
+      total: typeof body.total === 'number' ? body.total : undefined,
+      paymentMethod: ['CONTADO', 'CREDITO'].includes(body.paymentMethod) ? body.paymentMethod : undefined,
+      taxApplies: typeof body.taxApplies === 'boolean' ? body.taxApplies : undefined,
+      validUntil: body.validUntil ? new Date(body.validUntil) : undefined,
+      notes: typeof body.notes === 'string' || body.notes === null ? body.notes : undefined,
+      terms: typeof body.terms === 'string' || body.terms === null ? body.terms : undefined,
+    }
+
     const updated = await prisma.quote.update({
       where: { id: params.id },
-      data: body,
+      data: updateData,
       include: {
         client: { select: { name: true } },
         items: true,
       },
     })
 
-    return apiSuccess(updated)
+    return apiSuccess({
+      ...updated,
+      discountApproval: extractDiscountApproval(updated.internalNotes),
+    })
   } catch (error) {
     console.error('Error updating quote:', error)
     return apiError('Error al actualizar cotización', 500)

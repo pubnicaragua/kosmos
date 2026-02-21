@@ -21,6 +21,10 @@ export async function GET(request: NextRequest) {
     })
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = { companyId: companyId || { in: companyIds } }
     if (stage) where.stage = stage
 

@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Input } from '@/components/ui-kit/Input'
+
+interface Company {
+  id: string
+  name: string
+}
 
 interface ClientRow {
   id: string
@@ -19,10 +24,28 @@ interface ClientRow {
 export default function ClientesMultiagregadoPage() {
   const router = useRouter()
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [companies, setCompanies] = useState<Company[]>([])
   const [rows, setRows] = useState<ClientRow[]>([
     { id: '', tempId: 1, name: '', email: '', phone: '', status: 'PROSPECTO', isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+      try {
+        const response = await fetch('/api/companies', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await response.json()
+        if (data.success) setCompanies(data.data)
+      } catch (error) {
+        console.error('Error fetching companies:', error)
+      }
+    }
+    fetchCompanies()
+  }, [])
 
   const addRow = () => {
     const newRow: ClientRow = {
@@ -144,8 +167,8 @@ export default function ClientesMultiagregadoPage() {
         <div className="p-6 border-b border-gray-200">
           <Select
             options={[
-              { value: 'all', label: 'TODAS LAS EMPRESAS' },
-              { value: 'company1', label: 'Tech Solutions' },
+              { value: 'all', label: 'Selecciona una empresa' },
+              ...companies.map((c) => ({ value: c.id, label: c.name })),
             ]}
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
