@@ -32,14 +32,37 @@ export async function GET(request: NextRequest) {
       return errorResponse('Usuario no encontrado', 404)
     }
 
-    const companies = user.userCompanies.map(uc => ({
-      id: uc.company.id,
-      name: uc.company.name,
-      logo: uc.company.logo,
-      industry: uc.company.industry,
-      isActive: uc.company.isActive,
-      role: uc.role,
-    }))
+    // Si el usuario es SUPER_ADMIN en alguna empresa, mostrar TODAS las empresas
+    const isSuperAdmin = user.userCompanies.some(uc => uc.role === 'SUPER_ADMIN')
+    
+    let companies
+    if (isSuperAdmin) {
+      // SUPER_ADMIN ve todas las empresas
+      const allCompanies = await prisma.company.findMany({
+        orderBy: { name: 'asc' },
+      })
+      companies = allCompanies.map(company => {
+        const userCompany = user.userCompanies.find(uc => uc.companyId === company.id)
+        return {
+          id: company.id,
+          name: company.name,
+          logo: company.logo,
+          industry: company.industry,
+          isActive: company.isActive,
+          role: userCompany?.role || 'SUPER_ADMIN',
+        }
+      })
+    } else {
+      // Usuario normal solo ve sus empresas asignadas
+      companies = user.userCompanies.map(uc => ({
+        id: uc.company.id,
+        name: uc.company.name,
+        logo: uc.company.logo,
+        industry: uc.company.industry,
+        isActive: uc.company.isActive,
+        role: uc.role,
+      }))
+    }
 
     return successResponse({
       user: {

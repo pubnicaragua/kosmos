@@ -45,6 +45,7 @@ model Company {
   tickets             Ticket[]
   marketingCampaigns  MarketingCampaign[]
   customRoles         CustomRole[]
+  payrolls            Payroll[]
 
   @@map("companies")
 }
@@ -164,7 +165,8 @@ model Expense {
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payroll Payroll?
 
   @@map("expenses")
 }
@@ -529,4 +531,24 @@ enum MarketingChannel {
   CONTENIDO
   EVENTOS
   OTRO
+}
+
+model Payroll {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  period      String   // Ej: "Enero 2026", "2026-01"
+  fileName    String   @map("file_name")
+  fileUrl     String   @map("file_url")
+  totalAmount Float    @map("total_amount")
+  status      String   @default("PENDIENTE") // PENDIENTE, PROCESADA, PAGADA
+  notes       String?
+  expenseId   String?  @unique @map("expense_id") // Relación con Expense
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  @@map("payrolls")
 }

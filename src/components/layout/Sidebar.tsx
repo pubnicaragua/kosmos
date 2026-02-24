@@ -36,6 +36,7 @@ const NAV_TO_MODULE: Record<string, string> = {
   marketing: 'marketing',
   inventory: 'inventario',
   support: 'tickets-soporte',
+  rrhh: 'recursos-humanos',
   documents: 'documentos',
   contracts: 'contratos',
   system: 'sistema',
@@ -50,6 +51,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null)
   const [customRoleName, setCustomRoleName] = useState<string | null>(null)
@@ -148,16 +150,25 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
-        w-64 bg-white border-r border-gray-200 min-h-screen flex flex-col
-        transform transition-transform duration-300 ease-in-out
+        bg-white border-r border-gray-200 min-h-screen flex flex-col
+        transform transition-all duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+        w-64
       `}>
-        {/* Logo */}
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-0">
+        {/* Logo + Toggle */}
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className={`flex items-center gap-0 transition-opacity ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'opacity-100'}`}>
             <span className="text-xl font-bold text-blue-600">KOSMOS</span>
             <span className="text-xl font-bold text-gray-800">CRM</span>
           </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="hidden lg:block p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            title={isCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+          >
+            <Menu className="w-5 h-5 text-gray-600" />
+          </button>
         </div>
         
         {/* Navigation */}
@@ -167,7 +178,7 @@ export function Sidebar() {
             if (visibleItems.length === 0) return null
             return (
               <div key={section.id} className="mb-6">
-                <h3 className="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <h3 className={`px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider transition-opacity ${isCollapsed ? 'lg:opacity-0 lg:h-0 lg:mb-0' : 'opacity-100'}`}>
                   {section.label}
                 </h3>
                 <ul className="space-y-1 px-2">
@@ -185,10 +196,14 @@ export function Sidebar() {
                               ? 'bg-blue-50 text-blue-700 shadow-sm' 
                               : 'text-gray-700 hover:bg-gray-50'
                             }
+                            ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}
                           `}
+                          title={isCollapsed ? item.label : ''}
                         >
                           {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
-                          <span>{item.label}</span>
+                          <span className={`transition-opacity ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'opacity-100'}`}>
+                            {item.label}
+                          </span>
                         </Link>
                       </li>
                     )
@@ -202,13 +217,13 @@ export function Sidebar() {
         {/* User Profile */}
         {user && (
           <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <div className={`flex items-center gap-3 mb-3 ${isCollapsed ? 'lg:justify-center' : ''}`}>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-semibold text-sm">
                   {user.name?.charAt(0).toUpperCase() || 'U'}
                 </span>
               </div>
-              <div className="flex-1 min-w-0">
+              <div className={`flex-1 min-w-0 transition-opacity ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'opacity-100'}`}>
                 <p className="text-sm font-semibold text-gray-900 truncate">{user.name || 'Usuario'}</p>
                 <p className="text-xs text-gray-500 truncate">
                   {customRoleName || 'Gerencia General'}
@@ -217,10 +232,13 @@ export function Sidebar() {
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors ${isCollapsed ? 'lg:px-2' : ''}`}
+              title={isCollapsed ? 'Cerrar Sesión' : ''}
             >
-              <LogOut className="w-4 h-4" />
-              Cerrar Sesión
+              <LogOut className="w-4 h-4 flex-shrink-0" />
+              <span className={`transition-opacity ${isCollapsed ? 'lg:opacity-0 lg:w-0 lg:overflow-hidden' : 'opacity-100'}`}>
+                Cerrar Sesión
+              </span>
             </button>
           </div>
         )}

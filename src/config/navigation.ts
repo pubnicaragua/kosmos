@@ -83,6 +83,12 @@ export const navigationSections: NavSection[] = [
         href: '/tickets-soporte',
         icon: 'HelpCircle',
       },
+      {
+        id: 'rrhh',
+        label: 'Recursos Humanos',
+        href: '/recursos-humanos',
+        icon: 'Users',
+      },
     ],
   },
   {

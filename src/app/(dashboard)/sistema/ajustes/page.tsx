@@ -117,6 +117,45 @@ export default function AjustesPage() {
   const [addingUser, setAddingUser] = useState(false)
   const [addUserMsg, setAddUserMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [fromPredefined, setFromPredefined] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [editingPasswordUserId, setEditingPasswordUserId] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return null
+    
+    if (type === 'avatar') setUploadingAvatar(true)
+    else setUploadingLogo(true)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      
+      const data = await res.json()
+      if (data.success) {
+        return data.data.url
+      } else {
+        alert(data.error || 'Error al subir archivo')
+        return null
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+      alert('Error al subir archivo')
+      return null
+    } finally {
+      if (type === 'avatar') setUploadingAvatar(false)
+      else setUploadingLogo(false)
+    }
+  }
 
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -310,10 +349,24 @@ export default function AjustesPage() {
   }
 
   const togglePerm = (module: string, field: keyof Omit<RolePermission, 'module'>) => {
-    setRolePermissions((prev) => ({
-      ...prev,
-      [module]: { ...prev[module], [field]: !prev[module][field] },
-    }))
+    setRolePermissions((prev) => {
+      const currentValue = prev[module][field]
+      const newValue = !currentValue
+      
+      // Lógica de permisos dependientes:
+      // Si se activa canCreate, canEdit, canDelete o canExport → activar canView automáticamente
+      const needsView = ['canCreate', 'canEdit', 'canDelete', 'canExport'].includes(field)
+      
+      return {
+        ...prev,
+        [module]: {
+          ...prev[module],
+          [field]: newValue,
+          // Auto-activar canView si se activa un permiso que lo requiere
+          ...(needsView && newValue ? { canView: true } : {}),
+        },
+      }
+    })
   }
 
   const handleSaveRole = async () => {
@@ -374,6 +427,35 @@ export default function AjustesPage() {
       }
     } catch { setAddUserMsg({ type: 'error', text: 'Error de conexión' }) }
     finally { setAddingUser(false) }
+  }
+
+  const handleChangePassword = async (userId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !newPassword || newPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const res = await fetch(`/api/users/${userId}/password`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        alert('Contraseña actualizada exitosamente')
+        setEditingPasswordUserId(null)
+        setNewPassword('')
+      } else {
+        alert(data.error || 'Error al cambiar contraseña')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error de conexión')
+    } finally {
+      setChangingPassword(false)
+    }
   }
 
   const handleRemoveUser = async (userId: string) => {
@@ -472,13 +554,40 @@ export default function AjustesPage() {
               required
               fullWidth
             />
-            <Input
-              label="URL de avatar (opcional)"
-              value={profileForm.avatar}
-              onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
-              placeholder="https://..."
-              fullWidth
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
+              <div className="flex gap-2 items-end">
+                <Input
+                  placeholder="URL del avatar o sube una imagen..."
+                  value={profileForm.avatar}
+                  onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
+                  fullWidth
+                />
+                <label className="relative cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        const url = await handleUploadFile(file, 'avatar')
+                        if (url) setProfileForm({ ...profileForm, avatar: url })
+                      }
+                    }}
+                    disabled={uploadingAvatar}
+                  />
+                  <Button type="button" variant="outline" disabled={uploadingAvatar}>
+                    {uploadingAvatar ? 'Subiendo...' : '📤 Subir'}
+                  </Button>
+                </label>
+              </div>
+              {profileForm.avatar && (
+                <div className="mt-2">
+                  <img src={profileForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
+                </div>
+              )}
+            </div>
             {profileMsg && (
               <div className={`p-3 rounded-lg text-sm ${profileMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                 {profileMsg.text}
@@ -531,14 +640,41 @@ export default function AjustesPage() {
                 fullWidth
                 disabled={!canEditCompany}
               />
-              <Input
-                label="URL del logo (opcional)"
-                value={companyForm.logo}
-                onChange={(e) => setCompanyForm({ ...companyForm, logo: e.target.value })}
-                placeholder="https://..."
-                fullWidth
-                disabled={!canEditCompany}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Logo de la empresa</label>
+                <div className="flex gap-2 items-end">
+                  <Input
+                    placeholder="URL del logo o sube una imagen..."
+                    value={companyForm.logo}
+                    onChange={(e) => setCompanyForm({ ...companyForm, logo: e.target.value })}
+                    fullWidth
+                    disabled={!canEditCompany}
+                  />
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const url = await handleUploadFile(file, 'logo')
+                          if (url) setCompanyForm({ ...companyForm, logo: url })
+                        }
+                      }}
+                      disabled={!canEditCompany || uploadingLogo}
+                    />
+                    <Button type="button" variant="outline" disabled={!canEditCompany || uploadingLogo}>
+                      {uploadingLogo ? 'Subiendo...' : '📤 Subir'}
+                    </Button>
+                  </label>
+                </div>
+                {companyForm.logo && (
+                  <div className="mt-2">
+                    <img src={companyForm.logo} alt="Logo preview" className="h-12 object-contain border border-gray-200 rounded p-2" />
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -728,40 +864,77 @@ export default function AjustesPage() {
 
                 <div className="space-y-2">
                   {members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
-                        {m.user.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{m.user.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{m.user.email}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE_COLORS[m.role] || 'bg-gray-100 text-gray-600'}`}>
-                            {m.role}
-                          </span>
-                          {m.customRole && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: m.customRole.color }}>
-                              {m.customRole.name}
-                            </span>
-                          )}
+                    <div key={m.id} className="border border-gray-100 rounded-xl hover:bg-gray-50">
+                      <div className="flex items-center gap-3 p-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                          {m.user.name?.charAt(0).toUpperCase()}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{m.user.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{m.user.email}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE_COLORS[m.role] || 'bg-gray-100 text-gray-600'}`}>
+                              {m.role}
+                            </span>
+                            {m.customRole && (
+                              <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: m.customRole.color }}>
+                                {m.customRole.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {canManageRoles && (
+                          <div className="flex flex-col gap-1 flex-shrink-0">
+                            <select
+                              value={m.customRoleId || ''}
+                              onChange={(e) => handleAssignRole(m.userId, e.target.value)}
+                              className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            >
+                              <option value="">Sin rol</option>
+                              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            </select>
+                            <button
+                              onClick={() => setEditingPasswordUserId(editingPasswordUserId === m.userId ? null : m.userId)}
+                              className="text-xs text-blue-500 hover:text-blue-700 text-center"
+                            >
+                              🔑 Contraseña
+                            </button>
+                            <button
+                              onClick={() => handleRemoveUser(m.userId)}
+                              className="text-xs text-red-400 hover:text-red-600 text-center"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      {canManageRoles && (
-                        <div className="flex flex-col gap-1 flex-shrink-0">
-                          <select
-                            value={m.customRoleId || ''}
-                            onChange={(e) => handleAssignRole(m.userId, e.target.value)}
-                            className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
-                          >
-                            <option value="">Sin rol</option>
-                            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                          </select>
-                          <button
-                            onClick={() => handleRemoveUser(m.userId)}
-                            className="text-xs text-red-400 hover:text-red-600 text-center"
-                          >
-                            Remover
-                          </button>
+                      {editingPasswordUserId === m.userId && canManageRoles && (
+                        <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2">
+                          <div className="flex gap-2 items-end mt-2">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña</label>
+                              <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Mínimo 6 caracteres"
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleChangePassword(m.userId)}
+                              disabled={changingPassword || newPassword.length < 6}
+                              className="px-3 py-1.5 bg-primary text-white text-xs rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {changingPassword ? 'Guardando...' : 'Cambiar'}
+                            </button>
+                            <button
+                              onClick={() => { setEditingPasswordUserId(null); setNewPassword('') }}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded hover:bg-gray-200"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
