@@ -158,6 +158,7 @@ export default function AjustesPage() {
     const map: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
       SUPER_ADMIN: 'error',
       ADMIN: 'warning',
+      MANAGER: 'success',
       USER: 'default',
     }
     return <Badge variant={map[role] || 'default'}>{role}</Badge>
@@ -345,7 +346,7 @@ export default function AjustesPage() {
             <p className="text-sm text-blue-700 font-medium">Gestión de usuarios</p>
             <p className="text-sm text-blue-600 mt-1">
               Para agregar o eliminar usuarios de una empresa, contacta al administrador del sistema (SUPER_ADMIN).
-              Los roles disponibles son: <strong>SUPER_ADMIN</strong>, <strong>ADMIN</strong>, <strong>USER</strong>.
+              Los roles disponibles son: <strong>SUPER_ADMIN</strong>, <strong>ADMIN</strong>, <strong>MANAGER</strong> y <strong>USER</strong>.
             </p>
           </div>
         </Card>

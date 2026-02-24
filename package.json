@@ -8,6 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "qa:e2e": "playwright test",
+    "qa:e2e:ui": "playwright test --ui",
+    "qa:e2e:report": "playwright show-report",
     "postinstall": "prisma generate",
     "db:seed": "ts-node prisma/seed.ts",
     "db:clean": "tsx prisma/clean-data.ts",
@@ -46,6 +49,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.7.0"
   }

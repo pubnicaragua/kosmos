@@ -8,10 +8,10 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
-import { Modal } from '@/components/ui-kit/Modal'
 
 interface Client {
   id: string
+  companyId: string
   name: string
   email: string | null
   phone: string | null
@@ -39,7 +39,10 @@ interface Company {
   logo: string | null
 }
 
-interface ClientFormData {
+interface ClientRowDraft {
+  tempId: number
+  sourceId?: string
+  companyId: string
   name: string
   email: string
   phone: string
@@ -67,21 +70,8 @@ export default function ClientesPage() {
   const [importIncomes, setImportIncomes] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [importResult, setImportResult] = useState<any>(null)
-  const [viewingClient, setViewingClient] = useState<Client | null>(null)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
-  const [isSavingClient, setIsSavingClient] = useState(false)
-  const [clientForm, setClientForm] = useState<ClientFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    country: '',
-    ruc: '',
-    cedula: '',
-    contactName: '',
-    status: 'PROSPECTO',
-  })
+  const [draftRows, setDraftRows] = useState<ClientRowDraft[]>([])
+  const [editingRows, setEditingRows] = useState<Record<string, ClientRowDraft>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -186,53 +176,149 @@ export default function ClientesPage() {
     }
   }
 
-  const openEditModal = (client: Client) => {
-    setEditingClient(client)
-    setClientForm({
-      name: client.name || '',
-      email: client.email || '',
-      phone: client.phone || '',
-      address: client.address || '',
-      city: client.city || '',
-      country: client.country || '',
-      ruc: client.ruc || '',
-      cedula: client.cedula || '',
-      contactName: client.contactName || '',
-      status: client.status,
+  const resolveDefaultCompanyId = () => {
+    if (selectedCompany !== 'all') return selectedCompany
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || companies[0]?.id || ''
+  }
+
+  const addInlineRow = () => {
+    const companyId = resolveDefaultCompanyId()
+    if (!companyId) {
+      alert('Selecciona una empresa antes de agregar una fila')
+      return
+    }
+
+    setDraftRows((prev) => [
+      ...prev,
+      {
+        tempId: Date.now(),
+        companyId,
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        country: '',
+        ruc: '',
+        cedula: '',
+        contactName: '',
+        status: 'PROSPECTO',
+      },
+    ])
+  }
+
+  const startEditingRow = (client: Client) => {
+    setEditingRows((prev) => ({
+      ...prev,
+      [client.id]: {
+        tempId: Date.now(),
+        sourceId: client.id,
+        companyId: client.companyId,
+        name: client.name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        address: client.address || '',
+        city: client.city || '',
+        country: client.country || '',
+        ruc: client.ruc || '',
+        cedula: client.cedula || '',
+        contactName: client.contactName || '',
+        status: client.status,
+      },
+    }))
+  }
+
+  const cancelEditingRow = (clientId: string) => {
+    setEditingRows((prev) => {
+      const next = { ...prev }
+      delete next[clientId]
+      return next
     })
   }
 
-  const handleUpdateClient = async () => {
-    if (!editingClient) return
+  const updateDraftRow = (tempId: number, field: keyof ClientRowDraft, value: string) => {
+    setDraftRows((prev) =>
+      prev.map((row) => (row.tempId === tempId ? { ...row, [field]: value } : row))
+    )
+  }
+
+  const updateEditingRow = (clientId: string, field: keyof ClientRowDraft, value: string) => {
+    setEditingRows((prev) => ({
+      ...prev,
+      [clientId]: {
+        ...prev[clientId],
+        [field]: value,
+      },
+    }))
+  }
+
+  const saveRow = async (row: ClientRowDraft, mode: 'create' | 'update') => {
+    if (!row.name || (mode === 'create' && !row.companyId)) {
+      alert('Completa empresa y nombre del cliente')
+      return
+    }
 
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
     try {
-      setIsSavingClient(true)
-
-      const response = await fetch(`/api/clients/${editingClient.id}`, {
-        method: 'PUT',
+      const endpoint = mode === 'create' ? '/api/clients' : `/api/clients/${row.sourceId}`
+      const response = await fetch(endpoint, {
+        method: mode === 'create' ? 'POST' : 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(clientForm),
+        body: JSON.stringify({
+          ...(mode === 'create' ? { companyId: row.companyId } : {}),
+          name: row.name,
+          email: row.email,
+          phone: row.phone,
+          address: row.address,
+          city: row.city,
+          country: row.country,
+          ruc: row.ruc,
+          cedula: row.cedula,
+          contactName: row.contactName,
+          status: row.status,
+        }),
       })
 
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo actualizar el cliente')
+        alert(data.error || 'No se pudo guardar el cliente')
         return
       }
 
-      setEditingClient(null)
-      await fetchData()
+      if (mode === 'create') {
+        setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))
+      } else if (row.sourceId) {
+        cancelEditingRow(row.sourceId)
+      }
+
+      fetchData()
     } catch (error) {
-      console.error('Error updating client:', error)
-      alert('Error al actualizar cliente')
-    } finally {
-      setIsSavingClient(false)
+      console.error('Error saving client row:', error)
+      alert('Error al guardar cliente')
+    }
+  }
+
+  const handleRowKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+    row: ClientRowDraft,
+    mode: 'create' | 'update'
+  ) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveRow(row, mode)
+    } else if (e.key === 'Delete' && e.ctrlKey) {
+      e.preventDefault()
+      if (mode === 'create') {
+        setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))
+      } else if (row.sourceId) {
+        handleDeleteClient(row.sourceId)
+      }
     }
   }
 
@@ -312,6 +398,12 @@ export default function ClientesPage() {
           <p className="text-sm text-gray-500 mt-1">Administra tu base de clientes, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={addInlineRow}>
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            AGREGAR FILA
+          </Button>
           <Button variant="outline" onClick={() => setShowImportModal(true)}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -388,105 +480,275 @@ export default function ClientesPage() {
               </tr>
             </thead>
             <tbody>
-              {paginatedClients.map((client) => (
-                <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
+              {draftRows.map((row) => (
+                <tr key={row.tempId} className="border-b border-blue-100 bg-blue-50/40">
+                  <td className="py-2 px-2">
+                    <select
+                      value={row.companyId}
+                      onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>{company.name}</option>
+                      ))}
+                    </select>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-primary font-semibold text-sm">
-                          {client.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                  <td className="py-2 px-2">
+                    <input
+                      value={row.name}
+                      onChange={(e) => updateDraftRow(row.tempId, 'name', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="Nombre del cliente"
+                    />
+                  </td>
+                  <td className="py-2 px-2">
+                    <div className="space-y-2">
+                      <input
+                        value={row.address}
+                        onChange={(e) => updateDraftRow(row.tempId, 'address', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Dirección"
+                      />
+                      <input
+                        value={row.city}
+                        onChange={(e) => updateDraftRow(row.tempId, 'city', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Ciudad"
+                      />
+                      <input
+                        value={row.country}
+                        onChange={(e) => updateDraftRow(row.tempId, 'country', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="País"
+                      />
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">
-                      {(client.city || client.country) ? (
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span>{[client.city, client.country].filter(Boolean).join(', ') || 'N/A'}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">N/A</span>
-                      )}
+                  <td className="py-2 px-2">
+                    <div className="space-y-2">
+                      <input
+                        value={row.ruc}
+                        onChange={(e) => updateDraftRow(row.tempId, 'ruc', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="RUC"
+                      />
+                      <input
+                        value={row.cedula}
+                        onChange={(e) => updateDraftRow(row.tempId, 'cedula', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Cédula"
+                      />
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">
-                      {client.ruc && (
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium text-gray-500">RUC:</span>
-                          <span>{client.ruc}</span>
-                        </div>
-                      )}
-                      {client.cedula && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="font-medium text-gray-500">Cédula:</span>
-                          <span>{client.cedula}</span>
-                        </div>
-                      )}
-                      {!client.ruc && !client.cedula && (
-                        <span className="text-gray-400">N/A</span>
-                      )}
+                  <td className="py-2 px-2">
+                    <div className="space-y-2">
+                      <input
+                        value={row.contactName}
+                        onChange={(e) => updateDraftRow(row.tempId, 'contactName', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Contacto"
+                      />
+                      <input
+                        value={row.email}
+                        onChange={(e) => updateDraftRow(row.tempId, 'email', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Email"
+                      />
+                      <input
+                        value={row.phone}
+                        onChange={(e) => updateDraftRow(row.tempId, 'phone', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Teléfono"
+                      />
                     </div>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">
-                      {client.email && (
-                        <div className="flex items-center gap-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          <span>{client.email}</span>
-                        </div>
-                      )}
-                      {client.phone && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                          <span>{client.phone}</span>
-                        </div>
-                      )}
-                    </div>
+                  <td className="py-2 px-2">
+                    <select
+                      value={row.status}
+                      onChange={(e) => updateDraftRow(row.tempId, 'status', e.target.value)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      <option value="PROSPECTO">Prospecto</option>
+                      <option value="PROPUESTA">Propuesta</option>
+                      <option value="NEGOCIACION">Negociación</option>
+                      <option value="CALIFICADO">Calificado</option>
+                      <option value="ACTIVO">Activo</option>
+                      <option value="INACTIVO">Inactivo</option>
+                    </select>
                   </td>
-                  <td className="py-4 px-4 text-center">
-                    {getStatusBadge(client.status)}
-                  </td>
-                  <td className="py-4 px-4">
+                  <td className="py-2 px-2">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="text-primary hover:text-primary-dark" onClick={() => setViewingClient(client)}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button className="text-gray-600 hover:text-gray-900" onClick={() => openEditModal(client)}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button className="text-error hover:text-error-dark" onClick={() => handleDeleteClient(client.id)}>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <Button size="sm" onClick={() => saveRow(row, 'create')}>Guardar</Button>
+                      <Button size="sm" variant="outline" onClick={() => setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))}>Quitar</Button>
                     </div>
                   </td>
                 </tr>
+              ))}
+
+              {paginatedClients.map((client) => (
+                editingRows[client.id] ? (
+                  <tr key={client.id} className="border-b border-blue-100 bg-blue-50/30">
+                    <td className="py-2 px-2">
+                      <div className="text-sm text-gray-700 px-2 py-2">
+                        {client.company?.name || companies.find((c) => c.id === editingRows[client.id].companyId)?.name || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        value={editingRows[client.id].name}
+                        onChange={(e) => updateEditingRow(client.id, 'name', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="space-y-2">
+                        <input
+                          value={editingRows[client.id].address}
+                          onChange={(e) => updateEditingRow(client.id, 'address', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Dirección"
+                        />
+                        <input
+                          value={editingRows[client.id].city}
+                          onChange={(e) => updateEditingRow(client.id, 'city', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Ciudad"
+                        />
+                        <input
+                          value={editingRows[client.id].country}
+                          onChange={(e) => updateEditingRow(client.id, 'country', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="País"
+                        />
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="space-y-2">
+                        <input
+                          value={editingRows[client.id].ruc}
+                          onChange={(e) => updateEditingRow(client.id, 'ruc', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="RUC"
+                        />
+                        <input
+                          value={editingRows[client.id].cedula}
+                          onChange={(e) => updateEditingRow(client.id, 'cedula', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Cédula"
+                        />
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="space-y-2">
+                        <input
+                          value={editingRows[client.id].contactName}
+                          onChange={(e) => updateEditingRow(client.id, 'contactName', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Contacto"
+                        />
+                        <input
+                          value={editingRows[client.id].email}
+                          onChange={(e) => updateEditingRow(client.id, 'email', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Email"
+                        />
+                        <input
+                          value={editingRows[client.id].phone}
+                          onChange={(e) => updateEditingRow(client.id, 'phone', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Teléfono"
+                        />
+                      </div>
+                    </td>
+                    <td className="py-2 px-2">
+                      <select
+                        value={editingRows[client.id].status}
+                        onChange={(e) => updateEditingRow(client.id, 'status', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="PROSPECTO">Prospecto</option>
+                        <option value="PROPUESTA">Propuesta</option>
+                        <option value="NEGOCIACION">Negociación</option>
+                        <option value="CALIFICADO">Calificado</option>
+                        <option value="ACTIVO">Activo</option>
+                        <option value="INACTIVO">Inactivo</option>
+                      </select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button size="sm" onClick={() => saveRow(editingRows[client.id], 'update')}>Guardar</Button>
+                        <Button size="sm" variant="outline" onClick={() => cancelEditingRow(client.id)}>Cancelar</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>{client.address || '-'}</div>
+                        <div>{[client.city, client.country].filter(Boolean).join(', ') || 'N/A'}</div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{client.ruc || client.cedula || 'N/A'}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>{client.contactName || '-'}</div>
+                        <div>{client.email || '-'}</div>
+                        <div>{client.phone || '-'}</div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center">{getStatusBadge(client.status)}</td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditingRow(client)}>
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => handleDeleteClient(client.id)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>
         </div>
 
-        {clients.length === 0 && (
+        {clients.length === 0 && draftRows.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             No se encontraron clientes
           </div>
@@ -517,120 +779,6 @@ export default function ClientesPage() {
           </Button>
         </div>
       </div>
-
-      <Modal
-        isOpen={!!viewingClient}
-        onClose={() => setViewingClient(null)}
-        title={viewingClient ? `Cliente: ${viewingClient.name}` : 'Detalle de cliente'}
-        size="md"
-      >
-        {viewingClient && (
-          <div className="space-y-3 text-sm text-gray-700">
-            <div><strong>Empresa:</strong> {viewingClient.company?.name || 'N/A'}</div>
-            <div><strong>Nombre:</strong> {viewingClient.name}</div>
-            <div><strong>Email:</strong> {viewingClient.email || 'N/A'}</div>
-            <div><strong>Teléfono:</strong> {viewingClient.phone || 'N/A'}</div>
-            <div><strong>Dirección:</strong> {viewingClient.address || 'N/A'}</div>
-            <div><strong>Ciudad:</strong> {viewingClient.city || 'N/A'}</div>
-            <div><strong>País:</strong> {viewingClient.country || 'N/A'}</div>
-            <div><strong>RUC:</strong> {viewingClient.ruc || 'N/A'}</div>
-            <div><strong>Cédula:</strong> {viewingClient.cedula || 'N/A'}</div>
-            <div><strong>Contacto:</strong> {viewingClient.contactName || 'N/A'}</div>
-            <div><strong>Estado:</strong> {viewingClient.status}</div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={!!editingClient}
-        onClose={() => setEditingClient(null)}
-        title={editingClient ? `Editar: ${editingClient.name}` : 'Editar cliente'}
-        size="lg"
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Nombre"
-              value={clientForm.name}
-              onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
-              fullWidth
-              required
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={clientForm.email}
-              onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="Teléfono"
-              value={clientForm.phone}
-              onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="Contacto"
-              value={clientForm.contactName}
-              onChange={(e) => setClientForm({ ...clientForm, contactName: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="Dirección"
-              value={clientForm.address}
-              onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="Ciudad"
-              value={clientForm.city}
-              onChange={(e) => setClientForm({ ...clientForm, city: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="País"
-              value={clientForm.country}
-              onChange={(e) => setClientForm({ ...clientForm, country: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="RUC"
-              value={clientForm.ruc}
-              onChange={(e) => setClientForm({ ...clientForm, ruc: e.target.value })}
-              fullWidth
-            />
-            <Input
-              label="Cédula"
-              value={clientForm.cedula}
-              onChange={(e) => setClientForm({ ...clientForm, cedula: e.target.value })}
-              fullWidth
-            />
-            <Select
-              label="Estado"
-              options={[
-                { value: 'PROSPECTO', label: 'Prospecto' },
-                { value: 'PROPUESTA', label: 'Propuesta' },
-                { value: 'NEGOCIACION', label: 'Negociación' },
-                { value: 'CALIFICADO', label: 'Calificado' },
-                { value: 'ACTIVO', label: 'Activo' },
-                { value: 'INACTIVO', label: 'Inactivo' },
-              ]}
-              value={clientForm.status}
-              onChange={(e) => setClientForm({ ...clientForm, status: e.target.value as Client['status'] })}
-              fullWidth
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setEditingClient(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateClient} disabled={isSavingClient}>
-              {isSavingClient ? 'Guardando...' : 'Guardar cambios'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Modal de Importación */}
       {showImportModal && (

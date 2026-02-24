@@ -45,10 +45,32 @@ async function main() {
 
   console.log('✅ Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
 
+  if (process.env.PRUNE_LEGACY_COMPANIES === 'true') {
+    const removed = await prisma.company.deleteMany({
+      where: {
+        OR: [
+          { id: 'company-marketing-pro' },
+          { id: 'company-tech-solutions' },
+          { name: 'Marketing Pro Ltd.' },
+          { name: 'Tech Solutions S.A.' },
+        ],
+      },
+    })
+
+    if (removed.count > 0) {
+      console.log(`🧹 Legacy companies removed: ${removed.count}`)
+    }
+  }
+
   // 5 Empresas Reales
   const extel = await prisma.company.upsert({
     where: { id: 'company-extel' },
-    update: {},
+    update: {
+      name: 'Extel',
+      logo: '/assets/logos/extel.png',
+      industry: 'Telecomunicaciones',
+      isActive: true,
+    },
     create: {
       id: 'company-extel',
       name: 'Extel',
@@ -60,7 +82,12 @@ async function main() {
 
   const rapidus = await prisma.company.upsert({
     where: { id: 'company-rapidus' },
-    update: {},
+    update: {
+      name: 'Rapidus',
+      logo: '/assets/logos/rapidus.png',
+      industry: 'Logística y Transporte',
+      isActive: true,
+    },
     create: {
       id: 'company-rapidus',
       name: 'Rapidus',
@@ -72,7 +99,12 @@ async function main() {
 
   const unitec = await prisma.company.upsert({
     where: { id: 'company-unitec' },
-    update: {},
+    update: {
+      name: 'Unitec',
+      logo: '/assets/logos/unitec.png',
+      industry: 'Educación',
+      isActive: true,
+    },
     create: {
       id: 'company-unitec',
       name: 'Unitec',
@@ -84,10 +116,15 @@ async function main() {
 
   const itsi = await prisma.company.upsert({
     where: { id: 'company-itsi' },
-    update: {},
+    update: {
+      name: 'ITSI',
+      logo: '/assets/logos/itsi.png',
+      industry: 'Tecnología',
+      isActive: true,
+    },
     create: {
       id: 'company-itsi',
-      name: 'itsi',
+      name: 'ITSI',
       logo: '/assets/logos/itsi.png',
       industry: 'Tecnología',
       isActive: true,
@@ -96,7 +133,12 @@ async function main() {
 
   const hotelMarbella = await prisma.company.upsert({
     where: { id: 'company-hotel-marbella' },
-    update: {},
+    update: {
+      name: 'Hotel Marbella',
+      logo: '/assets/logos/hotel-marbella.png',
+      industry: 'Hotelería y Turismo',
+      isActive: true,
+    },
     create: {
       id: 'company-hotel-marbella',
       name: 'Hotel Marbella',
