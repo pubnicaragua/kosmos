@@ -1,0 +1,142 @@
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
+import { apiSuccess, apiError } from '@/lib/api-response'
+
+const MODULES = [
+  'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
+  'pipeline-ventas', 'documentos', 'contratos', 'inventario',
+  'tickets-soporte', 'marketing', 'entregables', 'sistema',
+]
+
+const PREDEFINED_ROLES = [
+  {
+    name: 'Vendedor',
+    description: 'Acceso a clientes, pipeline y cotizaciones',
+    color: '#10b981',
+    modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+  },
+  {
+    name: 'RRHH',
+    description: 'Gestión de personal y actividades internas',
+    color: '#f59e0b',
+    modules: { actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+  },
+  {
+    name: 'Inventario',
+    description: 'Control de productos e inventario',
+    color: '#8b5cf6',
+    modules: { inventario: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+  },
+  {
+    name: 'Contabilidad',
+    description: 'Acceso a ingresos, gastos y reportes financieros',
+    color: '#3b82f6',
+    modules: { ingresos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, gastos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true } },
+  },
+  {
+    name: 'Marketing',
+    description: 'Gestión de campañas y entregables',
+    color: '#ec4899',
+    modules: { marketing: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, entregables: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+  },
+  {
+    name: 'Soporte',
+    description: 'Gestión de tickets de soporte',
+    color: '#ef4444',
+    modules: { 'tickets-soporte': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+  },
+]
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const { searchParams } = new URL(request.url)
+    const companyId = searchParams.get('companyId')
+    if (!companyId) return apiError('companyId requerido', 400)
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: { userId: decoded.userId, companyId },
+    })
+    if (!userCompany) return apiError('Sin acceso a esta empresa', 403)
+
+    const roles = await prisma.customRole.findMany({
+      where: { companyId },
+      include: {
+        permissions: true,
+        userCompanies: {
+          include: { user: { select: { id: true, name: true, email: true } } },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    return apiSuccess({ roles, modules: MODULES, predefinedRoles: PREDEFINED_ROLES })
+  } catch (error: any) {
+    console.error('Error fetching roles:', error?.message)
+    return apiError('Error al obtener roles', 500)
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const body = await request.json()
+    const { companyId, name, description, color, permissions, fromPredefined } = body
+
+    if (!companyId || !name) return apiError('companyId y name son requeridos', 400)
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: { userId: decoded.userId, companyId },
+    })
+    if (!userCompany || !['SUPER_ADMIN', 'ADMIN'].includes(userCompany.role))
+      return apiError('Solo admins pueden crear roles', 403)
+
+    let rolePermissions = permissions
+    if (fromPredefined) {
+      const predefined = PREDEFINED_ROLES.find((r) => r.name === fromPredefined)
+      if (predefined) {
+        rolePermissions = Object.entries(predefined.modules).map(([module, perms]) => ({
+          module,
+          ...perms,
+        }))
+      }
+    }
+
+    const role = await prisma.customRole.create({
+      data: {
+        companyId,
+        name,
+        description: description || null,
+        color: color || '#6366f1',
+        permissions: rolePermissions
+          ? {
+              create: rolePermissions.map((p: any) => ({
+                module: p.module,
+                canView: p.canView ?? true,
+                canCreate: p.canCreate ?? false,
+                canEdit: p.canEdit ?? false,
+                canDelete: p.canDelete ?? false,
+                canExport: p.canExport ?? false,
+              })),
+            }
+          : undefined,
+      },
+      include: { permissions: true },
+    })
+
+    return apiSuccess(role, undefined, 201)
+  } catch (error: any) {
+    if (error?.code === 'P2002') return apiError('Ya existe un rol con ese nombre en esta empresa', 409)
+    console.error('Error creating role:', error?.message)
+    return apiError('Error al crear rol', 500)
+  }
+}

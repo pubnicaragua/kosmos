@@ -23,7 +23,65 @@ interface CompanyProfile {
   role: string
 }
 
-type Tab = 'perfil' | 'empresa' | 'usuarios'
+interface RolePermission {
+  module: string
+  canView: boolean
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canExport: boolean
+}
+
+interface CustomRole {
+  id: string
+  name: string
+  description: string | null
+  color: string
+  isDefault: boolean
+  permissions: RolePermission[]
+  userCompanies: { user: { id: string; name: string; email: string } }[]
+}
+
+interface CompanyMember {
+  id: string
+  userId: string
+  role: string
+  customRoleId: string | null
+  user: { id: string; name: string; email: string; avatar: string | null }
+  customRole: CustomRole | null
+}
+
+interface PredefinedRole {
+  name: string
+  description: string
+  color: string
+  modules: Record<string, Partial<RolePermission>>
+}
+
+const MODULE_LABELS: Record<string, string> = {
+  dashboard: '📊 Dashboard',
+  clientes: '👥 Clientes',
+  ingresos: '💰 Ingresos',
+  gastos: '💸 Gastos',
+  actividades: '📋 Actividades',
+  'pipeline-ventas': '🎯 Pipeline de Ventas',
+  documentos: '📄 Documentos',
+  contratos: '📝 Contratos',
+  inventario: '📦 Inventario',
+  'tickets-soporte': '🎫 Tickets de Soporte',
+  marketing: '📣 Marketing',
+  entregables: '🗂️ Entregables',
+  sistema: '⚙️ Sistema',
+}
+
+const ROLE_BADGE_COLORS: Record<string, string> = {
+  SUPER_ADMIN: 'bg-red-100 text-red-700',
+  ADMIN: 'bg-orange-100 text-orange-700',
+  MANAGER: 'bg-green-100 text-green-700',
+  USER: 'bg-gray-100 text-gray-600',
+}
+
+type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles'
 
 export default function AjustesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
@@ -39,6 +97,26 @@ export default function AjustesPage() {
 
   const [profileForm, setProfileForm] = useState({ name: '', avatar: '' })
   const [companyForm, setCompanyForm] = useState({ name: '', industry: '', logo: '', isActive: true })
+
+  // Roles state
+  const [roles, setRoles] = useState<CustomRole[]>([])
+  const [modules, setModules] = useState<string[]>([])
+  const [predefinedRoles, setPredefinedRoles] = useState<PredefinedRole[]>([])
+  const [members, setMembers] = useState<CompanyMember[]>([])
+  const [rolesLoading, setRolesLoading] = useState(false)
+  const [rolesCompanyId, setRolesCompanyId] = useState('')
+  const [showRoleModal, setShowRoleModal] = useState(false)
+  const [editingRole, setEditingRole] = useState<CustomRole | null>(null)
+  const [roleForm, setRoleForm] = useState({ name: '', description: '', color: '#6366f1' })
+  const [rolePermissions, setRolePermissions] = useState<Record<string, RolePermission>>({})
+  const [savingRole, setSavingRole] = useState(false)
+  const [roleMsg, setRoleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [addUserEmail, setAddUserEmail] = useState('')
+  const [addUserRole, setAddUserRole] = useState('USER')
+  const [addUserCustomRoleId, setAddUserCustomRoleId] = useState('')
+  const [addingUser, setAddingUser] = useState(false)
+  const [addUserMsg, setAddUserMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [fromPredefined, setFromPredefined] = useState('')
 
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -154,6 +232,173 @@ export default function AjustesPage() {
     }
   }
 
+  const fetchRolesData = useCallback(async (cId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !cId) return
+    setRolesLoading(true)
+    try {
+      const [rolesRes, membersRes] = await Promise.all([
+        fetch(`/api/roles?companyId=${cId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/companies/${cId}/users`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      const rolesData = await rolesRes.json()
+      const membersData = await membersRes.json()
+      if (rolesData.success) {
+        setRoles(rolesData.data.roles)
+        setModules(rolesData.data.modules)
+        setPredefinedRoles(rolesData.data.predefinedRoles)
+      }
+      if (membersData.success) setMembers(membersData.data)
+    } catch (err) {
+      console.error('Error fetching roles data:', err)
+    } finally {
+      setRolesLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'roles' && rolesCompanyId) {
+      fetchRolesData(rolesCompanyId)
+    }
+  }, [activeTab, rolesCompanyId, fetchRolesData])
+
+  useEffect(() => {
+    if (companies.length > 0 && !rolesCompanyId) {
+      const active = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+      const defaultId = active?.id && companies.find((c) => c.id === active.id)
+        ? active.id : companies[0].id
+      setRolesCompanyId(defaultId)
+    }
+  }, [companies, rolesCompanyId])
+
+  const openNewRole = () => {
+    setEditingRole(null)
+    setRoleForm({ name: '', description: '', color: '#6366f1' })
+    setFromPredefined('')
+    const emptyPerms: Record<string, RolePermission> = {}
+    modules.forEach((m) => { emptyPerms[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } })
+    setRolePermissions(emptyPerms)
+    setRoleMsg(null)
+    setShowRoleModal(true)
+  }
+
+  const openEditRole = (role: CustomRole) => {
+    setEditingRole(role)
+    setRoleForm({ name: role.name, description: role.description || '', color: role.color || '#6366f1' })
+    setFromPredefined('')
+    const perms: Record<string, RolePermission> = {}
+    modules.forEach((m) => {
+      const existing = role.permissions.find((p) => p.module === m)
+      perms[m] = existing || { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false }
+    })
+    setRolePermissions(perms)
+    setRoleMsg(null)
+    setShowRoleModal(true)
+  }
+
+  const applyPredefined = (name: string) => {
+    setFromPredefined(name)
+    const found = predefinedRoles.find((r) => r.name === name)
+    if (!found) return
+    setRoleForm((prev) => ({ ...prev, name: prev.name || found.name, description: prev.description || found.description, color: found.color }))
+    const newPerms: Record<string, RolePermission> = {}
+    modules.forEach((m) => {
+      const pre = found.modules[m]
+      newPerms[m] = { module: m, canView: pre?.canView ?? false, canCreate: pre?.canCreate ?? false, canEdit: pre?.canEdit ?? false, canDelete: pre?.canDelete ?? false, canExport: pre?.canExport ?? false }
+    })
+    setRolePermissions(newPerms)
+  }
+
+  const togglePerm = (module: string, field: keyof Omit<RolePermission, 'module'>) => {
+    setRolePermissions((prev) => ({
+      ...prev,
+      [module]: { ...prev[module], [field]: !prev[module][field] },
+    }))
+  }
+
+  const handleSaveRole = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !rolesCompanyId) return
+    if (!roleForm.name.trim()) { setRoleMsg({ type: 'error', text: 'El nombre del rol es requerido' }); return }
+    setSavingRole(true)
+    setRoleMsg(null)
+    const permissionsArray = Object.values(rolePermissions)
+    try {
+      const url = editingRole ? `/api/roles/${editingRole.id}` : '/api/roles'
+      const method = editingRole ? 'PUT' : 'POST'
+      const body = editingRole
+        ? { name: roleForm.name, description: roleForm.description, color: roleForm.color, permissions: permissionsArray }
+        : { companyId: rolesCompanyId, name: roleForm.name, description: roleForm.description, color: roleForm.color, permissions: permissionsArray }
+      const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const data = await res.json()
+      if (data.success) {
+        setRoleMsg({ type: 'success', text: editingRole ? 'Rol actualizado' : 'Rol creado exitosamente' })
+        await fetchRolesData(rolesCompanyId)
+        setTimeout(() => { setShowRoleModal(false); setRoleMsg(null) }, 800)
+      } else {
+        setRoleMsg({ type: 'error', text: data.error || 'Error al guardar rol' })
+      }
+    } catch { setRoleMsg({ type: 'error', text: 'Error de conexión' }) }
+    finally { setSavingRole(false) }
+  }
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm('¿Eliminar este rol? Los usuarios asignados perderán el rol personalizado.')) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      await fetch(`/api/roles/${roleId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      await fetchRolesData(rolesCompanyId)
+    } catch (err) { console.error(err) }
+  }
+
+  const handleAddUser = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !rolesCompanyId || !addUserEmail) return
+    setAddingUser(true)
+    setAddUserMsg(null)
+    try {
+      const res = await fetch(`/api/companies/${rolesCompanyId}/users`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: addUserEmail, role: addUserRole, customRoleId: addUserCustomRoleId || null }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setAddUserMsg({ type: 'success', text: 'Usuario agregado correctamente' })
+        setAddUserEmail('')
+        setAddUserCustomRoleId('')
+        await fetchRolesData(rolesCompanyId)
+      } else {
+        setAddUserMsg({ type: 'error', text: data.error || 'Error al agregar usuario' })
+      }
+    } catch { setAddUserMsg({ type: 'error', text: 'Error de conexión' }) }
+    finally { setAddingUser(false) }
+  }
+
+  const handleRemoveUser = async (userId: string) => {
+    if (!confirm('¿Remover este usuario de la empresa?')) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      await fetchRolesData(rolesCompanyId)
+    } catch (err) { console.error(err) }
+  }
+
+  const handleAssignRole = async (userId: string, customRoleId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      await fetch('/api/roles/assign', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, companyId: rolesCompanyId, customRoleId: customRoleId || null }),
+      })
+      await fetchRolesData(rolesCompanyId)
+    } catch (err) { console.error(err) }
+  }
+
   const getRoleBadge = (role: string) => {
     const map: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
       SUPER_ADMIN: 'error',
@@ -165,6 +410,7 @@ export default function AjustesPage() {
   }
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
+  const canManageRoles = companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
 
   if (isLoading) {
     return (
@@ -183,18 +429,23 @@ export default function AjustesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
-        {(['perfil', 'empresa', 'usuarios'] as Tab[]).map((tab) => (
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+        {([
+          { key: 'perfil', label: 'Mi Perfil' },
+          { key: 'empresa', label: 'Empresa' },
+          { key: 'usuarios', label: 'Mis Empresas' },
+          { key: 'roles', label: '🔐 Roles & Permisos' },
+        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+              activeTab === key
                 ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab === 'perfil' ? 'Mi Perfil' : tab === 'empresa' ? 'Empresa' : 'Usuarios & Roles'}
+            {label}
           </button>
         ))}
       </div>
@@ -318,47 +569,353 @@ export default function AjustesPage() {
         </div>
       )}
 
-      {/* TAB: Usuarios */}
+      {/* TAB: Usuarios (mis empresas) */}
       {activeTab === 'usuarios' && (
         <Card>
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Usuarios & Roles por Empresa</h2>
-          <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Mis Empresas & Roles Asignados</h2>
+          <div className="space-y-3">
             {companies.map((company) => (
-              <div key={company.id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-gray-900">{company.name}</p>
-                    {company.industry && (
-                      <p className="text-sm text-gray-500">{company.industry}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {getRoleBadge(company.role)}
-                    <Badge variant={company.isActive ? 'success' : 'default'}>
-                      {company.isActive ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </div>
+              <div key={company.id} className="border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{company.name}</p>
+                  {company.industry && <p className="text-sm text-gray-500">{company.industry}</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {getRoleBadge(company.role)}
+                  <Badge variant={company.isActive ? 'success' : 'default'}>
+                    {company.isActive ? 'Activa' : 'Inactiva'}
+                  </Badge>
                 </div>
               </div>
             ))}
           </div>
-          {companyData?.role === 'SUPER_ADMIN' && (
-            <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm text-green-800 font-medium">✓ Gestión de usuarios habilitada</p>
-              <p className="text-sm text-green-700 mt-1">
-                Como SUPER_ADMIN, puedes gestionar usuarios y roles desde el módulo de administración.
-              </p>
-            </div>
-          )}
-          {companyData?.role !== 'SUPER_ADMIN' && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700 font-medium">Gestión de usuarios</p>
-              <p className="text-sm text-blue-600 mt-1">
-                Para agregar o eliminar usuarios de una empresa, contacta al administrador del sistema (SUPER_ADMIN).
-              </p>
-            </div>
-          )}
         </Card>
+      )}
+
+      {/* TAB: Roles & Permisos */}
+      {activeTab === 'roles' && (
+        <div className="space-y-5">
+          {/* Selector empresa */}
+          <Card>
+            <div className="flex flex-wrap items-center gap-4">
+              <Select
+                label="Empresa"
+                options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                value={rolesCompanyId}
+                onChange={(e) => setRolesCompanyId(e.target.value)}
+                className="w-64"
+              />
+              {canManageRoles && (
+                <div className="mt-5">
+                  <Button onClick={openNewRole}>+ Nuevo Rol</Button>
+                </div>
+              )}
+              {!canManageRoles && (
+                <p className="mt-5 text-sm text-yellow-700 bg-yellow-50 px-3 py-2 rounded-lg">Solo ADMIN/SUPER_ADMIN pueden gestionar roles</p>
+              )}
+            </div>
+          </Card>
+
+          {rolesLoading ? (
+            <div className="h-40 bg-slate-100 rounded-xl animate-pulse" />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Panel izquierdo: Roles existentes */}
+              <Card>
+                <h3 className="font-semibold text-gray-900 mb-4">Roles de la Empresa <span className="text-gray-400 font-normal text-sm">({roles.length})</span></h3>
+                {roles.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <p className="text-3xl mb-2">🔐</p>
+                    <p className="text-sm">No hay roles personalizados aún</p>
+                    {canManageRoles && <button onClick={openNewRole} className="mt-3 text-primary text-sm underline">Crear primer rol</button>}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {roles.map((role) => (
+                    <div key={role.id} className="border border-gray-200 rounded-xl p-4 hover:border-primary/30 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: role.color }} />
+                          <div>
+                            <p className="font-medium text-gray-900">{role.name}</p>
+                            {role.description && <p className="text-xs text-gray-500 mt-0.5">{role.description}</p>}
+                            <p className="text-xs text-gray-400 mt-1">
+                              {role.permissions.length} módulos · {role.userCompanies.length} usuario(s)
+                            </p>
+                          </div>
+                        </div>
+                        {canManageRoles && (
+                          <div className="flex gap-2 flex-shrink-0">
+                            <button onClick={() => openEditRole(role)} className="text-xs text-blue-600 hover:underline">Editar</button>
+                            <button onClick={() => handleDeleteRole(role.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                          </div>
+                        )}
+                      </div>
+                      {/* Permisos resumen */}
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {role.permissions.filter(p => p.canView).map((p) => (
+                          <span key={p.module} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                            {MODULE_LABELS[p.module]?.split(' ')[1] || p.module}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Roles predefinidos sugeridos */}
+                {canManageRoles && predefinedRoles.length > 0 && (
+                  <div className="mt-5 pt-4 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Roles predefinidos disponibles</p>
+                    <div className="flex flex-wrap gap-2">
+                      {predefinedRoles.map((pr) => (
+                        <button
+                          key={pr.name}
+                          onClick={() => { openNewRole(); setTimeout(() => applyPredefined(pr.name), 50) }}
+                          className="text-xs px-3 py-1.5 rounded-full border border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors"
+                          style={{ borderColor: pr.color + '80', color: pr.color }}
+                        >
+                          + {pr.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Panel derecho: Usuarios de la empresa */}
+              <Card>
+                <h3 className="font-semibold text-gray-900 mb-4">Usuarios <span className="text-gray-400 font-normal text-sm">({members.length})</span></h3>
+
+                {/* Agregar usuario */}
+                {canManageRoles && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-xl space-y-3">
+                    <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Agregar usuario</p>
+                    <input
+                      type="email"
+                      placeholder="Email del usuario"
+                      value={addUserEmail}
+                      onChange={(e) => setAddUserEmail(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div className="flex gap-2">
+                      <select
+                        value={addUserRole}
+                        onChange={(e) => setAddUserRole(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="USER">USER</option>
+                        <option value="MANAGER">MANAGER</option>
+                        <option value="ADMIN">ADMIN</option>
+                      </select>
+                      <select
+                        value={addUserCustomRoleId}
+                        onChange={(e) => setAddUserCustomRoleId(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      >
+                        <option value="">Sin rol personalizado</option>
+                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </select>
+                    </div>
+                    {addUserMsg && (
+                      <p className={`text-xs ${addUserMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{addUserMsg.text}</p>
+                    )}
+                    <Button onClick={handleAddUser} disabled={addingUser || !addUserEmail} className="w-full">
+                      {addingUser ? 'Agregando...' : 'Agregar Usuario'}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {members.map((m) => (
+                    <div key={m.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm flex-shrink-0">
+                        {m.user.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{m.user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{m.user.email}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE_COLORS[m.role] || 'bg-gray-100 text-gray-600'}`}>
+                            {m.role}
+                          </span>
+                          {m.customRole && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: m.customRole.color }}>
+                              {m.customRole.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {canManageRoles && (
+                        <div className="flex flex-col gap-1 flex-shrink-0">
+                          <select
+                            value={m.customRoleId || ''}
+                            onChange={(e) => handleAssignRole(m.userId, e.target.value)}
+                            className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
+                          >
+                            <option value="">Sin rol</option>
+                            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
+                          <button
+                            onClick={() => handleRemoveUser(m.userId)}
+                            className="text-xs text-red-400 hover:text-red-600 text-center"
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: Crear/Editar Rol */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-lg font-semibold text-gray-900">{editingRole ? 'Editar Rol' : 'Nuevo Rol'}</h2>
+              <button onClick={() => setShowRoleModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Plantillas predefinidas */}
+              {!editingRole && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Partir de una plantilla</p>
+                  <div className="flex flex-wrap gap-2">
+                    {predefinedRoles.map((pr) => (
+                      <button
+                        key={pr.name}
+                        onClick={() => applyPredefined(pr.name)}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-all ${fromPredefined === pr.name ? 'text-white font-semibold shadow' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}
+                        style={fromPredefined === pr.name ? { backgroundColor: pr.color, borderColor: pr.color } : {}}
+                      >
+                        {pr.name}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => { setFromPredefined(''); const empty: Record<string, RolePermission> = {}; modules.forEach(m => { empty[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } }); setRolePermissions(empty) }}
+                      className="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-500 hover:border-gray-400"
+                    >
+                      Personalizado
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Nombre, descripción, color */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del rol *</label>
+                  <input
+                    type="text"
+                    value={roleForm.name}
+                    onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                    placeholder="Ej: Vendedor, RRHH..."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={roleForm.color}
+                      onChange={(e) => setRoleForm({ ...roleForm, color: e.target.value })}
+                      className="w-10 h-9 rounded border border-gray-200 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={roleForm.color}
+                      onChange={(e) => setRoleForm({ ...roleForm, color: e.target.value })}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción (opcional)</label>
+                <input
+                  type="text"
+                  value={roleForm.description}
+                  onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                  placeholder="Breve descripción del rol..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              {/* Tabla de permisos por módulo */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-3">Permisos por Módulo</p>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 font-semibold text-gray-600">Módulo</th>
+                        {['Ver', 'Crear', 'Editar', 'Eliminar', 'Exportar'].map(h => (
+                          <th key={h} className="text-center px-2 py-2.5 font-semibold text-gray-600 text-xs">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modules.map((mod, i) => {
+                        const p = rolePermissions[mod] || { module: mod, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false }
+                        return (
+                          <tr key={mod} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                            <td className="px-4 py-2.5 font-medium text-gray-700">{MODULE_LABELS[mod] || mod}</td>
+                            {(['canView', 'canCreate', 'canEdit', 'canDelete', 'canExport'] as const).map(field => (
+                              <td key={field} className="text-center px-2 py-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p[field]}
+                                  onChange={() => togglePerm(mod, field)}
+                                  className="w-4 h-4 rounded text-primary border-gray-300 cursor-pointer"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => { const all: Record<string, RolePermission> = {}; modules.forEach(m => { all[m] = { module: m, canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true } }); setRolePermissions(all) }}
+                    className="text-xs text-primary hover:underline"
+                  >Marcar todo</button>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => { const none: Record<string, RolePermission> = {}; modules.forEach(m => { none[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } }); setRolePermissions(none) }}
+                    className="text-xs text-gray-500 hover:underline"
+                  >Desmarcar todo</button>
+                </div>
+              </div>
+
+              {roleMsg && (
+                <div className={`p-3 rounded-lg text-sm ${roleMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {roleMsg.text}
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-end gap-3 rounded-b-2xl">
+              <button onClick={() => setShowRoleModal(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-200 rounded-lg">
+                Cancelar
+              </button>
+              <Button onClick={handleSaveRole} disabled={savingRole}>
+                {savingRole ? 'Guardando...' : editingRole ? 'Actualizar Rol' : 'Crear Rol'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

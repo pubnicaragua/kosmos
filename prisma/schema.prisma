@@ -44,23 +44,64 @@ model Company {
   productCategories   ProductCategory[]
   tickets             Ticket[]
   marketingCampaigns  MarketingCampaign[]
+  customRoles         CustomRole[]
 
   @@map("companies")
 }
 
 model UserCompany {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  companyId String   @map("company_id")
-  role      UserRole @default(USER)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  companyId    String   @map("company_id")
+  role         UserRole @default(USER)
+  customRoleId String?  @map("custom_role_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customRole CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   @@unique([userId, companyId])
   @@map("user_companies")
+}
+
+model CustomRole {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  description String?
+  color       String?  @default("#6366f1")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  userCompanies UserCompany[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("custom_roles")
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  customRoleId String   @map("custom_role_id")
+  module       String
+  canView      Boolean  @default(true) @map("can_view")
+  canCreate    Boolean  @default(false) @map("can_create")
+  canEdit      Boolean  @default(false) @map("can_edit")
+  canDelete    Boolean  @default(false) @map("can_delete")
+  canExport    Boolean  @default(false) @map("can_export")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([customRoleId, module])
+  @@index([customRoleId])
+  @@map("role_permissions")
 }
 
 model RefreshToken {
