@@ -50,9 +50,11 @@ export async function GET(request: NextRequest) {
     })
 
     return apiSuccess(clients)
-  } catch (error) {
-    console.error('Error fetching clients:', error)
-    return apiError('Error al obtener clientes', 500)
+  } catch (error: any) {
+    console.error('Error fetching clients:', error?.message || error)
+    console.error('Error stack:', error?.stack)
+    console.error('Prisma error code:', error?.code)
+    return apiError(`Error al obtener clientes: ${error?.message || 'unknown'}`, 500)
   }
 }
 
