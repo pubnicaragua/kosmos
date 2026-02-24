@@ -62,6 +62,7 @@ export default function IngresosPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [filtersLoaded, setFiltersLoaded] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState(() => {
+    if (typeof window === 'undefined') return 'all'
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
     return activeCompany?.id || 'all'
   })

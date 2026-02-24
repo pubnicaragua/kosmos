@@ -60,6 +60,7 @@ export default function ActividadesPage() {
   const [companies, setCompanies] = useState<CompanyOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState(() => {
+    if (typeof window === 'undefined') return 'all'
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
     return activeCompany?.id || 'all'
   })
