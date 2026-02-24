@@ -61,7 +61,10 @@ export default function IngresosPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [filtersLoaded, setFiltersLoaded] = useState(false)
-  const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedCompany, setSelectedCompany] = useState(() => {
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || 'all'
+  })
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)

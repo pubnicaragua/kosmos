@@ -59,7 +59,10 @@ export default function ActividadesPage() {
   const [summary, setSummary] = useState<ActivitySummary | null>(null)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedCompany, setSelectedCompany] = useState(() => {
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || 'all'
+  })
   const [selectedType, setSelectedType] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)

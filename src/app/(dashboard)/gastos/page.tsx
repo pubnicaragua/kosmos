@@ -43,7 +43,10 @@ export default function GastosPage() {
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedCompany, setSelectedCompany] = useState(() => {
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || 'all'
+  })
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedProvider, setSelectedProvider] = useState('all')

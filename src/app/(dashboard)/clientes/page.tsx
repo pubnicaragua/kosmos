@@ -61,7 +61,10 @@ export default function ClientesPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedCompany, setSelectedCompany] = useState(() => {
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    return activeCompany?.id || 'all'
+  })
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)

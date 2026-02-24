@@ -342,13 +342,22 @@ export default function AjustesPage() {
               </div>
             ))}
           </div>
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700 font-medium">Gestión de usuarios</p>
-            <p className="text-sm text-blue-600 mt-1">
-              Para agregar o eliminar usuarios de una empresa, contacta al administrador del sistema (SUPER_ADMIN).
-              Los roles disponibles son: <strong>SUPER_ADMIN</strong>, <strong>ADMIN</strong>, <strong>MANAGER</strong> y <strong>USER</strong>.
-            </p>
-          </div>
+          {companyData?.role === 'SUPER_ADMIN' && (
+            <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm text-green-800 font-medium">✓ Gestión de usuarios habilitada</p>
+              <p className="text-sm text-green-700 mt-1">
+                Como SUPER_ADMIN, puedes gestionar usuarios y roles desde el módulo de administración.
+              </p>
+            </div>
+          )}
+          {companyData?.role !== 'SUPER_ADMIN' && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700 font-medium">Gestión de usuarios</p>
+              <p className="text-sm text-blue-600 mt-1">
+                Para agregar o eliminar usuarios de una empresa, contacta al administrador del sistema (SUPER_ADMIN).
+              </p>
+            </div>
+          )}
         </Card>
       )}
     </div>
