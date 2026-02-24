@@ -122,23 +122,23 @@ export default function OnboardingPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 flex-shrink-0">
+                      <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center bg-white border-2 border-gray-200 flex-shrink-0">
                         {company.logo ? (
                           <img
                             src={company.logo}
                             alt={company.name}
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain p-1"
                             onError={(e) => {
                               const target = e.currentTarget
                               target.style.display = 'none'
                               const parent = target.parentElement
                               if (parent) {
-                                parent.innerHTML = `<span class="text-white font-bold text-xl">${company.name.charAt(0).toUpperCase()}</span>`
+                                parent.innerHTML = `<span class="text-primary font-bold text-xl">${company.name.charAt(0).toUpperCase()}</span>`
                               }
                             }}
                           />
                         ) : (
-                          <span className="text-white font-bold text-xl">
+                          <span className="text-primary font-bold text-xl">
                             {company.name.charAt(0).toUpperCase()}
                           </span>
                         )}
