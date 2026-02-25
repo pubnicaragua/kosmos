@@ -31,7 +31,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         minStock: body.minStock,
         cost: body.cost,
         price: body.price,
-        netMargin: body.netMargin,
         isActive: body.isActive,
       },
       include: { category: { select: { name: true } } },
