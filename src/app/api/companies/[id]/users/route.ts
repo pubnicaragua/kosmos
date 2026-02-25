@@ -18,7 +18,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       where: { companyId: params.id },
       include: {
         user: { select: { id: true, name: true, email: true, avatar: true } },
-        customRole: { include: { permissions: true } },
       },
       orderBy: { createdAt: 'asc' },
     })
