@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import * as XLSX from 'xlsx'
+import { MarketingChart } from '@/components/ui-kit/MarketingChart'
 
 interface Campaign {
   id: string
@@ -388,7 +389,11 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
             {campaign.metrics && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Métricas</h3>
-                <p className="text-gray-600">{campaign.metrics}</p>
+                {campaign.metrics ? (
+                  <MarketingChart metrics={campaign.metrics} type="bar" />
+                ) : (
+                  <p className="text-sm text-gray-500">No hay métricas registradas</p>
+                )}
               </div>
             )}
           </Card>

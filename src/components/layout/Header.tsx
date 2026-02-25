@@ -92,7 +92,12 @@ export function Header() {
       })
       const incomesData = await incomesRes.json()
       if (incomesData.success) {
-        incomesData.data
+        const incomesList = Array.isArray(incomesData.data)
+          ? incomesData.data
+          : Array.isArray(incomesData.data?.data)
+            ? incomesData.data.data
+            : []
+        incomesList
           .filter((i: any) => 
             i.description?.toLowerCase().includes(lowerQuery) ||
             i.client?.name?.toLowerCase().includes(lowerQuery)
@@ -115,7 +120,12 @@ export function Header() {
       })
       const oppsData = await oppsRes.json()
       if (oppsData.success) {
-        oppsData.data
+        const opportunitiesList = Array.isArray(oppsData.data)
+          ? oppsData.data
+          : Array.isArray(oppsData.data?.data)
+            ? oppsData.data.data
+            : []
+        opportunitiesList
           .filter((o: any) => 
             o.title?.toLowerCase().includes(lowerQuery) ||
             o.client?.name?.toLowerCase().includes(lowerQuery)
@@ -138,7 +148,12 @@ export function Header() {
       })
       const contractsData = await contractsRes.json()
       if (contractsData.success) {
-        contractsData.data
+        const contractsList = Array.isArray(contractsData.data)
+          ? contractsData.data
+          : Array.isArray(contractsData.data?.data)
+            ? contractsData.data.data
+            : []
+        contractsList
           .filter((c: any) => 
             c.title?.toLowerCase().includes(lowerQuery) ||
             c.client?.name?.toLowerCase().includes(lowerQuery)

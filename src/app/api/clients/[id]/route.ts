@@ -2,6 +2,33 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const client = await prisma.client.findUnique({
+      where: { id: params.id },
+      include: {
+        company: { select: { id: true, name: true } },
+      },
+    })
+    if (!client) return apiError('Cliente no encontrado', 404)
+
+    const access = await getCompanyAccess(decoded.userId, client.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    return apiSuccess(client)
+  } catch (error) {
+    console.error('Error fetching client:', error)
+    return apiError('Error al obtener cliente', 500)
+  }
+}
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -15,11 +42,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const client = await prisma.client.findUnique({ where: { id: params.id } })
     if (!client) return apiError('Cliente no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: client.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, client.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const updated = await prisma.client.update({
       where: { id: params.id },
@@ -56,11 +80,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const client = await prisma.client.findUnique({ where: { id: params.id } })
     if (!client) return apiError('Cliente no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: client.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, client.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     await prisma.client.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Cliente eliminado' })

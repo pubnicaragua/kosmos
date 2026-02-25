@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { writeFile } from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
@@ -24,22 +24,16 @@ export async function POST(request: NextRequest) {
       return errorResponse('No se proporcionó ningún archivo', 400)
     }
 
-    // Validar tipo de archivo (solo imágenes)
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-    if (!allowedTypes.includes(file.type)) {
-      return errorResponse('Tipo de archivo no permitido. Solo se aceptan imágenes (JPG, PNG, GIF, WEBP)', 400)
-    }
-
-    // Validar tamaño (máximo 5MB)
-    const maxSize = 5 * 1024 * 1024 // 5MB
+    // Aceptar cualquier formato de respaldo y aumentar tamaño máximo.
+    const maxSize = 25 * 1024 * 1024 // 25MB
     if (file.size > maxSize) {
-      return errorResponse('El archivo es demasiado grande. Tamaño máximo: 5MB', 400)
+      return errorResponse('El archivo es demasiado grande. Tamaño máximo: 25MB', 400)
     }
 
     // Generar nombre único
     const timestamp = Date.now()
     const randomStr = Math.random().toString(36).substring(2, 8)
-    const extension = file.name.split('.').pop()
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'bin'
     const fileName = `${timestamp}-${randomStr}.${extension}`
 
     // Guardar en public/uploads
@@ -49,17 +43,19 @@ export async function POST(request: NextRequest) {
     const filePath = join(uploadDir, fileName)
 
     // Crear directorio si no existe
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
+    await mkdir(uploadDir, { recursive: true })
 
     await writeFile(filePath, buffer)
 
     // Retornar URL pública
     const publicUrl = `/uploads/${fileName}`
 
-    return successResponse({ url: publicUrl })
+    return successResponse({
+      url: publicUrl,
+      name: file.name,
+      mimeType: file.type || 'application/octet-stream',
+      size: file.size,
+    })
   } catch (error) {
     console.error('Upload error:', error)
     return errorResponse('Error al subir el archivo', 500)

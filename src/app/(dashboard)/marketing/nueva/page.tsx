@@ -237,10 +237,11 @@ export default function NuevaCampanaPage() {
               <textarea
                 value={formData.metrics}
                 onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
-                placeholder="Ej: CTR: 2.5%, Conversiones: 150, ROI: 300%"
+                placeholder="Ej: CTR: 2.5&#10;Conversiones: 150&#10;ROI: 300"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 rows={3}
               />
+              <p className="text-xs text-gray-500 mt-1">Formato: Nombre: Valor (una métrica por línea)</p>
             </div>
           </div>
 

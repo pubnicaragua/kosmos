@@ -145,6 +145,7 @@ export default function ClientesPage() {
     setIsImporting(true)
     setImportResult(null)
     setImportProgress({ current: 0, total: 0 })
+    let progressInterval: ReturnType<typeof setInterval> | null = null
 
     try {
       // Read file to get total count for progress
@@ -164,24 +165,29 @@ export default function ClientesPage() {
       const token = localStorage.getItem('accessToken')
       
       // Simulate progress updates (since API doesn't support streaming)
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setImportProgress(prev => {
-          if (prev.current < prev.total) {
-            return { ...prev, current: Math.min(prev.current + Math.ceil(prev.total / 10), prev.total) }
+          const target = Math.max(1, Math.floor(prev.total * 0.9))
+          if (prev.current < target) {
+            return { ...prev, current: Math.min(prev.current + Math.ceil(prev.total / 15), target) }
           }
           return prev
         })
       }, 500)
+
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 180000)
 
       const response = await fetch('/api/clients/import', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         },
-        body: formData
+        body: formData,
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
 
-      clearInterval(progressInterval)
       const result = await response.json()
 
       if (result.success) {
@@ -200,8 +206,15 @@ export default function ClientesPage() {
       }
     } catch (error) {
       console.error('Import error:', error)
-      alert('Error al importar archivo')
+      alert(
+        error instanceof Error && error.name === 'AbortError'
+          ? 'La importación tardó demasiado. Intenta dividir el archivo en lotes más pequeños.'
+          : 'Error al importar archivo'
+      )
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval)
+      }
       setIsImporting(false)
     }
   }
@@ -812,7 +825,14 @@ export default function ClientesPage() {
                       <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
                     </td>
                     <td className="py-4 px-4">
-                      <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/clientes/${client.id}`)}
+                        className="text-sm font-medium text-primary hover:text-primary-dark hover:underline text-left"
+                        title="Ver detalle del cliente"
+                      >
+                        {client.name}
+                      </button>
                     </td>
                     <td className="py-4 px-4">
                       <div className="text-sm text-gray-600 space-y-1">

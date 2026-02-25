@@ -7,6 +7,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonKPI, SkeletonTable } from '@/components/ui-kit/Skeleton'
+import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
 import * as XLSX from 'xlsx'
 
 interface Activity {
@@ -493,7 +494,7 @@ export default function ActividadesPage() {
               </tr>
             </thead>
             <tbody>
-              {draftRows.map((row) => (
+              {draftRows.map((row, index) => (
                 <tr key={row.tempId} className="border-b border-blue-100 bg-blue-50/40">
                   <td className="py-2 px-2">
                     <select value={row.type} onChange={(e) => updateDraftRow(row.tempId, 'type', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm">
@@ -506,7 +507,15 @@ export default function ActividadesPage() {
                   <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título de la actividad" /></td>
                   <td className="py-2 px-2"><textarea value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Descripción detallada" rows={2} /></td>
                   <td className="py-2 px-2"><input value={row.client} onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Cliente" /></td>
-                  <td className="py-2 px-2"><input value={row.assignedTo} onChange={(e) => updateDraftRow(row.tempId, 'assignedTo', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Responsable" /></td>
+                  <td className="py-3 px-4">
+                    <UserAutocomplete
+                      companyId={row.companyId}
+                      value={row.assignedTo}
+                      onChange={(value) => updateDraftRow(row.tempId, 'assignedTo', value)}
+                      placeholder="Asignado a..."
+                      fullWidth
+                    />
+                  </td>
                   <td className="py-2 px-2"><input type="date" value={row.dueDate} onChange={(e) => updateDraftRow(row.tempId, 'dueDate', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                   <td className="py-2 px-2"><select value={row.priority} onChange={(e) => updateDraftRow(row.tempId, 'priority', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></td>
                   <td className="py-2 px-2"><select value={row.status} onChange={(e) => updateDraftRow(row.tempId, 'status', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"><option value="PENDING">Pendiente</option><option value="IN_PROGRESS">En progreso</option><option value="COMPLETED">Completada</option><option value="CANCELLED">Cancelada</option></select></td>
@@ -533,7 +542,15 @@ export default function ActividadesPage() {
                     <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                     <td className="py-2 px-2"><textarea value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" rows={2} /></td>
                     <td className="py-2 px-2"><input value={editingRows[activity.id].client} onChange={(e) => updateEditingRow(activity.id, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].assignedTo} onChange={(e) => updateEditingRow(activity.id, 'assignedTo', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-3 px-4">
+                      <UserAutocomplete
+                        companyId={editingRows[activity.id].companyId}
+                        value={editingRows[activity.id].assignedTo}
+                        onChange={(value) => updateEditingRow(activity.id, 'assignedTo', value)}
+                        placeholder="Asignado a..."
+                        fullWidth
+                      />
+                    </td>
                     <td className="py-2 px-2"><input type="date" value={editingRows[activity.id].dueDate} onChange={(e) => updateEditingRow(activity.id, 'dueDate', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                     <td className="py-2 px-2"><select value={editingRows[activity.id].priority} onChange={(e) => updateEditingRow(activity.id, 'priority', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"><option value="Alta">Alta</option><option value="Media">Media</option><option value="Baja">Baja</option></select></td>
                     <td className="py-2 px-2"><select value={editingRows[activity.id].status} onChange={(e) => updateEditingRow(activity.id, 'status', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"><option value="PENDING">Pendiente</option><option value="IN_PROGRESS">En progreso</option><option value="COMPLETED">Completada</option><option value="CANCELLED">Cancelada</option></select></td>

@@ -66,7 +66,19 @@ export async function POST(request: NextRequest) {
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
-    const validatedData = ticketSchema.parse(body)
+    const normalizedBody = {
+      ...body,
+      description: body.description ?? undefined,
+      clientId: body.clientId ?? undefined,
+      assignedTo: body.assignedTo ?? undefined,
+      amount: body.amount ?? undefined,
+      dueDate: body.dueDate ?? undefined,
+    }
+    const parsed = ticketSchema.safeParse(normalizedBody)
+    if (!parsed.success) {
+      return apiError(parsed.error.errors[0]?.message || 'Datos inválidos para el ticket', 400)
+    }
+    const validatedData = parsed.data
 
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
@@ -83,7 +95,7 @@ export async function POST(request: NextRequest) {
     })
 
     return apiSuccess(ticket, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating ticket:', error)
     return apiError('Error al crear ticket', 500)
   }

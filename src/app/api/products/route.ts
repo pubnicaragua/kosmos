@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { productSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getModuleAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +29,13 @@ export async function GET(request: NextRequest) {
 
     if (companyId && !companyIds.includes(companyId)) {
       return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    if (companyId) {
+      const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'inventario')
+      if (!moduleAccess.canAccess || !moduleAccess.canView) {
+        return apiError('No tienes permisos para ver inventario en esta empresa', 403)
+      }
     }
 
     const where: any = {}
@@ -88,6 +96,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'inventario')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear productos', 403)
 
     const product = await prisma.product.create({
       data: validatedData,

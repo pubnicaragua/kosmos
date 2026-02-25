@@ -6,6 +6,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonCard } from '@/components/ui-kit/Skeleton'
+import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
 
 interface Opportunity {
   id: string
@@ -677,10 +678,11 @@ export default function PipelineVentasPage() {
             onChange={(e) => setFormData({ ...formData, stage: e.target.value as any })}
             fullWidth
           />
-          <Input
+          <UserAutocomplete
             label="Asignado a"
+            companyId={formData.companyId}
             value={formData.assignedTo}
-            onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
             fullWidth
           />
           <Input

@@ -14,12 +14,33 @@ interface Notification {
   link?: string
 }
 
+type NotificationPayload = Omit<Notification, 'id' | 'createdAt' | 'read'>
+
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const reminderIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const emitFallbackTone = () => {
+    try {
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+      if (!AudioContextClass) return
+      const ctx = new AudioContextClass()
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+      oscillator.type = 'sine'
+      oscillator.frequency.value = 880
+      gain.gain.value = 0.04
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+      oscillator.start()
+      oscillator.stop(ctx.currentTime + 0.12)
+    } catch {
+      // no-op
+    }
+  }
 
   useEffect(() => {
     // Initialize notification sound
@@ -34,9 +55,20 @@ export function NotificationCenter() {
       setUnreadCount(parsed.filter((n: Notification) => !n.read).length)
     }
 
-    // Set up reminder interval (every 20 minutes)
+    return () => {
+      if (reminderIntervalRef.current) {
+        clearInterval(reminderIntervalRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (reminderIntervalRef.current) {
+      clearInterval(reminderIntervalRef.current)
+    }
+
     reminderIntervalRef.current = setInterval(() => {
-      const unread = notifications.filter(n => !n.read)
+      const unread = notifications.filter((n) => !n.read)
       if (unread.length > 0) {
         playNotificationSound()
         showBrowserNotification(
@@ -44,14 +76,14 @@ export function NotificationCenter() {
           `Tienes ${unread.length} notificación(es) pendiente(s)`
         )
       }
-    }, 20 * 60 * 1000) // 20 minutes
+    }, 20 * 60 * 1000)
 
     return () => {
       if (reminderIntervalRef.current) {
         clearInterval(reminderIntervalRef.current)
       }
     }
-  }, [])
+  }, [notifications])
 
   useEffect(() => {
     // Update unread count when notifications change
@@ -62,7 +94,9 @@ export function NotificationCenter() {
 
   const playNotificationSound = () => {
     if (audioRef.current) {
-      audioRef.current.play().catch(err => console.log('Audio play failed:', err))
+      audioRef.current.play().catch(() => emitFallbackTone())
+    } else {
+      emitFallbackTone()
     }
   }
 
@@ -72,7 +106,7 @@ export function NotificationCenter() {
     }
   }
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+  const addNotification = (notification: NotificationPayload) => {
     const newNotification: Notification = {
       ...notification,
       id: Date.now().toString(),
@@ -84,6 +118,17 @@ export function NotificationCenter() {
     playNotificationSound()
     showBrowserNotification(notification.title, notification.message)
   }
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<NotificationPayload>
+      if (!customEvent.detail?.title || !customEvent.detail?.message) return
+      addNotification(customEvent.detail)
+    }
+
+    window.addEventListener('add-notification', handler as EventListener)
+    return () => window.removeEventListener('add-notification', handler as EventListener)
+  }, [])
 
   const markAsRead = (id: string) => {
     setNotifications(prev =>
@@ -256,7 +301,7 @@ export function NotificationCenter() {
 
 // Export function to add notifications from anywhere in the app
 export const useNotifications = () => {
-  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+  const addNotification = (notification: NotificationPayload) => {
     const event = new CustomEvent('add-notification', { detail: notification })
     window.dispatchEvent(event)
   }

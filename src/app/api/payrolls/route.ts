@@ -7,7 +7,7 @@ import { getCompanyAccess } from '@/lib/company-access'
 function getPayrollModel() {
   const payrollModel = (prisma as any).payroll
   if (!payrollModel) {
-    throw new Error('Payroll model no disponible en Prisma Client. Ejecuta prisma generate.')
+    return null
   }
   return payrollModel
 }
@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
     }
 
     const payrollModel = getPayrollModel()
+    if (!payrollModel) {
+      console.warn('Payroll model no disponible; retornando lista vacía')
+      return successResponse([])
+    }
     const payrolls = await payrollModel.findMany({
       where: { companyId },
       include: {
@@ -106,6 +110,9 @@ export async function POST(request: NextRequest) {
     }
 
     const payrollModel = getPayrollModel()
+    if (!payrollModel) {
+      return errorResponse('Módulo de planillas no disponible en este despliegue. Ejecuta prisma generate.', 503)
+    }
     const payroll = await payrollModel.create({
       data: {
         companyId,
