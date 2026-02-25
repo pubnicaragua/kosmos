@@ -68,20 +68,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     if (existing) return apiError('El usuario ya pertenece a esta empresa', 409)
 
-    const member = await prisma.userCompany.create({
+    const newMember = await prisma.userCompany.create({
       data: {
         userId: targetUser.id,
         companyId: params.id,
         role: role || 'USER',
-        customRoleId: customRoleId || null,
       },
       include: {
         user: { select: { id: true, name: true, email: true, avatar: true } },
-        customRole: { include: { permissions: true } },
       },
     })
 
-    return apiSuccess(member, undefined, 201)
+    return apiSuccess(newMember, undefined, 201)
   } catch (error: any) {
     console.error('Error adding user to company:', error?.message)
     return apiError('Error al agregar usuario', 500)
