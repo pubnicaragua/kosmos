@@ -84,6 +84,7 @@ export default function PipelineVentasPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [draggedItem, setDraggedItem] = useState<Opportunity | null>(null)
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [editingOpportunityId, setEditingOpportunityId] = useState<string | null>(null)
   const [formData, setFormData] = useState<OpportunityFormData>({
     companyId: '',
@@ -313,12 +314,26 @@ export default function PipelineVentasPage() {
     setDraggedItem(opportunity)
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault()
+    setDragOverStage(stageId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverStage(null)
   }
 
   const handleDrop = async (newStage: string) => {
     if (!draggedItem) return
+    setDragOverStage(null)
+
+    // Optimistic update for instant feedback
+    const previousOpportunities = [...opportunities]
+    setOpportunities(prev => 
+      prev.map(opp => 
+        opp.id === draggedItem.id ? { ...opp, stage: newStage as Opportunity['stage'] } : opp
+      )
+    )
 
     const token = localStorage.getItem('accessToken')
 
@@ -334,11 +349,15 @@ export default function PipelineVentasPage() {
         }),
       })
 
-      if (response.ok) {
-        fetchData()
+      if (!response.ok) {
+        // Revert on error
+        setOpportunities(previousOpportunities)
+        alert('Error al mover la oportunidad')
       }
     } catch (error) {
       console.error('Error updating opportunity:', error)
+      setOpportunities(previousOpportunities)
+      alert('Error al mover la oportunidad')
     }
 
     setDraggedItem(null)
@@ -449,15 +468,24 @@ export default function PipelineVentasPage() {
           const stageOpportunities = getOpportunitiesByStage(stage.id)
           const isDragTarget = draggedItem && draggedItem.stage !== stage.id
 
+          const isDropTarget = dragOverStage === stage.id
+
           return (
             <div
               key={stage.id}
-              className={`flex flex-col rounded-xl transition-colors ${isDragTarget ? 'bg-blue-50/60' : 'bg-gray-50'}`}
-              onDragOver={handleDragOver}
+              className={`flex flex-col rounded-xl transition-all duration-200 ${
+                isDropTarget 
+                  ? 'bg-blue-100 ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' 
+                  : isDragTarget 
+                  ? 'bg-blue-50/60' 
+                  : 'bg-gray-50'
+              }`}
+              onDragOver={(e) => handleDragOver(e, stage.id)}
+              onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(stage.id)}
             >
               {/* Cards */}
-              <div className="p-3 space-y-3 min-h-[320px]">
+              <div className="p-3 space-y-3 min-h-[320px] transition-all duration-200">
                 {stageOpportunities.map((opportunity) => {
                   const statusKey = (opportunity.status || 'PENDIENTE').toUpperCase()
                   const badgeClass = STATUS_BADGE_COLORS[statusKey] || 'bg-gray-100 text-gray-600'
@@ -465,13 +493,18 @@ export default function PipelineVentasPage() {
                     ? opportunity.assignedTo.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
                     : opportunity.client.charAt(0).toUpperCase()
 
+                  const isDragging = draggedItem?.id === opportunity.id
+
                   return (
                     <div
                       key={opportunity.id}
                       draggable
                       onDragStart={() => handleDragStart(opportunity)}
-                      onDragEnd={() => setDraggedItem(null)}
-                      className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${stage.border} select-none`}
+                      onDragEnd={() => { setDraggedItem(null); setDragOverStage(null) }}
+                      className={`group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${stage.border} select-none animate-in fade-in slide-in-from-bottom-2 ${
+                        isDragging ? 'opacity-50 scale-95 rotate-2' : 'opacity-100 scale-100 rotate-0'
+                      }`}
+                      style={{ animationDuration: '300ms', animationFillMode: 'both' }}
                     >
                       <div className="p-4">
                         {/* Status badge + actions */}
@@ -541,9 +574,24 @@ export default function PipelineVentasPage() {
                 })}
 
                 {/* Drop zone hint when dragging */}
-                {isDragTarget && stageOpportunities.length === 0 && (
-                  <div className="border-2 border-dashed border-blue-300 rounded-xl h-24 flex items-center justify-center">
-                    <span className="text-sm text-blue-400">Soltar aquí</span>
+                {isDragTarget && (
+                  <div className={`border-2 border-dashed rounded-xl flex items-center justify-center transition-all duration-200 ${
+                    isDropTarget 
+                      ? 'border-blue-500 bg-blue-100/50 h-32 scale-105' 
+                      : 'border-blue-300 bg-blue-50/30 h-24'
+                  } ${stageOpportunities.length === 0 ? '' : 'mt-3'}`}>
+                    <div className="text-center">
+                      <svg className={`w-8 h-8 mx-auto mb-1 transition-all ${
+                        isDropTarget ? 'text-blue-600 scale-110' : 'text-blue-400'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span className={`text-sm font-medium ${
+                        isDropTarget ? 'text-blue-700' : 'text-blue-500'
+                      }`}>
+                        {isDropTarget ? 'Soltar ahora' : 'Soltar aquí'}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

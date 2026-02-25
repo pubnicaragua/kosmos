@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 async function authorizeRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -37,14 +38,8 @@ export async function PUT(
       return errorResponse('Ingreso no encontrado', 404)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: auth.payload.userId,
-        companyId: income.companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(auth.payload.userId, income.companyId)
+    if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 
@@ -104,14 +99,8 @@ export async function DELETE(
       return errorResponse('Ingreso no encontrado', 404)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: auth.payload.userId,
-        companyId: income.companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(auth.payload.userId, income.companyId)
+    if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,12 +24,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const skip = (page - 1) * limit
 
-    const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
-      select: { companyId: true },
-    })
+    const { companyIds } = await getAccessibleCompanies(decoded.userId)
 
-    const companyIds = userCompanies.map((uc: any) => uc.companyId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
 
     const where: any = {
       companyId: companyId || { in: companyIds },
@@ -94,14 +94,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { companyId, ...activityData } = body
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: decoded.userId,
-        companyId: companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
 

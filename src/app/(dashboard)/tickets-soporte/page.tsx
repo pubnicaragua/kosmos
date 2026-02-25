@@ -59,6 +59,7 @@ export default function TicketsSoportePage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
+  const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
@@ -306,12 +307,24 @@ export default function TicketsSoportePage() {
     setDraggedTicket(ticketId)
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, statusId: string) => {
     e.preventDefault()
+    setDragOverStatus(statusId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverStatus(null)
   }
 
   const handleDrop = async (newStatus: string) => {
     if (!draggedTicket) return
+    setDragOverStatus(null)
+
+    // Optimistic update
+    const previousTickets = [...tickets]
+    setTickets(tickets.map(t =>
+      t.id === draggedTicket ? { ...t, status: newStatus as Ticket['status'] } : t
+    ))
 
     const token = localStorage.getItem('accessToken')
     if (!token) return
@@ -327,13 +340,14 @@ export default function TicketsSoportePage() {
       })
 
       const data = await response.json()
-      if (data.success) {
-        setTickets(tickets.map(t =>
-          t.id === draggedTicket ? { ...t, status: newStatus as any } : t
-        ))
+      if (!data.success) {
+        setTickets(previousTickets)
+        alert('Error al mover el ticket')
       }
     } catch (error) {
       console.error('Error updating ticket status:', error)
+      setTickets(previousTickets)
+      alert('Error al mover el ticket')
     } finally {
       setDraggedTicket(null)
     }
@@ -409,12 +423,19 @@ export default function TicketsSoportePage() {
         {COLUMNS.map((column) => {
           const columnTickets = getTicketsByStatus(column.id)
           const totalAmount = getTotalAmount(column.id)
+          const isDragTarget = draggedTicket && !columnTickets.find(t => t.id === draggedTicket)
+          const isDropTarget = dragOverStatus === column.id
 
           return (
             <div
               key={column.id}
-              className="bg-white rounded-lg shadow"
-              onDragOver={handleDragOver}
+              className={`bg-white rounded-lg shadow transition-all duration-200 ${
+                isDropTarget 
+                  ? 'ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' 
+                  : ''
+              }`}
+              onDragOver={(e) => handleDragOver(e, column.id)}
+              onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(column.id)}
             >
               <div className={`p-4 border-t-4 ${column.color} rounded-t-lg`}>
@@ -425,8 +446,10 @@ export default function TicketsSoportePage() {
                 <div className="text-2xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
               </div>
 
-              <div className="p-4 space-y-3 min-h-[400px]">
-                {columnTickets.length === 0 ? (
+              <div className={`p-4 space-y-3 min-h-[400px] transition-all duration-200 ${
+                isDropTarget ? 'bg-blue-50' : ''
+              }`}>
+                {columnTickets.length === 0 && !isDragTarget ? (
                   <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                     <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -434,16 +457,29 @@ export default function TicketsSoportePage() {
                     <p className="text-sm">Arrastra tickets aquí</p>
                   </div>
                 ) : (
-                  columnTickets.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      draggable
-                      onClick={() => setSelectedTicketId(ticket.id)}
-                      onDragStart={() => handleDragStart(ticket.id)}
-                      className={`bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-shadow ${
-                        selectedTicketId === ticket.id ? 'border-primary ring-1 ring-primary/40' : 'border-gray-200'
-                      }`}
-                    >
+                  columnTickets.map((ticket, index) => {
+                    const isDragging = draggedTicket === ticket.id
+                    
+                    return (
+                      <div
+                        key={ticket.id}
+                        draggable
+                        onClick={() => setSelectedTicketId(ticket.id)}
+                        onDragStart={() => handleDragStart(ticket.id)}
+                        onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null) }}
+                        className={`group bg-white border rounded-lg p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 ${
+                          isDragging 
+                            ? 'opacity-50 scale-95 rotate-1' 
+                            : selectedTicketId === ticket.id 
+                            ? 'border-primary ring-1 ring-primary/40 scale-100' 
+                            : 'border-gray-200 scale-100'
+                        }`}
+                        style={{ 
+                          animationDelay: `${index * 50}ms`,
+                          animationDuration: '300ms',
+                          animationFillMode: 'both'
+                        }}
+                      >
                       <div className="flex items-start justify-between mb-2">
                         <Badge variant="warning">{ticket.status}</Badge>
                         <button
@@ -487,7 +523,30 @@ export default function TicketsSoportePage() {
                         </div>
                       </div>
                     </div>
-                  ))
+                    )
+                  })
+                )}
+
+                {/* Drop zone hint */}
+                {isDragTarget && (
+                  <div className={`border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    isDropTarget 
+                      ? 'border-blue-500 bg-blue-100/50 h-32 scale-105' 
+                      : 'border-blue-300 bg-blue-50/30 h-24'
+                  } ${columnTickets.length === 0 ? '' : 'mt-3'}`}>
+                    <div className="text-center">
+                      <svg className={`w-8 h-8 mx-auto mb-1 transition-all ${
+                        isDropTarget ? 'text-blue-600 scale-110' : 'text-blue-400'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span className={`text-sm font-medium ${
+                        isDropTarget ? 'text-blue-700' : 'text-blue-500'
+                      }`}>
+                        {isDropTarget ? 'Soltar ahora' : 'Soltar aquí'}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

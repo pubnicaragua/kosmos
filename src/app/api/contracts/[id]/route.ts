@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 function getContractStatus(endDate: Date): 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' {
   const today = new Date()
@@ -29,11 +30,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const contract = await prisma.contract.findUnique({ where: { id: params.id } })
     if (!contract) return apiError('Contrato no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: contract.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, contract.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const updated = await prisma.contract.update({
       where: { id: params.id },
@@ -68,11 +66,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const contract = await prisma.contract.findUnique({ where: { id: params.id } })
     if (!contract) return apiError('Contrato no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: contract.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, contract.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     await prisma.contract.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Contrato eliminado' })

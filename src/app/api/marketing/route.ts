@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
+import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
 const marketingSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
@@ -32,12 +33,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const channel = searchParams.get('channel')
 
-    const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
-      select: { companyId: true },
-    })
-
-    const companyIds = userCompanies.map((uc) => uc.companyId)
+    const { companyIds } = await getAccessibleCompanies(decoded.userId)
     if (companyId && !companyIds.includes(companyId)) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
@@ -73,11 +69,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = marketingSchema.parse(body)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: validatedData.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const campaign = await prisma.marketingCampaign.create({
       data: {

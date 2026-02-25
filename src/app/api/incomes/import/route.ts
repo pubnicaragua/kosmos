@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
+import { getCompanyAccess } from '@/lib/company-access'
 
 function normalizeCurrency(value?: string): string {
   if (!value) return 'USD'
@@ -37,14 +38,8 @@ export async function POST(request: NextRequest) {
       return errorResponse('No se proporcionó empresa', 400)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: payload.userId,
-        companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(payload.userId, companyId)
+    if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 

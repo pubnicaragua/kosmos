@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -10,10 +11,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const decoded = verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const callerCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: params.id },
-    })
-    if (!callerCompany) return apiError('Sin acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, params.id)
+    if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
 
     const members = await prisma.userCompany.findMany({
       where: { companyId: params.id },
@@ -38,10 +37,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const decoded = verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const callerCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: params.id },
-    })
-    if (!callerCompany || !['SUPER_ADMIN', 'ADMIN'].includes(callerCompany.role))
+    const access = await getCompanyAccess(decoded.userId, params.id)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden agregar usuarios', 403)
 
     const body = await request.json()
@@ -84,10 +81,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const decoded = verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const callerCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: params.id },
-    })
-    if (!callerCompany || !['SUPER_ADMIN', 'ADMIN'].includes(callerCompany.role))
+    const access = await getCompanyAccess(decoded.userId, params.id)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden remover usuarios', 403)
 
     const { searchParams } = new URL(request.url)

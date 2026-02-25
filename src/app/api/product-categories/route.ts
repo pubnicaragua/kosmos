@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { productCategorySchema } from '@/lib/validations'
+import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +16,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
 
+    const { companyIds } = await getAccessibleCompanies(decoded.userId)
+    if (companyId && !companyIds.includes(companyId)) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
     const where: any = {}
-    if (companyId) where.companyId = companyId
+    where.companyId = companyId || { in: companyIds }
 
     const categories = await prisma.productCategory.findMany({
       where,
@@ -44,11 +50,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = productCategorySchema.parse(body)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: validatedData.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const category = await prisma.productCategory.create({
       data: validatedData,

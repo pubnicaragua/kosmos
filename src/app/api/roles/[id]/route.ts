@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -13,10 +14,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const role = await prisma.customRole.findUnique({ where: { id: params.id } })
     if (!role) return apiError('Rol no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: role.companyId },
-    })
-    if (!userCompany || !['SUPER_ADMIN', 'ADMIN'].includes(userCompany.role))
+    const access = await getCompanyAccess(decoded.userId, role.companyId)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden editar roles', 403)
 
     const body = await request.json()
@@ -74,10 +73,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const role = await prisma.customRole.findUnique({ where: { id: params.id } })
     if (!role) return apiError('Rol no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: role.companyId },
-    })
-    if (!userCompany || !['SUPER_ADMIN', 'ADMIN'].includes(userCompany.role))
+    const access = await getCompanyAccess(decoded.userId, role.companyId)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden eliminar roles', 403)
 
     await prisma.userCompany.updateMany({

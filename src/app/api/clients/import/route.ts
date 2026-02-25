@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,16 +38,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Empresa no encontrada' }, { status: 404 })
     }
 
+    const access = await getCompanyAccess(payload.userId, companyId)
+    if (!access.canAccess) {
+      return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+    }
+
     // Leer archivo
     const buffer = Buffer.from(await file.arrayBuffer())
     
     // Parsear Excel (procesa todas las hojas)
     const result = parseExcelFileAllSheets(buffer)
 
-    if (result.errors.length > 0) {
+    if (result.clients.length === 0 && (!importIncomes || result.incomes.length === 0)) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Errores al procesar archivo', 
+        error: 'No se encontraron datos válidos para importar', 
         details: result.errors 
       }, { status: 400 })
     }
@@ -161,7 +167,8 @@ export async function POST(request: NextRequest) {
           details: skippedIncomes
         },
         hasIncomes: result.hasIncomes
-      }
+      },
+      warnings: result.errors
     })
 
   } catch (error) {

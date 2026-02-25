@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,11 +19,8 @@ export async function POST(request: NextRequest) {
       return apiError('Debe proporcionar un array de productos', 400)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const sanitizedProducts = products.map((product: any) => ({
       name: String(product.name || '').trim(),

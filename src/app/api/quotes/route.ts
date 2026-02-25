@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { quoteSchema } from '@/lib/validations'
+import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,12 +18,7 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get('clientId')
     const status = searchParams.get('status')
 
-    const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
-      select: { companyId: true },
-    })
-
-    const companyIds = userCompanies.map((uc) => uc.companyId)
+    const { companyIds } = await getAccessibleCompanies(decoded.userId)
 
     if (companyId && !companyIds.includes(companyId)) {
       return apiError('No tienes acceso a esta empresa', 403)
@@ -60,11 +56,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = quoteSchema.parse(body)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: validatedData.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     let subtotal = 0
     let totalDiscount = 0

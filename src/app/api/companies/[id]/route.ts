@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -13,10 +14,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const payload = verifyAccessToken(authHeader.substring(7))
     if (!payload) return errorResponse('Token inválido', 401)
 
-    const access = await prisma.userCompany.findFirst({
-      where: { userId: payload.userId, companyId: params.id },
-    })
-    if (!access) return errorResponse('Sin acceso a esta empresa', 403)
+    const access = await getCompanyAccess(payload.userId, params.id)
+    if (!access.canAccess) return errorResponse('Sin acceso a esta empresa', 403)
 
     const company = await prisma.company.findUnique({ where: { id: params.id } })
     if (!company) return errorResponse('Empresa no encontrada', 404)
@@ -38,13 +37,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const payload = verifyAccessToken(authHeader.substring(7))
     if (!payload) return errorResponse('Token inválido', 401)
 
-    const access = await prisma.userCompany.findFirst({
-      where: { userId: payload.userId, companyId: params.id },
-    })
-    if (!access) return errorResponse('Sin acceso a esta empresa', 403)
+    const access = await getCompanyAccess(payload.userId, params.id)
+    if (!access.canAccess) return errorResponse('Sin acceso a esta empresa', 403)
 
     const allowedRoles = ['ADMIN', 'SUPER_ADMIN']
-    if (!allowedRoles.includes(access.role)) {
+    if (!allowedRoles.includes(access.effectiveRole || '')) {
       return errorResponse('No tienes permisos para editar esta empresa', 403)
     }
 

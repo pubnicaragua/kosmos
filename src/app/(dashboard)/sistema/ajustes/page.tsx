@@ -6,6 +6,11 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
+import { 
+  LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
+  FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen, 
+  Settings, Shield, Upload, Key, Info 
+} from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -58,20 +63,20 @@ interface PredefinedRole {
   modules: Record<string, Partial<RolePermission>>
 }
 
-const MODULE_LABELS: Record<string, string> = {
-  dashboard: '📊 Dashboard',
-  clientes: '👥 Clientes',
-  ingresos: '💰 Ingresos',
-  gastos: '💸 Gastos',
-  actividades: '📋 Actividades',
-  'pipeline-ventas': '🎯 Pipeline de Ventas',
-  documentos: '📄 Documentos',
-  contratos: '📝 Contratos',
-  inventario: '📦 Inventario',
-  'tickets-soporte': '🎫 Tickets de Soporte',
-  marketing: '📣 Marketing',
-  entregables: '🗂️ Entregables',
-  sistema: '⚙️ Sistema',
+const MODULE_LABELS: Record<string, { label: string; icon: any }> = {
+  dashboard: { label: 'Dashboard', icon: LayoutDashboard },
+  clientes: { label: 'Clientes', icon: Users },
+  ingresos: { label: 'Ingresos', icon: DollarSign },
+  gastos: { label: 'Gastos', icon: Receipt },
+  actividades: { label: 'Actividades', icon: CheckSquare },
+  'pipeline-ventas': { label: 'Pipeline de Ventas', icon: Target },
+  documentos: { label: 'Documentos', icon: FileText },
+  contratos: { label: 'Contratos', icon: FileSignature },
+  inventario: { label: 'Inventario', icon: Package },
+  'tickets-soporte': { label: 'Tickets de Soporte', icon: Ticket },
+  marketing: { label: 'Marketing', icon: Megaphone },
+  entregables: { label: 'Entregables', icon: FolderOpen },
+  sistema: { label: 'Sistema', icon: Settings },
 }
 
 const ROLE_BADGE_COLORS: Record<string, string> = {
@@ -125,7 +130,24 @@ export default function AjustesPage() {
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
-    if (!token) return null
+    if (!token) {
+      alert('Sesión expirada. Por favor inicia sesión nuevamente.')
+      return null
+    }
+    
+    // Validar tamaño antes de subir
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      alert('El archivo es demasiado grande. Tamaño máximo: 5MB')
+      return null
+    }
+    
+    // Validar tipo de archivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipo de archivo no permitido. Solo se aceptan imágenes (JPG, PNG, GIF, WEBP)')
+      return null
+    }
     
     if (type === 'avatar') setUploadingAvatar(true)
     else setUploadingLogo(true)
@@ -142,14 +164,29 @@ export default function AjustesPage() {
       
       const data = await res.json()
       if (data.success) {
+        if (type === 'logo') {
+          setCompanyMsg({ type: 'success', text: 'Logo subido correctamente. Recuerda guardar los cambios.' })
+        } else {
+          setProfileMsg({ type: 'success', text: 'Avatar subido correctamente. Recuerda guardar los cambios.' })
+        }
         return data.data.url
       } else {
-        alert(data.error || 'Error al subir archivo')
+        const errorMsg = data.error || 'Error al subir archivo'
+        if (type === 'logo') {
+          setCompanyMsg({ type: 'error', text: errorMsg })
+        } else {
+          setProfileMsg({ type: 'error', text: errorMsg })
+        }
         return null
       }
     } catch (err) {
       console.error('Upload error:', err)
-      alert('Error al subir archivo')
+      const errorMsg = 'Error de conexión al subir archivo'
+      if (type === 'logo') {
+        setCompanyMsg({ type: 'error', text: errorMsg })
+      } else {
+        setProfileMsg({ type: 'error', text: errorMsg })
+      }
       return null
     } finally {
       if (type === 'avatar') setUploadingAvatar(false)
@@ -516,17 +553,18 @@ export default function AjustesPage() {
           { key: 'perfil', label: 'Mi Perfil' },
           { key: 'empresa', label: 'Empresa' },
           { key: 'usuarios', label: 'Mis Empresas' },
-          { key: 'roles', label: '🔐 Roles & Permisos' },
-        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
+          { key: 'roles', label: 'Roles & Permisos', icon: Shield },
+        ] as { key: Tab; label: string; icon?: any }[]).map(({ key, label, icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+            className={`px-5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px flex items-center gap-2 ${
               activeTab === key
                 ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
+            {icon && (() => { const Icon = icon; return <Icon className="w-4 h-4" />; })()}
             {label}
           </button>
         ))}
@@ -578,7 +616,8 @@ export default function AjustesPage() {
                     disabled={uploadingAvatar}
                   />
                   <Button type="button" variant="outline" disabled={uploadingAvatar}>
-                    {uploadingAvatar ? 'Subiendo...' : '📤 Subir'}
+                    <Upload className="w-4 h-4 mr-1" />
+                    {uploadingAvatar ? 'Subiendo...' : 'Subir'}
                   </Button>
                 </label>
               </div>
@@ -665,7 +704,8 @@ export default function AjustesPage() {
                       disabled={!canEditCompany || uploadingLogo}
                     />
                     <Button type="button" variant="outline" disabled={!canEditCompany || uploadingLogo}>
-                      {uploadingLogo ? 'Subiendo...' : '📤 Subir'}
+                      <Upload className="w-4 h-4 mr-1" />
+                      {uploadingLogo ? 'Subiendo...' : 'Subir'}
                     </Button>
                   </label>
                 </div>
@@ -761,7 +801,7 @@ export default function AjustesPage() {
                 <h3 className="font-semibold text-gray-900 mb-4">Roles de la Empresa <span className="text-gray-400 font-normal text-sm">({roles.length})</span></h3>
                 {roles.length === 0 && (
                   <div className="text-center py-8 text-gray-400">
-                    <p className="text-3xl mb-2">🔐</p>
+                    <Shield className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm">No hay roles personalizados aún</p>
                     {canManageRoles && <button onClick={openNewRole} className="mt-3 text-primary text-sm underline">Crear primer rol</button>}
                   </div>
@@ -789,11 +829,16 @@ export default function AjustesPage() {
                       </div>
                       {/* Permisos resumen */}
                       <div className="mt-3 flex flex-wrap gap-1">
-                        {role.permissions.filter(p => p.canView).map((p) => (
-                          <span key={p.module} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                            {MODULE_LABELS[p.module]?.split(' ')[1] || p.module}
-                          </span>
-                        ))}
+                        {role.permissions.filter(p => p.canView).map((p) => {
+                          const moduleInfo = MODULE_LABELS[p.module]
+                          const Icon = moduleInfo?.icon
+                          return (
+                            <span key={p.module} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              {Icon && <Icon className="w-3 h-3" />}
+                              {moduleInfo?.label || p.module}
+                            </span>
+                          )
+                        })}
                       </div>
                     </div>
                   ))}
@@ -834,20 +879,28 @@ export default function AjustesPage() {
                       onChange={(e) => setAddUserEmail(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                    <div className="flex gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Rol base</label>
                       <select
                         value={addUserRole}
                         onChange={(e) => setAddUserRole(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
-                        <option value="USER">USER</option>
-                        <option value="MANAGER">MANAGER</option>
-                        <option value="ADMIN">ADMIN</option>
+                        <option value="USER">USER - Acceso limitado según permisos</option>
+                        <option value="MANAGER">MANAGER - Gestión de equipo y reportes</option>
+                        <option value="ADMIN">ADMIN - Administración completa de empresa</option>
                       </select>
+                      <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-500">
+                        <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                        <p>El rol base define el nivel de acceso general. Puedes refinar permisos con roles personalizados.</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Rol personalizado (opcional)</label>
                       <select
                         value={addUserCustomRoleId}
                         onChange={(e) => setAddUserCustomRoleId(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                       >
                         <option value="">Sin rol personalizado</option>
                         {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -895,9 +948,11 @@ export default function AjustesPage() {
                             </select>
                             <button
                               onClick={() => setEditingPasswordUserId(editingPasswordUserId === m.userId ? null : m.userId)}
-                              className="text-xs text-blue-500 hover:text-blue-700 text-center"
+                              className="text-xs text-blue-500 hover:text-blue-700 text-center flex items-center justify-center gap-1"
+                              title="Asignar nueva contraseña para este usuario"
                             >
-                              🔑 Contraseña
+                              <Key className="w-3 h-3" />
+                              Contraseña
                             </button>
                             <button
                               onClick={() => handleRemoveUser(m.userId)}
@@ -910,7 +965,13 @@ export default function AjustesPage() {
                       </div>
                       {editingPasswordUserId === m.userId && canManageRoles && (
                         <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2">
-                          <div className="flex gap-2 items-end mt-2">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2 mt-2">
+                            <div className="flex items-start gap-1.5">
+                              <Info className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-blue-700">Asignarás una nueva contraseña para <strong>{m.user.name}</strong>. El usuario podrá iniciar sesión con esta contraseña.</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2 items-end">
                             <div className="flex-1">
                               <label className="block text-xs font-medium text-gray-600 mb-1">Nueva contraseña</label>
                               <input
@@ -1038,9 +1099,16 @@ export default function AjustesPage() {
                     <tbody>
                       {modules.map((mod, i) => {
                         const p = rolePermissions[mod] || { module: mod, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false }
+                        const moduleInfo = MODULE_LABELS[mod]
+                        const Icon = moduleInfo?.icon
                         return (
                           <tr key={mod} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                            <td className="px-4 py-2.5 font-medium text-gray-700">{MODULE_LABELS[mod] || mod}</td>
+                            <td className="px-4 py-2.5 font-medium text-gray-700">
+                              <div className="flex items-center gap-2">
+                                {Icon && <Icon className="w-4 h-4 text-gray-400" />}
+                                {moduleInfo?.label || mod}
+                              </div>
+                            </td>
                             {(['canView', 'canCreate', 'canEdit', 'canDelete', 'canExport'] as const).map(field => (
                               <td key={field} className="text-center px-2 py-2.5">
                                 <input

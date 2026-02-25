@@ -2,6 +2,15 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
+
+function getPayrollModel() {
+  const payrollModel = (prisma as any).payroll
+  if (!payrollModel) {
+    throw new Error('Payroll model no disponible en Prisma Client. Ejecuta prisma generate.')
+  }
+  return payrollModel
+}
 
 export async function PUT(
   request: NextRequest,
@@ -22,7 +31,22 @@ export async function PUT(
     const body = await request.json()
     const { status, notes } = body
 
-    const payroll = await prisma.payroll.update({
+    const payrollModel = getPayrollModel()
+    const existingPayroll = await payrollModel.findUnique({
+      where: { id: params.id },
+      select: { id: true, companyId: true },
+    })
+
+    if (!existingPayroll) {
+      return errorResponse('Planilla no encontrada', 404)
+    }
+
+    const access = await getCompanyAccess(payload.userId, existingPayroll.companyId)
+    if (!access.canAccess) {
+      return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const payroll = await payrollModel.update({
       where: { id: params.id },
       data: {
         ...(status ? { status } : {}),
@@ -56,7 +80,22 @@ export async function DELETE(
       return errorResponse('Token inválido o expirado', 401)
     }
 
-    await prisma.payroll.delete({
+    const payrollModel = getPayrollModel()
+    const existingPayroll = await payrollModel.findUnique({
+      where: { id: params.id },
+      select: { id: true, companyId: true },
+    })
+
+    if (!existingPayroll) {
+      return errorResponse('Planilla no encontrada', 404)
+    }
+
+    const access = await getCompanyAccess(payload.userId, existingPayroll.companyId)
+    if (!access.canAccess) {
+      return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    await payrollModel.delete({
       where: { id: params.id },
     })
 

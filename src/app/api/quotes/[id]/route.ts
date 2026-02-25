@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 const DISCOUNT_APPROVAL_MARKER = '[DISCOUNT_APPROVAL_AUDIT]'
 
@@ -43,11 +44,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (!quote) return apiError('Cotización no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: quote.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, quote.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     return apiSuccess({
       ...quote,
@@ -71,11 +69,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const quote = await prisma.quote.findUnique({ where: { id: params.id } })
     if (!quote) return apiError('Cotización no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: quote.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, quote.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     if ('status' in body || 'approvalAction' in body) {
       return apiError('Usa el endpoint de estado para aprobar/rechazar o cambiar estado', 400)
@@ -136,11 +131,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const quote = await prisma.quote.findUnique({ where: { id: params.id } })
     if (!quote) return apiError('Cotización no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: quote.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, quote.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     await prisma.quote.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Cotización eliminada' })

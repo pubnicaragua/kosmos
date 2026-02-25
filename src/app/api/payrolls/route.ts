@@ -2,6 +2,15 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
+
+function getPayrollModel() {
+  const payrollModel = (prisma as any).payroll
+  if (!payrollModel) {
+    throw new Error('Payroll model no disponible en Prisma Client. Ejecuta prisma generate.')
+  }
+  return payrollModel
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +32,13 @@ export async function GET(request: NextRequest) {
       return errorResponse('companyId es requerido', 400)
     }
 
-    const payrolls = await prisma.payroll.findMany({
+    const access = await getCompanyAccess(payload.userId, companyId)
+    if (!access.canAccess) {
+      return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const payrollModel = getPayrollModel()
+    const payrolls = await payrollModel.findMany({
       where: { companyId },
       include: {
         expense: true,
@@ -58,6 +73,16 @@ export async function POST(request: NextRequest) {
       return errorResponse('Faltan campos requeridos', 400)
     }
 
+    const access = await getCompanyAccess(payload.userId, companyId)
+    if (!access.canAccess) {
+      return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const normalizedTotalAmount = Number(totalAmount)
+    if (!Number.isFinite(normalizedTotalAmount) || normalizedTotalAmount < 0) {
+      return errorResponse('Monto total inválido', 400)
+    }
+
     let expenseId = null
 
     // Si se solicita crear gasto automáticamente
@@ -69,7 +94,7 @@ export async function POST(request: NextRequest) {
           concept: `Planilla ${period}`,
           category: 'Nómina',
           method: 'Transferencia',
-          amount: totalAmount,
+          amount: normalizedTotalAmount,
           status: 'PENDING',
           date: new Date(),
           refNumber: `PAYROLL-${Date.now()}`,
@@ -78,13 +103,14 @@ export async function POST(request: NextRequest) {
       expenseId = expense.id
     }
 
-    const payroll = await prisma.payroll.create({
+    const payrollModel = getPayrollModel()
+    const payroll = await payrollModel.create({
       data: {
         companyId,
         period,
         fileName,
         fileUrl,
-        totalAmount,
+        totalAmount: normalizedTotalAmount,
         notes,
         expenseId,
         createdBy: payload.userId,

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(
   request: NextRequest,
@@ -26,14 +27,8 @@ export async function GET(
       return apiError('Actividad no encontrada', 404)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: decoded.userId,
-        companyId: activity.companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(decoded.userId, activity.companyId)
+    if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
 
@@ -68,14 +63,8 @@ export async function PUT(
       return apiError('Actividad no encontrada', 404)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: decoded.userId,
-        companyId: activity.companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(decoded.userId, activity.companyId)
+    if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
 
@@ -120,14 +109,8 @@ export async function DELETE(
       return apiError('Actividad no encontrada', 404)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: decoded.userId,
-        companyId: activity.companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(decoded.userId, activity.companyId)
+    if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
 

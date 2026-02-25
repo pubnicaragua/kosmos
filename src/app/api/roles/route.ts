@@ -2,11 +2,12 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 const MODULES = [
   'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
   'pipeline-ventas', 'documentos', 'contratos', 'inventario',
-  'tickets-soporte', 'marketing', 'entregables', 'sistema',
+  'tickets-soporte', 'marketing', 'entregables', 'recursos-humanos', 'sistema',
 ]
 
 const PREDEFINED_ROLES = [
@@ -59,10 +60,8 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     if (!companyId) return apiError('companyId requerido', 400)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId },
-    })
-    if (!userCompany) return apiError('Sin acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
 
     const roles = await prisma.customRole.findMany({
       where: { companyId },
@@ -94,10 +93,8 @@ export async function POST(request: NextRequest) {
 
     if (!companyId || !name) return apiError('companyId y name son requeridos', 400)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId },
-    })
-    if (!userCompany || !['SUPER_ADMIN', 'ADMIN'].includes(userCompany.role))
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden crear roles', 403)
 
     let rolePermissions = permissions

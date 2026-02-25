@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,10 +16,8 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !companyId) return apiError('userId y companyId son requeridos', 400)
 
-    const callerCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId },
-    })
-    if (!callerCompany || !['SUPER_ADMIN', 'ADMIN'].includes(callerCompany.role))
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
       return apiError('Solo admins pueden asignar roles', 403)
 
     if (customRoleId) {

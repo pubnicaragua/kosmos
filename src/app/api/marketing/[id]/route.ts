@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
+import { getCompanyAccess } from '@/lib/company-access'
 
 const marketingUpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -35,11 +36,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (!campaign) return apiError('Campaña no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: campaign.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, campaign.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const creator = await prisma.user.findUnique({
       where: { id: campaign.createdBy },
@@ -73,11 +71,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (!existingCampaign) return apiError('Campaña no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: existingCampaign.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, existingCampaign.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const updateData: any = {}
     if (validatedData.name !== undefined) updateData.name = validatedData.name
@@ -121,11 +116,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     if (!existingCampaign) return apiError('Campaña no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: existingCampaign.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, existingCampaign.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     await prisma.marketingCampaign.delete({
       where: { id: params.id },

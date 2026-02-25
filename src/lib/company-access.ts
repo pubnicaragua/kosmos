@@ -1,0 +1,30 @@
+import { prisma } from '@/lib/prisma'
+
+export async function getAccessibleCompanies(userId: string) {
+  const userCompanies = await prisma.userCompany.findMany({
+    where: { userId },
+    select: { companyId: true, role: true },
+  })
+
+  const isSuperAdmin = userCompanies.some((uc) => uc.role === 'SUPER_ADMIN')
+  let companyIds = userCompanies.map((uc) => uc.companyId)
+
+  if (isSuperAdmin) {
+    const allCompanies = await prisma.company.findMany({ select: { id: true } })
+    companyIds = allCompanies.map((c) => c.id)
+  }
+
+  return { userCompanies, companyIds, isSuperAdmin }
+}
+
+export async function getCompanyAccess(userId: string, companyId: string) {
+  const { userCompanies, isSuperAdmin } = await getAccessibleCompanies(userId)
+  const membership = userCompanies.find((uc) => uc.companyId === companyId)
+
+  return {
+    membership,
+    isSuperAdmin,
+    canAccess: Boolean(membership) || isSuperAdmin,
+    effectiveRole: membership?.role || (isSuperAdmin ? 'SUPER_ADMIN' : null),
+  }
+}

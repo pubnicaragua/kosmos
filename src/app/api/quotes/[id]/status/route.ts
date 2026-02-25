@@ -3,6 +3,7 @@ import { QuoteStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 const DISCOUNT_APPROVAL_MARKER = '[DISCOUNT_APPROVAL_AUDIT]'
 
@@ -62,11 +63,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const quote = await prisma.quote.findUnique({ where: { id: params.id } })
     if (!quote) return apiError('Cotización no encontrada', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: quote.companyId },
-    })
+    const access = await getCompanyAccess(decoded.userId, quote.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const effectiveRole = access.effectiveRole
 
     const isDiscountAction =
       approvalAction === 'APPROVE_DISCOUNT' ||
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       status === 'REJECTED'
 
     if (isDiscountAction) {
-      if (!['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(userCompany.role)) {
+      if (!effectiveRole || !['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(effectiveRole)) {
         return apiError('No tienes permisos para aprobar/rechazar descuentos', 403)
       }
 
@@ -98,7 +98,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       ? {
           status: nextStatus,
           approvedBy: decoded.userId,
-          approvedRole: userCompany.role,
+          approvedRole: effectiveRole,
           approvedAt: new Date().toISOString(),
           comment: comment || null,
           discountAmount: quote.discount,

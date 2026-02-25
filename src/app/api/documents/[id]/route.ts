@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -15,11 +16,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const document = await prisma.document.findUnique({ where: { id: params.id } })
     if (!document) return apiError('Documento no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: document.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, document.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const updated = await prisma.document.update({
       where: { id: params.id },
@@ -51,11 +49,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const document = await prisma.document.findUnique({ where: { id: params.id } })
     if (!document) return apiError('Documento no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: document.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, document.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     await prisma.document.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Documento eliminado' })

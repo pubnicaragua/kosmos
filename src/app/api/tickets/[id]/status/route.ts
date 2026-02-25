@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess } from '@/lib/company-access'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -21,11 +22,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const ticket = await prisma.ticket.findUnique({ where: { id: params.id } })
     if (!ticket) return apiError('Ticket no encontrado', 404)
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: ticket.companyId },
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, ticket.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const updated = await prisma.ticket.update({
       where: { id: params.id },

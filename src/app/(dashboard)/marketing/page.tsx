@@ -75,6 +75,8 @@ export default function MarketingPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [draggedCampaign, setDraggedCampaign] = useState<MarketingCampaign | null>(null)
+  const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
 
   const fetchCampaigns = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -130,6 +132,57 @@ export default function MarketingPage() {
     return <Icon className="w-4 h-4" />
   }
 
+  const handleDragStart = (campaign: MarketingCampaign) => {
+    setDraggedCampaign(campaign)
+  }
+
+  const handleDragOver = (e: React.DragEvent, statusId: string) => {
+    e.preventDefault()
+    setDragOverStatus(statusId)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverStatus(null)
+  }
+
+  const handleDrop = async (newStatus: string) => {
+    if (!draggedCampaign) return
+    setDragOverStatus(null)
+
+    // Optimistic update
+    const previousCampaigns = [...campaigns]
+    setCampaigns(prev => 
+      prev.map(c => 
+        c.id === draggedCampaign.id ? { ...c, status: newStatus } : c
+      )
+    )
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/marketing/${draggedCampaign.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (!response.ok) {
+        setCampaigns(previousCampaigns)
+        alert('Error al mover la campaña')
+      }
+    } catch (error) {
+      console.error('Error updating campaign:', error)
+      setCampaigns(previousCampaigns)
+      alert('Error al mover la campaña')
+    }
+
+    setDraggedCampaign(null)
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -170,9 +223,21 @@ export default function MarketingPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {STATUS_COLUMNS.map((column) => {
           const columnCampaigns = getCampaignsByStatus(column.id)
+          const isDragTarget = draggedCampaign && draggedCampaign.status !== column.id
+          const isDropTarget = dragOverStatus === column.id
           
           return (
-            <div key={column.id} className="flex flex-col">
+            <div 
+              key={column.id} 
+              className={`flex flex-col transition-all duration-200 rounded-lg ${
+                isDropTarget 
+                  ? 'ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' 
+                  : ''
+              }`}
+              onDragOver={(e) => handleDragOver(e, column.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={() => handleDrop(column.id)}
+            >
               <div className={`${column.color} rounded-t-lg px-4 py-3 border-b-2 border-gray-300`}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">{column.label}</h3>
@@ -182,17 +247,31 @@ export default function MarketingPage() {
                 </div>
               </div>
               
-              <div className="flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[500px]">
-                {columnCampaigns.map((campaign, index) => (
-                  <div
-                    key={campaign.id}
-                    className="bg-white rounded-lg p-4 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 hover:scale-[1.02] hover:-translate-y-1 animate-fadeIn"
-                    style={{ 
-                      borderLeftColor: STATUS_COLUMNS.find(c => c.id === column.id)?.badgeColor.replace('bg-', ''),
-                      animationDelay: `${index * 50}ms`
-                    }}
-                    onClick={() => router.push(`/marketing/${campaign.id}`)}
-                  >
+              <div className={`flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[500px] transition-all duration-200 ${
+                isDropTarget ? 'bg-blue-50' : ''
+              }`}>
+                {columnCampaigns.map((campaign, index) => {
+                  const isDragging = draggedCampaign?.id === campaign.id
+                  
+                  return (
+                    <div
+                      key={campaign.id}
+                      draggable
+                      onDragStart={() => handleDragStart(campaign)}
+                      onDragEnd={() => { setDraggedCampaign(null); setDragOverStatus(null) }}
+                      className={`group bg-white rounded-lg p-4 shadow-sm hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-l-4 select-none animate-in fade-in slide-in-from-bottom-2 ${
+                        isDragging ? 'opacity-50 scale-95 rotate-1' : 'opacity-100 scale-100 hover:scale-[1.02] hover:-translate-y-1'
+                      }`}
+                      style={{ 
+                        borderLeftColor: STATUS_COLUMNS.find(c => c.id === column.id)?.badgeColor.replace('bg-', ''),
+                        animationDelay: `${index * 50}ms`,
+                        animationDuration: '300ms',
+                        animationFillMode: 'both'
+                      }}
+                      onClick={(e) => {
+                        if (!isDragging) router.push(`/marketing/${campaign.id}`)
+                      }}
+                    >
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-semibold text-gray-900 text-sm line-clamp-1">{campaign.name}</h4>
                       <div className={`p-2 rounded-lg ${STATUS_COLUMNS.find(c => c.id === column.id)?.color} transition-transform hover:rotate-12`}>
@@ -242,9 +321,32 @@ export default function MarketingPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
+
+                {/* Drop zone hint */}
+                {isDragTarget && (
+                  <div className={`border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    isDropTarget 
+                      ? 'border-blue-500 bg-blue-100/50 h-32 scale-105' 
+                      : 'border-blue-300 bg-blue-50/30 h-24'
+                  } ${columnCampaigns.length === 0 ? '' : 'mt-3'}`}>
+                    <div className="text-center">
+                      <svg className={`w-8 h-8 mx-auto mb-1 transition-all ${
+                        isDropTarget ? 'text-blue-600 scale-110' : 'text-blue-400'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                      <span className={`text-sm font-medium ${
+                        isDropTarget ? 'text-blue-700' : 'text-blue-500'
+                      }`}>
+                        {isDropTarget ? 'Soltar ahora' : 'Soltar aquí'}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 
-                {columnCampaigns.length === 0 && (
+                {columnCampaigns.length === 0 && !isDragTarget && (
                   <div className="text-center py-8 text-gray-400 text-sm">
                     No hay campañas
                   </div>

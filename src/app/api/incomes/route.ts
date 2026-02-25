@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,12 +26,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: payload.userId },
-      select: { companyId: true },
-    })
-
-    const companyIds = userCompanies.map(uc => uc.companyId)
+    const { companyIds } = await getAccessibleCompanies(payload.userId)
 
     if (companyId && !companyIds.includes(companyId)) {
       return errorResponse('No tienes acceso a esta empresa', 403)
@@ -127,14 +123,8 @@ export async function POST(request: NextRequest) {
       return errorResponse('Campos requeridos incompletos', 400)
     }
 
-    const userCompany = await prisma.userCompany.findFirst({
-      where: {
-        userId: payload.userId,
-        companyId,
-      },
-    })
-
-    if (!userCompany) {
+    const access = await getCompanyAccess(payload.userId, companyId)
+    if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 
