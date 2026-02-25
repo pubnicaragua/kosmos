@@ -8,102 +8,56 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  avatar    String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  userCompanies UserCompany[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  name          String
+  avatar        String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
   refreshTokens RefreshToken[]
-  notifications Notification[]
+  userCompanies UserCompany[]
 
   @@map("users")
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  logo      String?
-  industry  String?
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  userCompanies       UserCompany[]
-  incomes             Income[]
-  expenses            Expense[]
-  activities          Activity[]
-  opportunities       Opportunity[]
-  documents           Document[]
-  contracts           Contract[]
-  clients             Client[]
-  quotes              Quote[]
-  products            Product[]
-  productCategories   ProductCategory[]
-  tickets             Ticket[]
-  marketingCampaigns  MarketingCampaign[]
-  customRoles         CustomRole[]
-  payrolls            Payroll[]
+  id                 String              @id @default(cuid())
+  name               String
+  logo               String?
+  industry           String?
+  isActive           Boolean             @default(true) @map("is_active")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+  activities         Activity[]
+  clients            Client[]
+  contracts          Contract[]
+  documents          Document[]
+  expenses           Expense[]
+  incomes            Income[]
+  marketingCampaigns MarketingCampaign[]
+  opportunities      Opportunity[]
+  productCategories  ProductCategory[]
+  products           Product[]
+  quotes             Quote[]
+  tickets            Ticket[]
+  userCompanies      UserCompany[]
 
   @@map("companies")
 }
 
 model UserCompany {
-  id           String   @id @default(cuid())
-  userId       String   @map("user_id")
-  companyId    String   @map("company_id")
-  role         UserRole @default(USER)
-  customRoleId String?  @map("custom_role_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customRole CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  companyId String   @map("company_id")
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, companyId])
   @@map("user_companies")
-}
-
-model CustomRole {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  name        String
-  description String?
-  color       String?  @default("#6366f1")
-  isDefault   Boolean  @default(false) @map("is_default")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  permissions RolePermission[]
-  userCompanies UserCompany[]
-
-  @@unique([companyId, name])
-  @@index([companyId])
-  @@map("custom_roles")
-}
-
-model RolePermission {
-  id           String   @id @default(cuid())
-  customRoleId String   @map("custom_role_id")
-  module       String
-  canView      Boolean  @default(true) @map("can_view")
-  canCreate    Boolean  @default(false) @map("can_create")
-  canEdit      Boolean  @default(false) @map("can_edit")
-  canDelete    Boolean  @default(false) @map("can_delete")
-  canExport    Boolean  @default(false) @map("can_export")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
-
-  @@unique([customRoleId, module])
-  @@index([customRoleId])
-  @@map("role_permissions")
 }
 
 model RefreshToken {
@@ -112,44 +66,35 @@ model RefreshToken {
   userId    String   @map("user_id")
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }
 
 model Income {
-  id                    String       @id @default(cuid())
-  companyId             String       @map("company_id")
-  refNumber             String       @map("ref_number")
-  client                String
-  concept               String
-  method                String
-  amount                Float
-  margin                Float
-  status                IncomeStatus @default(PENDING)
-  date                  DateTime
-  folio                 String?
-  documento             String?
-  origen                String?
-  currency              String?      @default("USD")
-  amountSecondary       Float?       @map("amount_secondary")
-  currencySecondary     String?      @map("currency_secondary")
-  exchangeRate          Float?       @map("exchange_rate")
-  customFields          Json?        @map("custom_fields")
-  createdAt             DateTime     @default(now()) @map("created_at")
-  updatedAt             DateTime     @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                String       @id @default(cuid())
+  companyId         String       @map("company_id")
+  refNumber         String       @map("ref_number")
+  client            String
+  concept           String
+  method            String
+  amount            Float
+  margin            Float
+  status            IncomeStatus @default(PENDING)
+  date              DateTime
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  amountSecondary   Float?       @map("amount_secondary")
+  currency          String?      @default("USD")
+  currencySecondary String?      @map("currency_secondary")
+  customFields      Json?        @map("custom_fields")
+  documento         String?
+  exchangeRate      Float?       @map("exchange_rate")
+  folio             String?
+  origen            String?
+  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("incomes")
-}
-
-enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  MANAGER
-  USER
 }
 
 model Expense {
@@ -165,13 +110,10 @@ model Expense {
   date      DateTime
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
-
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  payroll Payroll?
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("expenses")
 }
-
 
 model Opportunity {
   id         String           @id @default(cuid())
@@ -185,8 +127,7 @@ model Opportunity {
   closeDate  DateTime?        @map("close_date")
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("opportunities")
 }
@@ -203,8 +144,7 @@ model Document {
   uploadedBy String       @map("uploaded_by")
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("documents")
 }
@@ -224,10 +164,210 @@ model Contract {
   uploadedBy String         @map("uploaded_by")
   createdAt  DateTime       @default(now()) @map("created_at")
   updatedAt  DateTime       @updatedAt @map("updated_at")
+  company    Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("contracts")
+}
+
+model Client {
+  id            String       @id @default(cuid())
+  companyId     String       @map("company_id")
+  name          String
+  email         String?
+  phone         String?
+  address       String?
+  taxId         String?      @map("tax_id")
+  status        ClientStatus @default(PROSPECTO)
+  contactName   String?      @map("contact_name")
+  notes         String?
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  cedula        String?
+  city          String?
+  country       String?
+  ruc           String?
+  alias         String?
+  codigoInterno String?      @map("codigo_interno")
+  contribuyente String?
+  curso         String?
+  customFields  Json?        @map("custom_fields")
+  origen        String?
+  phone2        String?
+  sucursal      String?
+  telefonoTutor String?      @map("telefono_tutor")
+  company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quotes        Quote[]
+  tickets       Ticket[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("clients")
+}
+
+model Quote {
+  id            String        @id @default(cuid())
+  quoteNumber   String        @unique @map("quote_number")
+  companyId     String        @map("company_id")
+  clientId      String        @map("client_id")
+  status        QuoteStatus   @default(DRAFT)
+  currency      String        @default("USD")
+  subtotal      Float
+  discount      Float         @default(0)
+  tax           Float         @default(0)
+  total         Float
+  validUntil    DateTime      @map("valid_until")
+  notes         String?
+  internalNotes String?       @map("internal_notes")
+  terms         String?
+  createdBy     String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  paymentMethod PaymentMethod @default(CONTADO) @map("payment_method")
+  taxApplies    Boolean       @default(true) @map("tax_applies")
+  items         QuoteItem[]
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id          String   @id @default(cuid())
+  quoteId     String   @map("quote_id")
+  productId   String?  @map("product_id")
+  description String
+  quantity    Int
+  unitPrice   Float    @map("unit_price")
+  discount    Float    @default(0)
+  tax         Float    @default(0)
+  total       Float
+  createdAt   DateTime @default(now()) @map("created_at")
+  product     Product? @relation(fields: [productId], references: [id])
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  companyId   String           @map("company_id")
+  categoryId  String?          @map("category_id")
+  name        String
+  sku         String
+  description String?
+  unit        String           @default("UNI")
+  stock       Int              @default(0)
+  minStock    Int              @default(0) @map("min_stock")
+  cost        Float            @default(0)
+  price       Float
+  isActive    Boolean          @default(true) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  category    ProductCategory? @relation(fields: [categoryId], references: [id])
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quoteItems  QuoteItem[]
+
+  @@unique([companyId, sku])
+  @@index([companyId])
+  @@index([categoryId])
+  @@map("products")
+}
+
+model ProductCategory {
+  id          String    @id @default(cuid())
+  companyId   String    @map("company_id")
+  name        String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("product_categories")
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  companyId   String         @map("company_id")
+  clientId    String?        @map("client_id")
+  title       String
+  description String?
+  status      TicketStatus   @default(PROCESO1)
+  priority    TicketPriority @default(MEDIUM)
+  assignedTo  String?        @map("assigned_to")
+  amount      Float?
+  dueDate     DateTime?      @map("due_date")
+  closedAt    DateTime?      @map("closed_at")
+  createdBy   String         @map("created_by")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  client      Client?        @relation(fields: [clientId], references: [id])
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([assignedTo])
+  @@map("tickets")
+}
+
+model Activity {
+  id          String         @id @default(cuid())
+  companyId   String         @map("company_id")
+  type        ActivityType
+  title       String
+  description String?
+  client      String?
+  status      ActivityStatus @default(PENDING)
+  priority    String?
+  assignedTo  String?        @map("assigned_to")
+  dueDate     DateTime       @map("due_date")
+  meetingLink String?        @map("meeting_link")
+  completedAt DateTime?      @map("completed_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("contracts")
+  @@index([companyId])
+  @@map("activities")
+}
+
+model MarketingCampaign {
+  id             String           @id @default(cuid())
+  companyId      String           @map("company_id")
+  name           String
+  description    String?
+  channel        MarketingChannel
+  status         MarketingStatus  @default(PLANIFICACION)
+  budget         Float?
+  spent          Float            @default(0)
+  startDate      DateTime?        @map("start_date")
+  endDate        DateTime?        @map("end_date")
+  targetAudience String?          @map("target_audience")
+  metrics        String?
+  assignedTo     String?          @map("assigned_to")
+  createdBy      String           @map("created_by")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([channel])
+  @@map("marketing_campaigns")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
 }
 
 enum IncomeStatus {
@@ -276,219 +416,6 @@ enum ContractStatus {
   ACTIVE
   EXPIRING_SOON
   EXPIRED
-}
-
-// ============================================
-// SPRINT 3 - CLIENTES, INVENTARIO, TICKETS
-// ============================================
-
-model Client {
-  id             String       @id @default(cuid())
-  companyId      String       @map("company_id")
-  name           String
-  email          String?
-  phone          String?
-  phone2         String?
-  address        String?
-  city           String?
-  country        String?
-  ruc            String?
-  cedula         String?
-  taxId          String?      @map("tax_id")
-  status         ClientStatus @default(PROSPECTO)
-  contactName    String?      @map("contact_name")
-  notes          String?
-  alias          String?
-  contribuyente  String?
-  sucursal       String?
-  codigoInterno  String?      @map("codigo_interno")
-  telefonoTutor  String?      @map("telefono_tutor")
-  curso          String?
-  origen         String?
-  customFields   Json?        @map("custom_fields")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-
-  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  quotes     Quote[]
-  tickets    Ticket[]
-  activities Activity[]
-
-  @@index([companyId])
-  @@index([status])
-  @@map("clients")
-}
-
-model Quote {
-  id            String        @id @default(cuid())
-  quoteNumber   String        @unique @map("quote_number")
-  companyId     String        @map("company_id")
-  clientId      String        @map("client_id")
-  status        QuoteStatus   @default(DRAFT)
-  currency      String        @default("USD")
-  subtotal      Float
-  discount      Float         @default(0)
-  tax           Float         @default(0)
-  total         Float
-  paymentMethod PaymentMethod @default(CONTADO) @map("payment_method")
-  taxApplies    Boolean       @default(true) @map("tax_applies")
-  validUntil    DateTime      @map("valid_until")
-  notes         String?
-  internalNotes String?       @map("internal_notes")
-  terms         String?
-  createdBy     String        @map("created_by")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  client  Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  items   QuoteItem[]
-
-  @@index([companyId])
-  @@index([clientId])
-  @@index([status])
-  @@map("quotes")
-}
-
-model QuoteItem {
-  id          String   @id @default(cuid())
-  quoteId     String   @map("quote_id")
-  productId   String?  @map("product_id")
-  description String
-  quantity    Int
-  unitPrice   Float    @map("unit_price")
-  discount    Float    @default(0)
-  tax         Float    @default(0)
-  total       Float
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-
-  @@index([quoteId])
-  @@map("quote_items")
-}
-
-model Product {
-  id                String   @id @default(cuid())
-  companyId         String   @map("company_id")
-  categoryId        String?  @map("category_id")
-  name              String
-  sku               String
-  description       String?
-  unit              String   @default("UNI")
-  stock             Int      @default(0)
-  minStock          Int      @default(0) @map("min_stock")
-  cost              Float    @default(0)
-  price             Float
-  netMargin         Float?   @map("net_margin")
-  promotion         String?
-  promotionCost     Float?   @map("promotion_cost")
-  promotionDiscount Float?   @map("promotion_discount")
-  isActive          Boolean  @default(true) @map("is_active")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  quoteItems QuoteItem[]
-
-  @@unique([companyId, sku])
-  @@index([companyId])
-  @@index([categoryId])
-  @@map("products")
-}
-
-model ProductCategory {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  name        String
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  products Product[]
-
-  @@unique([companyId, name])
-  @@index([companyId])
-  @@map("product_categories")
-}
-
-model Ticket {
-  id          String         @id @default(cuid())
-  companyId   String         @map("company_id")
-  clientId    String?        @map("client_id")
-  title       String
-  description String?
-  status      TicketStatus   @default(PROCESO1)
-  priority    TicketPriority @default(MEDIUM)
-  assignedTo  String?        @map("assigned_to")
-  amount      Float?
-  dueDate     DateTime?      @map("due_date")
-  closedAt    DateTime?      @map("closed_at")
-  createdBy   String         @map("created_by")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-
-  @@index([companyId])
-  @@index([status])
-  @@index([assignedTo])
-  @@map("tickets")
-}
-
-model Activity {
-  id             String         @id @default(cuid())
-  companyId      String         @map("company_id")
-  type           ActivityType
-  title          String
-  description    String?
-  status         ActivityStatus @default(PENDING)
-  priority       String?
-  assignedTo     String?        @map("assigned_to")
-  clientId       String?        @map("client_id")
-  dueDate        DateTime?      @map("due_date")
-  meetingLink    String?        @map("meeting_link")
-  createdBy      String         @map("created_by")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
-
-  @@index([companyId])
-  @@index([clientId])
-  @@index([status])
-  @@map("activities")
-}
-
-model MarketingCampaign {
-  id          String           @id @default(cuid())
-  companyId   String           @map("company_id")
-  name        String
-  description String?
-  channel     MarketingChannel
-  status      MarketingStatus  @default(PLANIFICACION)
-  budget      Float?
-  spent       Float            @default(0)
-  startDate   DateTime?        @map("start_date")
-  endDate     DateTime?        @map("end_date")
-  targetAudience String?       @map("target_audience")
-  metrics     String?
-  assignedTo  String?          @map("assigned_to")
-  createdBy   String           @map("created_by")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
-  @@index([status])
-  @@index([channel])
-  @@map("marketing_campaigns")
 }
 
 enum ClientStatus {
@@ -542,43 +469,4 @@ enum MarketingChannel {
   CONTENIDO
   EVENTOS
   OTRO
-}
-
-model Payroll {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  period      String   // Ej: "Enero 2026", "2026-01"
-  employeeName String  @map("employee_name")
-  position    String?
-  salary      Float
-  bonuses     Float    @default(0)
-  deductions  Float    @default(0)
-  netPay      Float    @map("net_pay")
-  expenseId   String?  @unique @map("expense_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  expense Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
-
-  @@index([companyId])
-  @@index([period])
-  @@map("payrolls")
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  type      String   // ASSIGNMENT, MENTION, REMINDER, etc.
-  title     String
-  message   String
-  link      String?
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRead])
-  @@map("notifications")
 }

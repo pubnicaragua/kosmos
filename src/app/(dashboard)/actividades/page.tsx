@@ -20,6 +20,7 @@ interface Activity {
   priority?: string | null
   assignedTo?: string | null
   dueDate: string
+  meetingLink?: string | null
 }
 
 interface CompanyOption {
@@ -46,6 +47,7 @@ interface ActivityRowDraft {
   priority: string
   assignedTo: string
   dueDate: string
+  meetingLink: string
 }
 
 const STATUS_TABS = [
@@ -176,6 +178,7 @@ export default function ActividadesPage() {
         priority: 'Media',
         assignedTo: '',
         dueDate: new Date().toISOString().split('T')[0],
+        meetingLink: '',
       },
     ])
   }
@@ -195,6 +198,7 @@ export default function ActividadesPage() {
         priority: activity.priority || 'Media',
         assignedTo: activity.assignedTo || '',
         dueDate: activity.dueDate.split('T')[0],
+        meetingLink: activity.meetingLink || '',
       },
     }))
   }
@@ -250,6 +254,7 @@ export default function ActividadesPage() {
           priority: row.priority || undefined,
           assignedTo: row.assignedTo || undefined,
           dueDate: row.dueDate,
+          meetingLink: row.meetingLink || undefined,
         }),
       })
 
