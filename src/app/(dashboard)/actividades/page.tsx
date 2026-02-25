@@ -503,8 +503,8 @@ export default function ActividadesPage() {
                       <option value="OTHER">Otra</option>
                     </select>
                   </td>
-                  <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título" /></td>
-                  <td className="py-2 px-2"><input value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Descripción" /></td>
+                  <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título de la actividad" /></td>
+                  <td className="py-2 px-2"><textarea value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Descripción detallada" rows={2} /></td>
                   <td className="py-2 px-2"><input value={row.client} onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Cliente" /></td>
                   <td className="py-2 px-2"><input value={row.assignedTo} onChange={(e) => updateDraftRow(row.tempId, 'assignedTo', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Responsable" /></td>
                   <td className="py-2 px-2"><input type="date" value={row.dueDate} onChange={(e) => updateDraftRow(row.tempId, 'dueDate', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
@@ -530,8 +530,8 @@ export default function ActividadesPage() {
                         <option value="OTHER">Otra</option>
                       </select>
                     </td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2"><textarea value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" rows={2} /></td>
                     <td className="py-2 px-2"><input value={editingRows[activity.id].client} onChange={(e) => updateEditingRow(activity.id, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                     <td className="py-2 px-2"><input value={editingRows[activity.id].assignedTo} onChange={(e) => updateEditingRow(activity.id, 'assignedTo', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                     <td className="py-2 px-2"><input type="date" value={editingRows[activity.id].dueDate} onChange={(e) => updateEditingRow(activity.id, 'dueDate', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
@@ -547,8 +547,8 @@ export default function ActividadesPage() {
                 ) : (
                   <tr key={activity.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900">{getTypeLabel(activity.type)}</div></td>
-                    <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900">{activity.title}</div></td>
-                    <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.description || '-'}</div></td>
+                    <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900 min-w-[250px]">{activity.title}</div></td>
+                    <td className="py-4 px-3"><div className="text-sm text-gray-600 min-w-[300px] whitespace-pre-wrap">{activity.description || '-'}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.client || '-'}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.assignedTo || '-'}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{new Date(activity.dueDate).toLocaleDateString('es-ES')}</div></td>

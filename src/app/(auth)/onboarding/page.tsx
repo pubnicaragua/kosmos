@@ -112,6 +112,10 @@ export default function OnboardingPage() {
                 <div
                   key={company.id}
                   onClick={() => setSelectedCompany(company.id)}
+                  onDoubleClick={() => {
+                    localStorage.setItem('activeCompany', JSON.stringify(company))
+                    router.push('/dashboards')
+                  }}
                   className={`
                     border-2 rounded-lg p-6 cursor-pointer transition-all
                     ${selectedCompany === company.id 
