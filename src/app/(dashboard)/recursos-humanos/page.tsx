@@ -46,6 +46,7 @@ export default function RecursosHumanosPage() {
     if (activeCompany?.id) {
       fetchPayrolls()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompany])
 
   const fetchPayrolls = async () => {

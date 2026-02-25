@@ -255,7 +255,7 @@ export function Header() {
               <div className="absolute top-full mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
                 {searchResults.length === 0 && !isSearching && (
                   <div className="p-4 text-center text-sm text-gray-500">
-                    No se encontraron resultados para "{searchQuery}"
+                    No se encontraron resultados para &quot;{searchQuery}&quot;
                   </div>
                 )}
                 {searchResults.map((result, index) => {

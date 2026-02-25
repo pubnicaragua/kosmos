@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, FormEvent } from 'react'
+import Image from 'next/image'
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
@@ -623,7 +624,7 @@ export default function AjustesPage() {
               </div>
               {profileForm.avatar && (
                 <div className="mt-2">
-                  <img src={profileForm.avatar} alt="Avatar preview" className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
+                  <Image src={profileForm.avatar} alt="Avatar preview" width={64} height={64} className="w-16 h-16 rounded-full object-cover border-2 border-gray-200" />
                 </div>
               )}
             </div>
@@ -711,7 +712,7 @@ export default function AjustesPage() {
                 </div>
                 {companyForm.logo && (
                   <div className="mt-2">
-                    <img src={companyForm.logo} alt="Logo preview" className="h-12 object-contain border border-gray-200 rounded p-2" />
+                    <Image src={companyForm.logo} alt="Logo preview" width={150} height={48} className="h-12 object-contain border border-gray-200 rounded p-2" />
                   </div>
                 )}
               </div>
