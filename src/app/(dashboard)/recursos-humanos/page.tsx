@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
+import { Download, Upload } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 interface Payroll {
   id: string
@@ -67,6 +69,28 @@ export default function RecursosHumanosPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleExport = () => {
+    if (!payrolls.length) {
+      alert('No hay planillas para exportar')
+      return
+    }
+
+    const rows = payrolls.map((payroll) => ({
+      Periodo: payroll.period,
+      'Monto Total': payroll.totalAmount,
+      Estado: payroll.status,
+      'Archivo': payroll.fileName,
+      'Notas': payroll.notes || '',
+      'Fecha Creación': new Date(payroll.createdAt).toLocaleDateString('es-ES'),
+      'Ref Gasto': payroll.expense?.refNumber || '',
+    }))
+
+    const workbook = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Planillas')
+    XLSX.writeFile(workbook, `planillas_${activeCompany?.name || 'empresa'}_${Date.now()}.xlsx`)
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,12 +221,19 @@ export default function RecursosHumanosPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recursos Humanos</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Recursos Humanos</h1>
           <p className="text-sm text-gray-500 mt-1">Gestión de planillas de nómina</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          📤 Cargar Planilla
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={handleExport} disabled={payrolls.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar XLSX
+          </Button>
+          <Button onClick={() => setShowModal(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Cargar Planilla
+          </Button>
+        </div>
       </div>
 
       {loading ? (

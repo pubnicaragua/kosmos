@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import { Upload } from 'lucide-react'
 
 interface Contract {
   id: string
@@ -29,6 +30,17 @@ interface Company {
   name: string
 }
 
+type ContractFormData = {
+  contractId: string
+  name: string
+  concept: string
+  category: string
+  party: string
+  startDate: string
+  endDate: string
+  fileUrl: string
+}
+
 export default function ContratosPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -39,7 +51,7 @@ export default function ContratosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingContractId, setEditingContractId] = useState<string | null>(null)
   const [viewingContract, setViewingContract] = useState<Contract | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ContractFormData>({
     contractId: '',
     name: '',
     concept: '',
@@ -49,6 +61,8 @@ export default function ContratosPage() {
     endDate: '',
     fileUrl: '',
   })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -141,6 +155,34 @@ export default function ContratosPage() {
     setIsModalOpen(true)
   }
 
+  const handleFileUpload = async (file: File): Promise<string | null> => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return null
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success) return data.data.url
+      alert(data.error || 'Error al subir archivo')
+      return null
+    } catch (err) {
+      console.error('Upload error:', err)
+      alert('Error al subir archivo')
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('accessToken')
@@ -155,6 +197,15 @@ export default function ContratosPage() {
       return
     }
 
+    let fileUrl = formData.fileUrl
+
+    // Upload file if selected
+    if (selectedFile) {
+      const uploadedUrl = await handleFileUpload(selectedFile)
+      if (!uploadedUrl) return
+      fileUrl = uploadedUrl
+    }
+
     try {
       const response = await fetch(editingContractId ? `/api/contracts/${editingContractId}` : '/api/contracts', {
         method: editingContractId ? 'PUT' : 'POST',
@@ -164,6 +215,7 @@ export default function ContratosPage() {
         },
         body: JSON.stringify({
           ...formData,
+          fileUrl,
           ...(editingContractId ? {} : { companyId: targetCompanyId }),
         }),
       })
@@ -172,6 +224,7 @@ export default function ContratosPage() {
 
       if (data.success) {
         setIsModalOpen(false)
+        setSelectedFile(null)
         fetchData()
       } else {
         alert(data.error || 'No se pudo guardar el contrato')
@@ -549,13 +602,41 @@ export default function ContratosPage() {
               fullWidth
             />
           </div>
-          <Input
-            label="URL del Archivo"
-            value={formData.fileUrl}
-            onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-            placeholder="/uploads/contracts/CTR-2024-001.pdf"
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Archivo del Contrato</label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="URL del contrato o sube uno..."
+                value={formData.fileUrl}
+                onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
+                fullWidth
+              />
+              <div>
+                <input
+                  id="contract-file-upload"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) setSelectedFile(file)
+                  }}
+                  disabled={uploading}
+                />
+                <label htmlFor="contract-file-upload" className="cursor-pointer inline-block">
+                  <span className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                    uploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}>
+                    <Upload className="w-4 h-4 mr-1" />
+                    {uploading ? 'Subiendo...' : 'Subir'}
+                  </span>
+                </label>
+              </div>
+            </div>
+            {selectedFile && (
+              <p className="text-sm text-green-600 mt-1">✓ {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)</p>
+            )}
+          </div>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
               <strong>Nota:</strong> En producción, aquí iría un componente de upload real para adjuntar el PDF del contrato.

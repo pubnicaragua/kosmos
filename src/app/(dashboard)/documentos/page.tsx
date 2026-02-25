@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import { Upload } from 'lucide-react'
 
 interface Document {
   id: string
@@ -51,6 +52,8 @@ export default function DocumentosPage() {
     category: 'General',
     fileUrl: '',
   })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -133,6 +136,34 @@ export default function DocumentosPage() {
     setIsModalOpen(true)
   }
 
+  const handleFileUpload = async (file: File): Promise<string | null> => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return null
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success) return data.data.url
+      alert(data.error || 'Error al subir archivo')
+      return null
+    } catch (err) {
+      console.error('Upload error:', err)
+      alert('Error al subir archivo')
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('accessToken')
@@ -146,6 +177,20 @@ export default function DocumentosPage() {
       return
     }
 
+    let fileUrl = formData.fileUrl
+
+    // Upload file if selected
+    if (selectedFile) {
+      const uploadedUrl = await handleFileUpload(selectedFile)
+      if (!uploadedUrl) return
+      fileUrl = uploadedUrl
+    }
+
+    if (!fileUrl) {
+      alert('Debes proporcionar una URL o subir un archivo')
+      return
+    }
+
     try {
       const response = await fetch(editingDocumentId ? `/api/documents/${editingDocumentId}` : '/api/documents', {
         method: editingDocumentId ? 'PUT' : 'POST',
@@ -155,7 +200,8 @@ export default function DocumentosPage() {
         },
         body: JSON.stringify({
           ...formData,
-          ...(editingDocumentId ? {} : { companyId: targetCompanyId, fileSize: 1024000 }),
+          fileUrl,
+          ...(editingDocumentId ? {} : { companyId: targetCompanyId, fileSize: selectedFile?.size || 1024000 }),
         }),
       })
 
@@ -163,6 +209,7 @@ export default function DocumentosPage() {
       if (data.success) {
         setIsModalOpen(false)
         setEditingDocumentId(null)
+        setSelectedFile(null)
         fetchData()
         setFormData({
           name: '',
@@ -507,18 +554,39 @@ export default function DocumentosPage() {
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             fullWidth
           />
-          <Input
-            label="URL del Archivo"
-            value={formData.fileUrl}
-            onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-            placeholder="/uploads/documents/archivo.pdf"
-            required
-            fullWidth
-          />
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Nota:</strong> En producción, aquí iría un componente de upload real que suba el archivo a un servicio de storage (AWS S3, Cloudflare R2, etc.)
-            </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Archivo</label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="URL del archivo o sube uno..."
+                value={formData.fileUrl}
+                onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
+                fullWidth
+              />
+              <div>
+                <input
+                  id="doc-file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) setSelectedFile(file)
+                  }}
+                  disabled={uploading}
+                />
+                <label htmlFor="doc-file-upload" className="cursor-pointer inline-block">
+                  <span className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                    uploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}>
+                    <Upload className="w-4 h-4 mr-1" />
+                    {uploading ? 'Subiendo...' : 'Subir'}
+                  </span>
+                </label>
+              </div>
+            </div>
+            {selectedFile && (
+              <p className="text-sm text-green-600 mt-1">✓ {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)</p>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button

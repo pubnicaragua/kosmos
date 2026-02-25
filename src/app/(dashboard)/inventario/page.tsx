@@ -35,7 +35,6 @@ const STOCK_TABS = [
 ]
 
 export default function InventarioPage() {
-  const ITEMS_PER_PAGE = 10
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -46,6 +45,8 @@ export default function InventarioPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [itemsPerPage, setItemsPerPage] = useState(25)
+  const [showFilters, setShowFilters] = useState(false)
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -74,7 +75,7 @@ export default function InventarioPage() {
       if (selectedTab !== 'all') params.append('stockFilter', selectedTab)
       if (searchTerm.trim()) params.append('search', searchTerm.trim())
       params.append('page', currentPage.toString())
-      params.append('limit', ITEMS_PER_PAGE.toString())
+      params.append('limit', itemsPerPage.toString())
 
       const response = await fetch(`/api/products?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -91,7 +92,7 @@ export default function InventarioPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedTab, searchTerm, currentPage])
+  }, [selectedCompany, selectedTab, searchTerm, currentPage, itemsPerPage])
 
   useEffect(() => {
     fetchCompanies()
@@ -105,8 +106,8 @@ export default function InventarioPage() {
     setCurrentPage(1)
   }, [selectedCompany, selectedTab, searchTerm])
 
-  const showingFrom = totalItems === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1
-  const showingTo = totalItems === 0 ? 0 : Math.min(currentPage * ITEMS_PER_PAGE, totalItems)
+  const showingFrom = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
+  const showingTo = totalItems === 0 ? 0 : Math.min(currentPage * itemsPerPage, totalItems)
 
   const visiblePages = (() => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, index) => index + 1)
@@ -158,23 +159,23 @@ export default function InventarioPage() {
           <p className="text-sm text-gray-500 mt-1">Administra tu inventario de productos, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleMermas}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button variant="outline" onClick={handleMermas} className="h-10">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            MERMAS
+            Mermas
           </Button>
-          <Button variant="outline" onClick={handleImportOrUpdate}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button variant="outline" onClick={handleImportOrUpdate} className="h-10">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            IMPORTAR/ACTUALIZAR PRODUCTOS
+            Importar/Actualizar
           </Button>
-          <Button onClick={() => router.push('/inventario/edicion')}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button onClick={() => router.push('/inventario/edicion')} className="h-10">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            EDITAR/AGREGAR PRODUCTO
+            Editar/Agregar
           </Button>
         </div>
       </div>
@@ -216,12 +217,26 @@ export default function InventarioPage() {
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2">
-            <button className="p-2 text-gray-600 hover:text-gray-900">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-2 rounded transition-colors ${
+                showFilters ? 'bg-primary text-white' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+              title="Filtros"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
             </button>
-            <button className="p-2 text-gray-600 hover:text-gray-900">
+            <button 
+              onClick={() => {
+                setSelectedTab('all')
+                setSearchTerm('')
+                setShowFilters(false)
+              }}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+              title="Limpiar filtros"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -296,8 +311,25 @@ export default function InventarioPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">
-          Mostrando {showingFrom} a {showingTo} de {totalItems} resultados
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Mostrando {showingFrom} a {showingTo} de {totalItems} resultados
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="75">75</option>
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button

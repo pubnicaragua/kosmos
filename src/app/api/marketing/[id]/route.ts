@@ -102,6 +102,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  return PATCH(request, { params })
+}
+
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')

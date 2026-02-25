@@ -73,6 +73,7 @@ export default function ClientesPage() {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importIncomes, setImportIncomes] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importResult, setImportResult] = useState<any>(null)
   const [draftRows, setDraftRows] = useState<ClientRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, ClientRowDraft>>({})
@@ -142,14 +143,35 @@ export default function ClientesPage() {
 
     setIsImporting(true)
     setImportResult(null)
+    setImportProgress({ current: 0, total: 0 })
 
     try {
+      // Read file to get total count for progress
+      const XLSX = await import('xlsx')
+      const arrayBuffer = await importFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      const data = XLSX.utils.sheet_to_json(firstSheet)
+      
+      setImportProgress({ current: 0, total: data.length })
+
       const formData = new FormData()
       formData.append('file', importFile)
       formData.append('companyId', selectedCompany)
       formData.append('importIncomes', importIncomes.toString())
 
       const token = localStorage.getItem('accessToken')
+      
+      // Simulate progress updates (since API doesn't support streaming)
+      const progressInterval = setInterval(() => {
+        setImportProgress(prev => {
+          if (prev.current < prev.total) {
+            return { ...prev, current: Math.min(prev.current + Math.ceil(prev.total / 10), prev.total) }
+          }
+          return prev
+        })
+      }, 500)
+
       const response = await fetch('/api/clients/import', {
         method: 'POST',
         headers: {
@@ -158,9 +180,11 @@ export default function ClientesPage() {
         body: formData
       })
 
+      clearInterval(progressInterval)
       const result = await response.json()
 
       if (result.success) {
+        setImportProgress({ current: data.length, total: data.length })
         setImportResult(result.data)
         fetchData()
         setTimeout(() => {
@@ -168,6 +192,7 @@ export default function ClientesPage() {
           setImportFile(null)
           setImportIncomes(false)
           setImportResult(null)
+          setImportProgress({ current: 0, total: 0 })
         }, 5000)
       } else {
         alert(`Error: ${result.error}`)
@@ -945,22 +970,37 @@ export default function ClientesPage() {
                 Cancelar
               </Button>
               {!importResult && (
-                <Button
-                  onClick={handleImport}
-                  disabled={!importFile || selectedCompany === 'all' || isImporting}
-                >
-                  {isImporting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Importando...
-                    </>
-                  ) : (
-                    'Importar'
+                <>
+                  {isImporting && importProgress.total > 0 && (
+                    <div className="flex-1">
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Procesando clientes...</span>
+                        <span className="font-semibold text-primary">
+                          {importProgress.current} / {importProgress.total}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div 
+                          className="bg-primary h-full rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={!importFile || selectedCompany === 'all' || isImporting}
+                  >
+                    {isImporting ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Importando...
+                      </div>
+                    ) : (
+                      'Importar'
+                    )}
+                  </Button>
+                </>
               )}
             </div>
           </div>

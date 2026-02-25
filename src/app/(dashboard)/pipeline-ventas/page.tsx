@@ -444,19 +444,23 @@ export default function PipelineVentasPage() {
         </Button>
       </div>
 
-      {/* Stage summary row */}
-      <div className="flex items-center gap-6 flex-wrap">
+      {/* Stage summary row - aligned with columns */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {STAGES.map((stage) => {
           const count = getOpportunitiesByStage(stage.id).length
           const total = getTotalByStage(stage.id)
           return (
-            <div key={stage.id} className="flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${stage.dot}`} />
-              <span className={`text-sm font-semibold uppercase ${stage.headerText}`}>
-                {stage.label}
-              </span>
-              <span className="text-sm font-bold text-gray-700">{count}</span>
-              <span className="text-sm font-bold text-gray-900">{formatCurrency(total)}</span>
+            <div key={stage.id} className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`w-3 h-3 rounded-full ${stage.dot}`} />
+                <span className={`text-xs font-semibold uppercase ${stage.headerText}`}>
+                  {stage.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-gray-700">{count}</span>
+                <span className="text-sm font-bold text-gray-900">{formatCurrency(total)}</span>
+              </div>
             </div>
           )
         })}
@@ -501,10 +505,18 @@ export default function PipelineVentasPage() {
                       draggable
                       onDragStart={() => handleDragStart(opportunity)}
                       onDragEnd={() => { setDraggedItem(null); setDragOverStage(null) }}
-                      className={`group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${stage.border} select-none animate-in fade-in slide-in-from-bottom-2 ${
-                        isDragging ? 'opacity-50 scale-95 rotate-2' : 'opacity-100 scale-100 rotate-0'
+                      className={`group bg-white rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${stage.border} select-none animate-in fade-in slide-in-from-bottom-2 ${
+                        isDragging 
+                          ? 'opacity-30 scale-90' 
+                          : 'opacity-100 scale-100 shadow-sm hover:shadow-lg hover:-translate-y-1'
                       }`}
-                      style={{ animationDuration: '300ms', animationFillMode: 'both' }}
+                      style={{ 
+                        animationDuration: '300ms', 
+                        animationFillMode: 'both',
+                        ...(isDragging && {
+                          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        })
+                      }}
                     >
                       <div className="p-4">
                         {/* Status badge + actions */}

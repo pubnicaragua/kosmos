@@ -595,15 +595,17 @@ export default function AjustesPage() {
             />
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
-              <div className="flex gap-2 items-end">
+              <div className="flex items-center gap-3">
                 <Input
+                  label="Avatar URL"
                   placeholder="URL del avatar o sube una imagen..."
                   value={profileForm.avatar}
                   onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })}
                   fullWidth
                 />
-                <label className="relative cursor-pointer">
+                <div>
                   <input
+                    id="avatar-upload"
                     type="file"
                     accept="image/*"
                     className="hidden"
@@ -616,11 +618,17 @@ export default function AjustesPage() {
                     }}
                     disabled={uploadingAvatar}
                   />
-                  <Button type="button" variant="outline" disabled={uploadingAvatar}>
-                    <Upload className="w-4 h-4 mr-1" />
-                    {uploadingAvatar ? 'Subiendo...' : 'Subir'}
-                  </Button>
-                </label>
+                  <label htmlFor="avatar-upload" className="cursor-pointer inline-block">
+                    <span className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                      uploadingAvatar 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}>
+                      <Upload className="w-4 h-4 mr-1" />
+                      {uploadingAvatar ? 'Subiendo...' : 'Subir'}
+                    </span>
+                  </label>
+                </div>
               </div>
               {profileForm.avatar && (
                 <div className="mt-2">
@@ -690,8 +698,9 @@ export default function AjustesPage() {
                     fullWidth
                     disabled={!canEditCompany}
                   />
-                  <label className="relative cursor-pointer">
+                  <div>
                     <input
+                      id="logo-upload"
                       type="file"
                       accept="image/*"
                       className="hidden"
@@ -704,11 +713,17 @@ export default function AjustesPage() {
                       }}
                       disabled={!canEditCompany || uploadingLogo}
                     />
-                    <Button type="button" variant="outline" disabled={!canEditCompany || uploadingLogo}>
-                      <Upload className="w-4 h-4 mr-1" />
-                      {uploadingLogo ? 'Subiendo...' : 'Subir'}
-                    </Button>
-                  </label>
+                    <label htmlFor="logo-upload" className="cursor-pointer inline-block">
+                      <span className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                        !canEditCompany || uploadingLogo
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'bg-white text-gray-700 hover:bg-gray-50'
+                      }`}>
+                        <Upload className="w-4 h-4 mr-1" />
+                        {uploadingLogo ? 'Subiendo...' : 'Subir'}
+                      </span>
+                    </label>
+                  </div>
                 </div>
                 {companyForm.logo && (
                   <div className="mt-2">

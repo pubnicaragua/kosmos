@@ -42,12 +42,27 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return apiError('Solo admins pueden agregar usuarios', 403)
 
     const body = await request.json()
-    const { email, role, customRoleId } = body
+    const { email, role, customRoleId, name } = body
 
     if (!email) return apiError('email es requerido', 400)
 
-    const targetUser = await prisma.user.findUnique({ where: { email } })
-    if (!targetUser) return apiError('Usuario no encontrado con ese email', 404)
+    // Auto-create user if doesn't exist
+    let targetUser = await prisma.user.findUnique({ where: { email } })
+    
+    if (!targetUser) {
+      const { hashPassword } = await import('@/lib/auth')
+      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
+      
+      targetUser = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split('@')[0],
+          password: await hashPassword(tempPassword),
+        },
+      })
+      
+      console.log(`Usuario creado: ${email} con contraseña temporal: ${tempPassword}`)
+    }
 
     const existing = await prisma.userCompany.findFirst({
       where: { userId: targetUser.id, companyId: params.id },
