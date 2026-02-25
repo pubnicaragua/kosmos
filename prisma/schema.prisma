@@ -8,15 +8,13 @@ datasource db {
 }
 
 model User {
-  id                 String   @id @default(cuid())
-  email              String   @unique
-  password           String
-  name               String
-  avatar             String?
-  googleAccessToken  String?  @map("google_access_token")
-  googleRefreshToken String?  @map("google_refresh_token")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   userCompanies UserCompany[]
   refreshTokens RefreshToken[]
@@ -174,25 +172,6 @@ model Expense {
   @@map("expenses")
 }
 
-model Activity {
-  id          String         @id @default(cuid())
-  companyId   String         @map("company_id")
-  type        ActivityType
-  title       String
-  description String?
-  client      String?
-  status      ActivityStatus @default(PENDING)
-  priority    String?
-  assignedTo  String?        @map("assigned_to")
-  dueDate     DateTime       @map("due_date")
-  completedAt DateTime?      @map("completed_at")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@map("activities")
-}
 
 model Opportunity {
   id         String           @id @default(cuid())
@@ -330,9 +309,10 @@ model Client {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  quotes  Quote[]
-  tickets Ticket[]
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quotes     Quote[]
+  tickets    Ticket[]
+  activities Activity[]
 
   @@index([companyId])
   @@index([status])
@@ -461,21 +441,20 @@ model Ticket {
 }
 
 model Activity {
-  id              String         @id @default(cuid())
-  companyId       String         @map("company_id")
-  type            ActivityType
-  title           String
-  description     String?
-  status          ActivityStatus @default(PENDING)
-  priority        String?
-  assignedTo      String?        @map("assigned_to")
-  clientId        String?        @map("client_id")
-  dueDate         DateTime?      @map("due_date")
-  googleEventId   String?        @map("google_event_id")
-  googleMeetLink  String?        @map("google_meet_link")
-  createdBy       String         @map("created_by")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id             String         @id @default(cuid())
+  companyId      String         @map("company_id")
+  type           ActivityType
+  title          String
+  description    String?
+  status         ActivityStatus @default(PENDING)
+  priority       String?
+  assignedTo     String?        @map("assigned_to")
+  clientId       String?        @map("client_id")
+  dueDate        DateTime?      @map("due_date")
+  meetingLink    String?        @map("meeting_link")
+  createdBy      String         @map("created_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
