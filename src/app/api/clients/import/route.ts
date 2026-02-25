@@ -49,11 +49,23 @@ export async function POST(request: NextRequest) {
     // Parsear Excel (procesa todas las hojas)
     const result = parseExcelFileAllSheets(buffer)
 
+    console.log('Resultado del parseo:', {
+      clientsFound: result.clients.length,
+      incomesFound: result.incomes.length,
+      hasIncomes: result.hasIncomes,
+      errors: result.errors
+    })
+
     if (result.clients.length === 0 && (!importIncomes || result.incomes.length === 0)) {
+      console.error('No se encontraron datos válidos:', result.errors)
       return NextResponse.json({ 
         success: false, 
-        error: 'No se encontraron datos válidos para importar', 
-        details: result.errors 
+        error: 'No se encontraron datos válidos para importar. Verifica que el archivo tenga una columna de nombres/clientes.', 
+        details: result.errors,
+        debug: {
+          clientsFound: result.clients.length,
+          incomesFound: result.incomes.length
+        }
       }, { status: 400 })
     }
 
@@ -63,20 +75,43 @@ export async function POST(request: NextRequest) {
 
     for (const clientData of result.clients) {
       try {
-        // Verificar si ya existe por nombre
+        // Verificar si ya existe por nombre o cédula/RUC
         const existing = await prisma.client.findFirst({
           where: {
             companyId,
-            name: clientData.name
+            OR: [
+              { name: clientData.name },
+              ...(clientData.cedula ? [{ cedula: clientData.cedula }] : []),
+              ...(clientData.ruc ? [{ ruc: clientData.ruc }] : [])
+            ]
           }
         })
 
         if (existing) {
-          skippedClients.push({ name: clientData.name, reason: 'Ya existe' })
+          // Actualizar cliente existente (sobrescribir)
+          const updated = await prisma.client.update({
+            where: { id: existing.id },
+            data: {
+              email: clientData.email || existing.email,
+              phone: clientData.phone || existing.phone,
+              phone2: clientData.phone2 || existing.phone2,
+              cedula: clientData.cedula || existing.cedula,
+              ruc: clientData.ruc || existing.ruc,
+              alias: clientData.alias || existing.alias,
+              codigoInterno: clientData.codigoInterno || existing.codigoInterno,
+              curso: clientData.curso || existing.curso,
+              sucursal: clientData.sucursal || existing.sucursal,
+              contribuyente: clientData.contribuyente || existing.contribuyente,
+              telefonoTutor: clientData.telefonoTutor || existing.telefonoTutor,
+              notes: clientData.notes || existing.notes,
+              ...(clientData.customFields ? { customFields: clientData.customFields } : {}),
+            }
+          })
+          skippedClients.push({ name: clientData.name, reason: 'Actualizado (ya existía)' })
           continue
         }
 
-        // Crear cliente
+        // Crear cliente nuevo
         const client = await prisma.client.create({
           data: {
             companyId,
@@ -101,7 +136,7 @@ export async function POST(request: NextRequest) {
         importedClients.push(client)
       } catch (error) {
         console.error('Error importing client:', clientData.name, error)
-        skippedClients.push({ name: clientData.name, reason: 'Error al crear' })
+        skippedClients.push({ name: clientData.name, reason: 'Error al procesar' })
       }
     }
 

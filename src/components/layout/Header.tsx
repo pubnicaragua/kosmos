@@ -65,19 +65,20 @@ export function Header() {
       })
       const clientsData = await clientsRes.json()
       if (clientsData.success) {
-        clientsData.data
+        const clientsList = Array.isArray(clientsData.data) ? clientsData.data : []
+        clientsList
           .filter((c: any) => 
-            c.name?.toLowerCase().includes(lowerQuery) || 
+            c.name?.toLowerCase().includes(lowerQuery) ||
             c.email?.toLowerCase().includes(lowerQuery) ||
-            c.phone?.toLowerCase().includes(lowerQuery)
+            c.phone?.includes(query)
           )
-          .slice(0, 3)
+          .slice(0, 5)
           .forEach((c: any) => {
             results.push({
               id: c.id,
               type: 'client',
               title: c.name,
-              subtitle: c.email || c.phone,
+              subtitle: c.email || c.phone || '',
               url: `/clientes?highlight=${c.id}`,
             })
           })

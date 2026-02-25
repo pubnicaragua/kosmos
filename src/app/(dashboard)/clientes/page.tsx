@@ -56,7 +56,7 @@ interface ClientRowDraft {
 }
 
 export default function ClientesPage() {
-  const ITEMS_PER_PAGE = 10
+  const [itemsPerPage, setItemsPerPage] = useState(25)
   const router = useRouter()
   const [clients, setClients] = useState<Client[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -388,14 +388,14 @@ export default function ClientesPage() {
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
 
-  const totalPages = Math.max(1, Math.ceil(clients.length / ITEMS_PER_PAGE))
+  const totalPages = Math.max(1, Math.ceil(clients.length / itemsPerPage))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedClients = clients.slice(
-    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
-    safeCurrentPage * ITEMS_PER_PAGE
+    (safeCurrentPage - 1) * itemsPerPage,
+    safeCurrentPage * itemsPerPage
   )
-  const showingFrom = clients.length === 0 ? 0 : (safeCurrentPage - 1) * ITEMS_PER_PAGE + 1
-  const showingTo = clients.length === 0 ? 0 : Math.min(safeCurrentPage * ITEMS_PER_PAGE, clients.length)
+  const showingFrom = clients.length === 0 ? 0 : (safeCurrentPage - 1) * itemsPerPage + 1
+  const showingTo = clients.length === 0 ? 0 : Math.min(safeCurrentPage * itemsPerPage, clients.length)
 
   if (isLoading) {
     return (
@@ -785,8 +785,26 @@ export default function ClientesPage() {
       </Card>
 
       <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">
-          Mostrando {showingFrom} a {showingTo} de {clients.length} resultados
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Mostrando {showingFrom} a {showingTo} de {clients.length} resultados
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="75">75</option>
+              <option value="150">150</option>
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button

@@ -82,7 +82,12 @@ function findColumnIndex(headers: string[], possibleNames: string[]): number {
   
   for (const possibleName of possibleNames) {
     const normalized = normalizeColumnName(possibleName)
-    const index = normalizedHeaders.findIndex(h => h.includes(normalized) || normalized.includes(h))
+    // Buscar coincidencia exacta primero
+    let index = normalizedHeaders.findIndex(h => h === normalized)
+    if (index !== -1) return index
+    
+    // Luego buscar coincidencias parciales
+    index = normalizedHeaders.findIndex(h => h.includes(normalized) || normalized.includes(h))
     if (index !== -1) return index
   }
   
@@ -175,7 +180,14 @@ export function parseExcelFile(buffer: Buffer, sheetIndex: number = 0): ImportRe
   const monedaFacturaIdx = findColumnIndex(headers, COLUMN_MAPPINGS.monedaFactura)
   const fechaIdx = findColumnIndex(headers, COLUMN_MAPPINGS.fechaEmision)
   
-  const hasIncomes = folioIdx !== -1 || documentoIdx !== -1 || importeCobroIdx !== -1
+  // Detectar si tiene columnas de ingresos (más flexible)
+  const hasIncomes = folioIdx !== -1 || documentoIdx !== -1 || importeCobroIdx !== -1 || importeFacturaIdx !== -1
+  
+  console.log('Columnas detectadas:', {
+    name: nameIdx, email: emailIdx, phone: phoneIdx,
+    folio: folioIdx, documento: documentoIdx, importeCobro: importeCobroIdx,
+    hasIncomes
+  })
   
   if (nameIdx === -1) {
     errors.push('No se encontró columna de nombre/cliente')

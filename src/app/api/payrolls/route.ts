@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    return successResponse(payrolls)
+    // Ensure we return an array
+    const payrollsArray = Array.isArray(payrolls) ? payrolls : []
+    return successResponse(payrollsArray)
   } catch (error) {
     console.error('Get payrolls error:', error)
     return errorResponse('Error al obtener planillas', 500)
