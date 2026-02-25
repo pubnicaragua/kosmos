@@ -241,7 +241,12 @@ export function Sidebar() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{user.name || 'Usuario'}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {customRoleName || user.role || 'Sin cargo'}
+                      {customRoleName || 
+                       (user.role === 'SUPER_ADMIN' ? 'Super Administrador' : 
+                        user.role === 'ADMIN' ? 'Administrador' :
+                        user.role === 'MANAGER' ? 'Gerente' :
+                        user.role === 'USER' ? 'Usuario' :
+                        user.role || 'Sin cargo')}
                     </p>
                   </div>
                 </div>

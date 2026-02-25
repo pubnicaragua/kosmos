@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { ticketSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   try {
@@ -93,6 +94,17 @@ export async function POST(request: NextRequest) {
         client: { select: { name: true } },
       },
     })
+
+    // Send notification if ticket is assigned to someone
+    if (validatedData.assignedTo && validatedData.assignedTo !== decoded.userId) {
+      await notifyAssignment({
+        assignedUserId: validatedData.assignedTo,
+        assignedByUserId: decoded.userId,
+        itemType: 'ticket',
+        itemTitle: validatedData.title,
+        itemId: ticket.id,
+      })
+    }
 
     return apiSuccess(ticket, undefined, 201)
   } catch (error: any) {

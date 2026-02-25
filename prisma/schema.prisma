@@ -8,16 +8,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  avatar    String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String
+  name               String
+  avatar             String?
+  googleAccessToken  String?  @map("google_access_token")
+  googleRefreshToken String?  @map("google_refresh_token")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   userCompanies UserCompany[]
   refreshTokens RefreshToken[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -387,21 +390,24 @@ model QuoteItem {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  categoryId  String?  @map("category_id")
-  name        String
-  sku         String
-  description String?
-  unit        String   @default("UNI")
-  stock       Int      @default(0)
-  minStock    Int      @default(0) @map("min_stock")
-  cost        Float    @default(0)
-  price       Float
-  netMargin   Float?   @map("net_margin")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(cuid())
+  companyId         String   @map("company_id")
+  categoryId        String?  @map("category_id")
+  name              String
+  sku               String
+  description       String?
+  unit              String   @default("UNI")
+  stock             Int      @default(0)
+  minStock          Int      @default(0) @map("min_stock")
+  cost              Float    @default(0)
+  price             Float
+  netMargin         Float?   @map("net_margin")
+  promotion         String?
+  promotionCost     Float?   @map("promotion_cost")
+  promotionDiscount Float?   @map("promotion_discount")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -452,6 +458,32 @@ model Ticket {
   @@index([status])
   @@index([assignedTo])
   @@map("tickets")
+}
+
+model Activity {
+  id              String         @id @default(cuid())
+  companyId       String         @map("company_id")
+  type            ActivityType
+  title           String
+  description     String?
+  status          ActivityStatus @default(PENDING)
+  priority        String?
+  assignedTo      String?        @map("assigned_to")
+  clientId        String?        @map("client_id")
+  dueDate         DateTime?      @map("due_date")
+  googleEventId   String?        @map("google_event_id")
+  googleMeetLink  String?        @map("google_meet_link")
+  createdBy       String         @map("created_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client  Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([status])
+  @@map("activities")
 }
 
 model MarketingCampaign {
@@ -537,18 +569,37 @@ model Payroll {
   id          String   @id @default(cuid())
   companyId   String   @map("company_id")
   period      String   // Ej: "Enero 2026", "2026-01"
-  fileName    String   @map("file_name")
-  fileUrl     String   @map("file_url")
-  totalAmount Float    @map("total_amount")
-  status      String   @default("PENDIENTE") // PENDIENTE, PROCESADA, PAGADA
-  notes       String?
-  expenseId   String?  @unique @map("expense_id") // Relación con Expense
-  createdBy   String   @map("created_by")
+  employeeName String  @map("employee_name")
+  position    String?
+  salary      Float
+  bonuses     Float    @default(0)
+  deductions  Float    @default(0)
+  netPay      Float    @map("net_pay")
+  expenseId   String?  @unique @map("expense_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   expense Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 
+  @@index([companyId])
+  @@index([period])
   @@map("payrolls")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String   // ASSIGNMENT, MENTION, REMINDER, etc.
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }

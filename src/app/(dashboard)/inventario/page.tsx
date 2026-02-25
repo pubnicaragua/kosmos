@@ -18,6 +18,9 @@ interface Product {
   cost: number
   price: number
   netMargin: number | null
+  promotion: string | null
+  promotionCost: number | null
+  promotionDiscount: number | null
   category: { name: string } | null
   company: { name: string } | null
 }
@@ -256,6 +259,9 @@ export default function InventarioPage() {
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRECIO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN NETO %</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROMOCIONES</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO PROMO</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">DESC. PROMO %</th>
               </tr>
             </thead>
             <tbody>
@@ -294,6 +300,23 @@ export default function InventarioPage() {
                     <div className="text-sm font-medium text-gray-900">
                       {product.netMargin !== null && product.netMargin !== undefined
                         ? `${product.netMargin.toFixed(2)}%`
+                        : '-'}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="text-sm text-gray-600">{product.promotion || '-'}</div>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="text-sm text-gray-900">
+                      {product.promotionCost !== null && product.promotionCost !== undefined
+                        ? `${product.promotionCost} $`
+                        : '-'}
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="text-sm text-gray-900">
+                      {product.promotionDiscount !== null && product.promotionDiscount !== undefined
+                        ? `${product.promotionDiscount.toFixed(2)}%`
                         : '-'}
                     </div>
                   </td>

@@ -340,7 +340,13 @@ export function Header() {
           <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
             <div className="text-right">
               <div className="text-sm font-medium text-gray-900">{user?.name || 'Usuario'}</div>
-              <div className="text-xs text-gray-500">{user?.role || 'Sin cargo'}</div>
+              <div className="text-xs text-gray-500">
+                {user?.role === 'SUPER_ADMIN' ? 'Super Administrador' : 
+                 user?.role === 'ADMIN' ? 'Administrador' :
+                 user?.role === 'MANAGER' ? 'Gerente' :
+                 user?.role === 'USER' ? 'Usuario' :
+                 user?.role || 'Sin cargo'}
+              </div>
             </div>
             <div className="relative group">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center cursor-pointer">

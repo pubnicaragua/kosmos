@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Mail, Phone, MapPin, Building2, User, Calendar, Edit, Trash2 } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, Building2, User, Calendar, Edit, Trash2, FileText, Plus } from 'lucide-react'
+import { Card } from '@/components/ui-kit/Card'
+import { Button } from '@/components/ui-kit/Button'
+import { Badge } from '@/components/ui-kit/Badge'
 
 interface Client {
   id: string
@@ -19,10 +22,30 @@ interface Client {
   updatedAt: string
 }
 
+interface Quote {
+  id: string
+  quoteNumber: string
+  status: string
+  total: number
+  createdAt: string
+  expiresAt: string | null
+}
+
+interface Contract {
+  id: string
+  contractId: string
+  name: string
+  status: string
+  startDate: string
+  endDate: string
+}
+
 export default function ClientDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [client, setClient] = useState<Client | null>(null)
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,6 +84,24 @@ export default function ClientDetailPage() {
 
         const data = await response.json()
         setClient(data.data || data)
+        
+        // Fetch quotes
+        const quotesRes = await fetch(`/api/quotes?clientId=${params.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        if (quotesRes.ok) {
+          const quotesData = await quotesRes.json()
+          setQuotes(quotesData.data || [])
+        }
+        
+        // Fetch contracts
+        const contractsRes = await fetch(`/api/contracts?clientId=${params.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        if (contractsRes.ok) {
+          const contractsData = await contractsRes.json()
+          setContracts(contractsData.data || [])
+        }
       } catch (err) {
         setError('Error de conexión')
       } finally {
@@ -226,17 +267,86 @@ export default function ClientDetailPage() {
             <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
               <p className="text-sm text-gray-500">Fecha de creación</p>
-              <p className="text-gray-900">
-                {new Date(client.createdAt).toLocaleDateString('es-ES', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
+              <p className="text-gray-900">{new Date(client.createdAt).toLocaleDateString('es-ES')}</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Quotes Section */}
+      <Card className="mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Cotizaciones</h2>
+          <Button
+            onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}`)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Cotización
+          </Button>
+        </div>
+        {quotes.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No hay cotizaciones para este cliente</p>
+        ) : (
+          <div className="space-y-3">
+            {quotes.map((quote) => (
+              <div
+                key={quote.id}
+                onClick={() => router.push(`/clientes/cotizacion/${quote.id}`)}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <FileText className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">{quote.quoteNumber}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(quote.createdAt).toLocaleDateString('es-ES')}
+                      {quote.expiresAt && ` - Vence: ${new Date(quote.expiresAt).toLocaleDateString('es-ES')}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <p className="text-lg font-semibold text-gray-900">${quote.total.toLocaleString()}</p>
+                  <Badge variant={quote.status === 'APPROVED' ? 'success' : quote.status === 'REJECTED' ? 'default' : 'warning'}>
+                    {quote.status}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Contracts Section */}
+      <Card className="mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Contratos</h2>
+        </div>
+        {contracts.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No hay contratos para este cliente</p>
+        ) : (
+          <div className="space-y-3">
+            {contracts.map((contract) => (
+              <div
+                key={contract.id}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <FileText className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">{contract.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {contract.contractId} - {new Date(contract.startDate).toLocaleDateString('es-ES')} a {new Date(contract.endDate).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={contract.status === 'ACTIVE' ? 'success' : contract.status === 'EXPIRED' ? 'default' : 'warning'}>
+                  {contract.status === 'ACTIVE' ? 'Activo' : contract.status === 'EXPIRED' ? 'Vencido' : 'Por Vencer'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

@@ -1,0 +1,6 @@
+{
+  "note": "Add this dependency to package.json",
+  "dependency": "googleapis",
+  "version": "^128.0.0",
+  "command": "npm install googleapis"
+}

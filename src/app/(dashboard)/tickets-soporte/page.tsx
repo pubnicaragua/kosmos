@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
 import * as XLSX from 'xlsx'
 
 interface Ticket {
@@ -607,11 +608,11 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
-          <Input
+          <UserAutocomplete
             label="Asignado a"
             value={formData.assignedTo}
-            onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-            fullWidth
+            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
+            companyId={selectedCompany !== 'all' ? selectedCompany : companies[0]?.id || ''}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
