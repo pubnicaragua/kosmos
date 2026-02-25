@@ -94,6 +94,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`🏢 [LOGIN-API-${requestId}] Empresas del usuario:`, companies.length)
     console.log(`📋 [LOGIN-API-${requestId}] Roles:`, companies.map(c => `${c.name}: ${c.role}`))
+
+    if (companies.length === 0 || companies.every(c => !c.role)) {
+      console.warn(`⚠️ [LOGIN-API-${requestId}] Usuario sin rol asignado:`, email)
+      return errorResponse('No tienes un rol asignado. Contacta al administrador.', 403)
+    }
+
     console.log(`✅ [LOGIN-API-${requestId}] Login exitoso para:`, user.email)
 
     const response = successResponse({

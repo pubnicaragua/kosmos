@@ -335,7 +335,9 @@ export default function ContratosPage() {
 
   const getDaysUntilExpiry = (endDate: string) => {
     const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const expiry = new Date(endDate)
+    expiry.setHours(0, 0, 0, 0)
     const diffTime = expiry.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays

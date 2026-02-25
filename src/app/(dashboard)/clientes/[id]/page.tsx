@@ -29,7 +29,7 @@ export default function ClientDetailPage() {
   useEffect(() => {
     const fetchClient = async () => {
       try {
-        const token = localStorage.getItem('token')
+        const token = localStorage.getItem('accessToken')
         if (!token) {
           router.push('/login')
           return
@@ -42,6 +42,12 @@ export default function ClientDetailPage() {
         })
 
         if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('user')
+            router.push('/login')
+            return
+          }
           if (response.status === 404) {
             setError('Cliente no encontrado')
           } else if (response.status === 403) {
@@ -54,7 +60,7 @@ export default function ClientDetailPage() {
         }
 
         const data = await response.json()
-        setClient(data)
+        setClient(data.data || data)
       } catch (err) {
         setError('Error de conexión')
       } finally {
@@ -71,7 +77,7 @@ export default function ClientDetailPage() {
     if (!confirm('¿Estás seguro de eliminar este cliente?')) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('accessToken')
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'DELETE',
         headers: {
