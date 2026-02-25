@@ -386,16 +386,14 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
               </div>
             )}
 
-            {campaign.metrics && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Métricas</h3>
-                {campaign.metrics ? (
-                  <MarketingChart metrics={campaign.metrics} type="bar" />
-                ) : (
-                  <p className="text-sm text-gray-500">No hay métricas registradas</p>
-                )}
-              </div>
-            )}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Métricas</h3>
+              {campaign.metrics ? (
+                <MarketingChart metrics={campaign.metrics} type="bar" />
+              ) : (
+                <p className="text-sm text-gray-500">No hay métricas registradas</p>
+              )}
+            </div>
           </Card>
 
           {/* Presupuesto */}

@@ -464,7 +464,7 @@ export default function TicketsSoportePage() {
                       <div
                         key={ticket.id}
                         draggable
-                        onClick={() => setSelectedTicketId(ticket.id)}
+                        onClick={() => openEditModal(ticket)}
                         onDragStart={() => handleDragStart(ticket.id)}
                         onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null) }}
                         className={`group bg-white border rounded-lg p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 ${

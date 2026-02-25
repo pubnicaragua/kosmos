@@ -42,19 +42,24 @@ export async function GET(request: NextRequest) {
       console.warn('Payroll model no disponible; retornando lista vacía')
       return successResponse([])
     }
-    const payrolls = await payrollModel.findMany({
-      where: { companyId },
-      include: {
-        expense: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    
+    try {
+      const payrolls = await payrollModel.findMany({
+        where: { companyId },
+        include: {
+          expense: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
 
-    // Ensure we return an array
-    const payrollsArray = Array.isArray(payrolls) ? payrolls : []
-    return successResponse(payrollsArray)
+      const payrollsArray = Array.isArray(payrolls) ? payrolls : []
+      return successResponse(payrollsArray)
+    } catch (error) {
+      console.error('Get payrolls error:', error)
+      return successResponse([])
+    }
   } catch (error) {
-    console.error('Get payrolls error:', error)
+    console.error('Payrolls GET error:', error)
     return errorResponse('Error al obtener planillas', 500)
   }
 }
