@@ -123,18 +123,20 @@ model Expense {
 }
 
 model Opportunity {
-  id         String           @id @default(cuid())
-  companyId  String           @map("company_id")
-  title      String
-  client     String
-  value      Float
-  stage      OpportunityStage @default(PROSPECTO)
-  status     String           @default("Pendiente")
-  assignedTo String?          @map("assigned_to")
-  closeDate  DateTime?        @map("close_date")
-  createdAt  DateTime         @default(now()) @map("created_at")
-  updatedAt  DateTime         @updatedAt @map("updated_at")
-  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id          String           @id @default(cuid())
+  companyId   String           @map("company_id")
+  title       String
+  client      String
+  value       Float
+  stage       OpportunityStage @default(PROSPECTO)
+  status      String           @default("Pendiente")
+  assignedTo  String?          @map("assigned_to")
+  closeDate   DateTime?        @map("close_date")
+  priority    String?          @default("MEDIA")
+  description String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("opportunities")
 }
@@ -146,6 +148,8 @@ model Document {
   type       DocumentType
   concept    String
   category   String?
+  area       String?      @default("General")
+  visibility String?      @default("COMPARTIDO")
   fileUrl    String       @map("file_url")
   fileSize   Int          @map("file_size")
   uploadedBy String       @map("uploaded_by")

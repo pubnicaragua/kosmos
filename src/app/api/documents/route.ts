@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const where: any = { companyId: companyId || { in: companyIds } }
     if (type) where.type = type
 
-    const documents = await prisma.document.findMany({
+    const documents = await (prisma.document as any).findMany({
       where,
       include: { company: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
@@ -51,8 +51,15 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const document = await prisma.document.create({
-      data: { ...docData, companyId, uploadedBy: decoded.userId },
+    const { area, visibility, ...cleanDocData } = docData as any
+    const document = await (prisma.document as any).create({
+      data: {
+        ...cleanDocData,
+        companyId,
+        uploadedBy: decoded.userId,
+        area: area || 'General',
+        visibility: visibility || 'COMPARTIDO',
+      },
     })
 
     return apiSuccess(document, undefined, 201)

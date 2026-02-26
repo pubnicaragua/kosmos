@@ -18,6 +18,8 @@ interface Opportunity {
   status: string
   assignedTo: string | null
   closeDate: string | null
+  priority?: 'ALTA' | 'MEDIA' | 'BAJA'
+  description?: string | null
 }
 
 interface Company {
@@ -33,6 +35,8 @@ interface OpportunityFormData {
   stage: Opportunity['stage']
   assignedTo: string
   closeDate: string
+  priority: 'ALTA' | 'MEDIA' | 'BAJA'
+  description: string
 }
 
 const STAGES = [
@@ -77,6 +81,12 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   PERDIDO: 'bg-red-100 text-red-700',
 }
 
+const PRIORITY_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  ALTA: { label: 'Alta', color: 'bg-red-100 text-red-700 border border-red-200', dot: 'bg-red-500' },
+  MEDIA: { label: 'Media', color: 'bg-yellow-100 text-yellow-700 border border-yellow-200', dot: 'bg-yellow-500' },
+  BAJA: { label: 'Baja', color: 'bg-green-100 text-green-700 border border-green-200', dot: 'bg-green-500' },
+}
+
 export default function PipelineVentasPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -87,6 +97,8 @@ export default function PipelineVentasPage() {
   const [draggedItem, setDraggedItem] = useState<Opportunity | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
   const [editingOpportunityId, setEditingOpportunityId] = useState<string | null>(null)
+  const [moveReasonModal, setMoveReasonModal] = useState<{ item: Opportunity; newStage: string } | null>(null)
+  const [moveReason, setMoveReason] = useState('')
   const [formData, setFormData] = useState<OpportunityFormData>({
     companyId: '',
     title: '',
@@ -95,6 +107,8 @@ export default function PipelineVentasPage() {
     stage: 'PROSPECTO',
     assignedTo: '',
     closeDate: new Date().toISOString().split('T')[0],
+    priority: 'MEDIA',
+    description: '',
   })
 
   const fetchCompanies = useCallback(async () => {
@@ -163,6 +177,8 @@ export default function PipelineVentasPage() {
       stage: 'PROSPECTO',
       assignedTo: '',
       closeDate: new Date().toISOString().split('T')[0],
+      priority: 'MEDIA',
+      description: '',
     })
   }, [companies, selectedCompany])
 
@@ -184,6 +200,8 @@ export default function PipelineVentasPage() {
       closeDate: opportunity.closeDate
         ? new Date(opportunity.closeDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0],
+      priority: (opportunity.priority as any) || 'MEDIA',
+      description: opportunity.description || '',
     })
     setIsModalOpen(true)
   }
@@ -214,6 +232,8 @@ export default function PipelineVentasPage() {
           stage: formData.stage,
           assignedTo: formData.assignedTo || null,
           closeDate: formData.closeDate,
+          priority: formData.priority,
+          description: formData.description || null,
           ...(editingOpportunityId ? {} : { companyId: formData.companyId }),
         }),
       })
@@ -325,21 +345,34 @@ export default function PipelineVentasPage() {
   }
 
   const handleDrop = async (newStage: string) => {
-    if (!draggedItem) return
+    if (!draggedItem || draggedItem.stage === newStage) {
+      setDragOverStage(null)
+      setDraggedItem(null)
+      return
+    }
     setDragOverStage(null)
+    // Show reason modal before committing the move
+    setMoveReasonModal({ item: draggedItem, newStage })
+    setMoveReason('')
+    setDraggedItem(null)
+  }
 
-    // Optimistic update for instant feedback
+  const confirmStageMove = async () => {
+    if (!moveReasonModal) return
+    const { item, newStage } = moveReasonModal
+
+    // Optimistic update
     const previousOpportunities = [...opportunities]
-    setOpportunities(prev => 
-      prev.map(opp => 
-        opp.id === draggedItem.id ? { ...opp, stage: newStage as Opportunity['stage'] } : opp
+    setOpportunities(prev =>
+      prev.map(opp =>
+        opp.id === item.id ? { ...opp, stage: newStage as Opportunity['stage'] } : opp
       )
     )
+    setMoveReasonModal(null)
 
     const token = localStorage.getItem('accessToken')
-
     try {
-      const response = await fetch(`/api/opportunities/${draggedItem.id}`, {
+      const response = await fetch(`/api/opportunities/${item.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -347,11 +380,10 @@ export default function PipelineVentasPage() {
         },
         body: JSON.stringify({
           stage: newStage,
+          ...(moveReason.trim() ? { description: `[Movido a ${newStage}] ${moveReason.trim()}${item.description ? '\n' + item.description : ''}` } : {}),
         }),
       })
-
       if (!response.ok) {
-        // Revert on error
         setOpportunities(previousOpportunities)
         alert('Error al mover la oportunidad')
       }
@@ -360,12 +392,37 @@ export default function PipelineVentasPage() {
       setOpportunities(previousOpportunities)
       alert('Error al mover la oportunidad')
     }
+  }
 
-    setDraggedItem(null)
+  const CLIENT_COLORS = [
+    { bg: 'bg-blue-50', border: 'border-l-blue-400', avatar: 'from-blue-400 to-blue-600' },
+    { bg: 'bg-purple-50', border: 'border-l-purple-400', avatar: 'from-purple-400 to-purple-600' },
+    { bg: 'bg-emerald-50', border: 'border-l-emerald-400', avatar: 'from-emerald-400 to-emerald-600' },
+    { bg: 'bg-orange-50', border: 'border-l-orange-400', avatar: 'from-orange-400 to-orange-600' },
+    { bg: 'bg-pink-50', border: 'border-l-pink-400', avatar: 'from-pink-400 to-pink-600' },
+    { bg: 'bg-teal-50', border: 'border-l-teal-400', avatar: 'from-teal-400 to-teal-600' },
+    { bg: 'bg-indigo-50', border: 'border-l-indigo-400', avatar: 'from-indigo-400 to-indigo-600' },
+    { bg: 'bg-rose-50', border: 'border-l-rose-400', avatar: 'from-rose-400 to-rose-600' },
+  ]
+
+  const getClientColor = (clientName: string) => {
+    let hash = 0
+    for (let i = 0; i < clientName.length; i++) {
+      hash = clientName.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return CLIENT_COLORS[Math.abs(hash) % CLIENT_COLORS.length]
   }
 
   const getOpportunitiesByStage = (stage: string) => {
-    return opportunities.filter(opp => opp.stage === stage)
+    return opportunities
+      .filter(opp => opp.stage === stage)
+      .sort((a, b) => {
+        const priorityOrder = { ALTA: 0, MEDIA: 1, BAJA: 2 }
+        const pA = priorityOrder[(a.priority || 'MEDIA') as keyof typeof priorityOrder] ?? 1
+        const pB = priorityOrder[(b.priority || 'MEDIA') as keyof typeof priorityOrder] ?? 1
+        if (pA !== pB) return pA - pB
+        return b.value - a.value
+      })
   }
 
   const getTotalByStage = (stage: string) => {
@@ -499,6 +556,7 @@ export default function PipelineVentasPage() {
                     : opportunity.client.charAt(0).toUpperCase()
 
                   const isDragging = draggedItem?.id === opportunity.id
+                  const clientColor = getClientColor(opportunity.client)
 
                   return (
                     <div
@@ -506,7 +564,7 @@ export default function PipelineVentasPage() {
                       draggable
                       onDragStart={() => handleDragStart(opportunity)}
                       onDragEnd={() => { setDraggedItem(null); setDragOverStage(null) }}
-                      className={`group bg-white rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${stage.border} select-none animate-in fade-in slide-in-from-bottom-2 ${
+                      className={`group rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${clientColor.border} ${clientColor.bg} select-none animate-in fade-in slide-in-from-bottom-2 ${
                         isDragging 
                           ? 'opacity-30 scale-90' 
                           : 'opacity-100 scale-100 shadow-sm hover:shadow-lg hover:-translate-y-1'
@@ -558,7 +616,23 @@ export default function PipelineVentasPage() {
                         </h4>
 
                         {/* Client */}
-                        <p className="text-xs text-gray-500 mb-3">{opportunity.client}</p>
+                        <p className="text-xs text-gray-500 mb-1">{opportunity.client}</p>
+                        {/* Priority badge */}
+                        {opportunity.priority && PRIORITY_CONFIG[opportunity.priority] && (
+                          <div className="mb-2">
+                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${PRIORITY_CONFIG[opportunity.priority].color}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${PRIORITY_CONFIG[opportunity.priority].dot}`} />
+                              Prioridad {PRIORITY_CONFIG[opportunity.priority].label}
+                            </span>
+                          </div>
+                        )}
+                        {/* Description preview */}
+                        {opportunity.description && !opportunity.description.startsWith('[Movido') && (
+                          <p className="text-xs text-gray-400 italic mb-2 line-clamp-2">{opportunity.description}</p>
+                        )}
+                        {opportunity.description?.startsWith('[Movido') && (
+                          <p className="text-xs text-blue-400 italic mb-2 line-clamp-1">{opportunity.description.split('\n')[0]}</p>
+                        )}
 
                         {/* Close date */}
                         {opportunity.closeDate && (
@@ -577,7 +651,7 @@ export default function PipelineVentasPage() {
                           <span className="text-base font-bold text-gray-900">
                             {formatCurrency(opportunity.value)}
                           </span>
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${clientColor.avatar} flex items-center justify-center flex-shrink-0`}>
                             <span className="text-white text-xs font-bold">{initials}</span>
                           </div>
                         </div>
@@ -629,6 +703,36 @@ export default function PipelineVentasPage() {
         })}
       </div>
 
+      {/* Move-reason modal */}
+      <Modal
+        isOpen={!!moveReasonModal}
+        onClose={() => setMoveReasonModal(null)}
+        title="Motivo del Movimiento"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Moviendo <strong>{moveReasonModal?.item.title}</strong> a etapa{' '}
+            <strong className="text-blue-600">{STAGES.find(s => s.id === moveReasonModal?.newStage)?.label}</strong>.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Motivo / Descripción (opcional)</label>
+            <textarea
+              value={moveReason}
+              onChange={(e) => setMoveReason(e.target.value)}
+              placeholder="Ej: Cliente solicitó propuesta formal, negoció precio, cerró trato..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setMoveReasonModal(null)}>Cancelar</Button>
+            <Button onClick={confirmStageMove}>Confirmar Movimiento</Button>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -678,6 +782,27 @@ export default function PipelineVentasPage() {
             onChange={(e) => setFormData({ ...formData, stage: e.target.value as any })}
             fullWidth
           />
+          <Select
+            label="Prioridad"
+            options={[
+              { value: 'ALTA', label: '🔴 Alta' },
+              { value: 'MEDIA', label: '🟡 Media' },
+              { value: 'BAJA', label: '🟢 Baja' },
+            ]}
+            value={formData.priority}
+            onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+            fullWidth
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Detalles de la oportunidad..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              rows={2}
+            />
+          </div>
           <UserAutocomplete
             label="Asignado a"
             companyId={formData.companyId}

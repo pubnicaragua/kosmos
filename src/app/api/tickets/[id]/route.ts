@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -61,6 +62,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       },
       include: { client: { select: { id: true, name: true } } },
     })
+
+    // Notify newly assigned users when assignedTo changes
+    if (body.assignedTo && body.assignedTo !== ticket.assignedTo) {
+      const prevAssignees = new Set(
+        (ticket.assignedTo || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      )
+      const newAssignees = body.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      for (const name of newAssignees) {
+        if (!prevAssignees.has(name)) {
+          const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
+          if (userRecord && userRecord.id !== decoded.userId) {
+            await notifyAssignment({
+              assignedUserId: userRecord.id,
+              assignedByUserId: decoded.userId,
+              itemType: 'ticket',
+              itemTitle: body.title || ticket.title,
+              itemId: ticket.id,
+            })
+          }
+        }
+      }
+    }
 
     return apiSuccess(updated)
   } catch (error) {

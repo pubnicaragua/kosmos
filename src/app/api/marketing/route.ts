@@ -74,29 +74,43 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const campaign = await prisma.marketingCampaign.create({
-      data: {
-        name: validatedData.name,
-        description: validatedData.description || null,
-        channel: validatedData.channel,
-        status: validatedData.status || 'PLANIFICACION',
-        budget: validatedData.budget || null,
-        spent: validatedData.spent || 0,
-        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
-        endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
-        targetAudience: validatedData.targetAudience || null,
-        metrics: validatedData.metrics || null,
-        assignedTo: validatedData.assignedTo || null,
-        adType: validatedData.adType || null,
-        evidenceUrl: validatedData.evidenceUrl || null,
-        approvalStatus: 'PENDING',
-        companyId: validatedData.companyId,
-        createdBy: decoded.userId,
-      },
-      include: {
-        company: { select: { name: true } },
-      },
-    })
+    const baseData = {
+      name: validatedData.name,
+      description: validatedData.description || null,
+      channel: validatedData.channel,
+      status: validatedData.status || 'PLANIFICACION',
+      budget: validatedData.budget || null,
+      spent: validatedData.spent || 0,
+      startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
+      endDate: validatedData.endDate ? new Date(validatedData.endDate) : null,
+      targetAudience: validatedData.targetAudience || null,
+      metrics: validatedData.metrics || null,
+      assignedTo: validatedData.assignedTo || null,
+      adType: validatedData.adType || null,
+      evidenceUrl: validatedData.evidenceUrl || null,
+      approvalStatus: 'PENDING' as string,
+      companyId: validatedData.companyId,
+      createdBy: decoded.userId,
+    }
+
+    let campaign: any
+    try {
+      campaign = await prisma.marketingCampaign.create({
+        data: baseData,
+        include: { company: { select: { name: true } } },
+      })
+    } catch (createErr: any) {
+      // Fallback: some columns may not exist in production DB yet
+      if (createErr?.code === 'P2022' || createErr?.message?.includes('column') || createErr?.message?.includes('approval_status') || createErr?.message?.includes('ad_type') || createErr?.message?.includes('evidence_url')) {
+        const { adType, evidenceUrl, approvalStatus, ...safeData } = baseData
+        campaign = await prisma.marketingCampaign.create({
+          data: safeData as any,
+          include: { company: { select: { name: true } } },
+        })
+      } else {
+        throw createErr
+      }
+    }
 
     return apiSuccess(campaign, undefined, 201)
   } catch (error) {

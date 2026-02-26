@@ -52,17 +52,32 @@ export default function NuevoClientePage() {
     }
   }
 
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
+
+  const validate = () => {
+    const errs: Record<string, string> = {}
+    if (!selectedCompany) errs.company = 'Seleccione una empresa'
+    if (!formData.name.trim()) errs.name = 'El nombre del cliente es obligatorio'
+    if (!formData.contactName.trim()) errs.contactName = 'El nombre de contacto es obligatorio'
+    if (!formData.email.trim()) {
+      errs.email = 'El correo es obligatorio'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errs.email = 'Correo electrónico inválido'
+    }
+    return errs
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!selectedCompany) {
-      alert('Seleccione una empresa')
-      return
-    }
+    const errs = validate()
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) return
 
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
+    setIsSaving(true)
     try {
       const response = await fetch('/api/clients', {
         method: 'POST',
@@ -78,14 +93,15 @@ export default function NuevoClientePage() {
 
       const data = await response.json()
       if (data.success) {
-        alert('Cliente creado exitosamente')
         router.push('/clientes')
       } else {
-        alert('Error al crear cliente: ' + data.message)
+        setErrors({ general: data.error || data.message || 'No se pudo crear el cliente' })
       }
     } catch (error) {
       console.error('Error creating client:', error)
-      alert('Error al crear cliente')
+      setErrors({ general: 'Error de conexión al crear cliente' })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -106,17 +122,17 @@ export default function NuevoClientePage() {
         <div className="bg-white rounded-lg shadow p-6 space-y-6">
           <div className="grid grid-cols-2 gap-6">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Empresa *</label>
               <Select
                 options={[
                   { value: '', label: 'Seleccionar empresa' },
                   ...companies.map(c => ({ value: c.id, label: c.name }))
                 ]}
                 value={selectedCompany}
-                onChange={(e) => setSelectedCompany(e.target.value)}
+                onChange={(e) => { setSelectedCompany(e.target.value); setErrors(prev => ({ ...prev, company: '' })) }}
                 fullWidth
-                required
               />
+              {errors.company && <p className="mt-1 text-sm text-red-600">{errors.company}</p>}
             </div>
 
             <div className="col-span-2">
@@ -124,22 +140,25 @@ export default function NuevoClientePage() {
               <Input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors(prev => ({ ...prev, name: '' })) }}
                 placeholder="Ej: Empresa ABC S.A."
                 fullWidth
-                required
+                className={errors.name ? 'border-red-400' : ''}
               />
+              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
               <Input
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setErrors(prev => ({ ...prev, email: '' })) }}
                 placeholder="contacto@empresa.com"
                 fullWidth
+                className={errors.email ? 'border-red-400' : ''}
               />
+              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
             </div>
 
             <div>
@@ -209,14 +228,16 @@ export default function NuevoClientePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de Contacto</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de Contacto *</label>
               <Input
                 type="text"
                 value={formData.contactName}
-                onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, contactName: e.target.value }); setErrors(prev => ({ ...prev, contactName: '' })) }}
                 placeholder="Juan Pérez"
                 fullWidth
+                className={errors.contactName ? 'border-red-400' : ''}
               />
+              {errors.contactName && <p className="mt-1 text-sm text-red-600">{errors.contactName}</p>}
             </div>
 
             <div>
@@ -248,12 +269,17 @@ export default function NuevoClientePage() {
             </div>
           </div>
 
+          {errors.general && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {errors.general}
+            </div>
+          )}
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
             <Button type="button" variant="outline" onClick={() => router.push('/clientes')}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Crear Cliente
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Guardando...' : 'Crear Cliente'}
             </Button>
           </div>
         </div>

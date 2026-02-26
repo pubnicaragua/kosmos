@@ -46,11 +46,11 @@ interface TicketFormData {
   dueDate: string
 }
 
-const COLUMNS = [
-  { id: 'PROCESO1', label: 'PROCESO1', color: 'border-red-400' },
-  { id: 'PROCESO2', label: 'PROCESO2', color: 'border-blue-400' },
-  { id: 'PROCESO3', label: 'PROCESO3', color: 'border-yellow-400' },
-  { id: 'PROCESO4', label: 'PROCESO4', color: 'border-green-400' },
+const DEFAULT_COLUMNS = [
+  { id: 'PROCESO1', label: 'Proceso 1', color: 'border-red-400' },
+  { id: 'PROCESO2', label: 'Proceso 2', color: 'border-blue-400' },
+  { id: 'PROCESO3', label: 'Proceso 3', color: 'border-yellow-400' },
+  { id: 'PROCESO4', label: 'Proceso 4', color: 'border-green-400' },
 ]
 
 export default function TicketsSoportePage() {
@@ -67,6 +67,29 @@ export default function TicketsSoportePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [columnLabels, setColumnLabels] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('ticketColumnLabels') || '{}') } catch { return {} }
+  })
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
+  const [editingColumnValue, setEditingColumnValue] = useState('')
+
+  const getColumnLabel = (col: { id: string; label: string }) =>
+    columnLabels[col.id] || col.label
+
+  const startEditColumn = (colId: string, currentLabel: string) => {
+    setEditingColumnId(colId)
+    setEditingColumnValue(currentLabel)
+  }
+
+  const saveColumnLabel = (colId: string) => {
+    const updated = { ...columnLabels, [colId]: editingColumnValue.trim() || colId }
+    setColumnLabels(updated)
+    localStorage.setItem('ticketColumnLabels', JSON.stringify(updated))
+    setEditingColumnId(null)
+  }
+
+  const COLUMNS = DEFAULT_COLUMNS
   const [formData, setFormData] = useState<TicketFormData>({
     title: '',
     description: '',
@@ -443,8 +466,31 @@ export default function TicketsSoportePage() {
             >
               <div className={`p-4 border-t-4 ${column.color} rounded-t-lg`}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">{column.label}</h3>
-                  <span className="text-sm text-gray-500">{columnTickets.length}</span>
+                  {editingColumnId === column.id ? (
+                    <input
+                      autoFocus
+                      value={editingColumnValue}
+                      onChange={(e) => setEditingColumnValue(e.target.value)}
+                      onBlur={() => saveColumnLabel(column.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveColumnLabel(column.id)
+                        if (e.key === 'Escape') setEditingColumnId(null)
+                      }}
+                      className="font-semibold text-gray-900 bg-white border border-blue-400 rounded px-2 py-0.5 text-sm w-full mr-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  ) : (
+                    <h3
+                      className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600 group flex items-center gap-1"
+                      onDoubleClick={() => startEditColumn(column.id, getColumnLabel(column))}
+                      title="Doble clic para editar nombre"
+                    >
+                      {getColumnLabel(column)}
+                      <svg className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </h3>
+                  )}
+                  <span className="text-sm text-gray-500 flex-shrink-0">{columnTickets.length}</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
               </div>

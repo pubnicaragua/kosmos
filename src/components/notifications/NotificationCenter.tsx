@@ -12,6 +12,7 @@ interface Notification {
   read: boolean
   createdAt: string
   link?: string
+  dbId?: string
 }
 
 type NotificationPayload = Omit<Notification, 'id' | 'createdAt' | 'read'>
@@ -22,6 +23,8 @@ export function NotificationCenter() {
   const [unreadCount, setUnreadCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const reminderIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const seenDbIdsRef = useRef<Set<string>>(new Set())
 
   const emitFallbackTone = () => {
     try {
@@ -42,24 +45,78 @@ export function NotificationCenter() {
     }
   }
 
+  const pollNotifications = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch('/api/notifications?limit=50', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const dbNotifs: any[] = data.data?.notifications || []
+      const dbUnreadCount: number = data.data?.unreadCount ?? 0
+
+      // Always use DB unread count as source of truth for badge
+      setUnreadCount(dbUnreadCount)
+
+      // Build full notification list from DB (replace local state with DB truth)
+      const mapped: Notification[] = dbNotifs.map((n: any) => ({
+        id: `db-${n.id}`,
+        dbId: n.id,
+        title: n.title,
+        message: n.message,
+        type: n.type === 'ASSIGNMENT' ? 'info' : n.type === 'STATUS_CHANGE' ? 'success' : 'info',
+        read: n.isRead,
+        createdAt: n.createdAt,
+        link: n.link || undefined,
+      }))
+
+      setNotifications((prev) => {
+        // Find truly new unread ones (not seen before)
+        const freshUnread = mapped.filter(
+          (n) => !seenDbIdsRef.current.has(n.dbId!) && !n.read
+        )
+        // Register all as seen
+        mapped.forEach((n) => { if (n.dbId) seenDbIdsRef.current.add(n.dbId) })
+        // Play sound for new unread arrivals
+        if (freshUnread.length > 0) {
+          playNotificationSound()
+          freshUnread.forEach((n) =>
+            showBrowserNotification(n.title, n.message)
+          )
+        }
+        return mapped
+      })
+    } catch {
+      // silently fail
+    }
+  }
+
   useEffect(() => {
     // Initialize notification sound
     audioRef.current = new Audio('/notification-sound.mp3')
     audioRef.current.volume = 0.5
 
-    // Load notifications from localStorage
+    // Load notifications from localStorage as seed
     const stored = localStorage.getItem('notifications')
     if (stored) {
-      const parsed = JSON.parse(stored)
-      setNotifications(parsed)
-      setUnreadCount(parsed.filter((n: Notification) => !n.read).length)
+      try {
+        const parsed = JSON.parse(stored)
+        setNotifications(parsed)
+        parsed.forEach((n: Notification) => { if (n.dbId) seenDbIdsRef.current.add(n.dbId) })
+      } catch { /* ignore */ }
     }
 
+    // Poll DB immediately then every 15 seconds
+    pollNotifications()
+    pollIntervalRef.current = setInterval(pollNotifications, 15000)
+
     return () => {
-      if (reminderIntervalRef.current) {
-        clearInterval(reminderIntervalRef.current)
-      }
+      if (reminderIntervalRef.current) clearInterval(reminderIntervalRef.current)
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -86,9 +143,7 @@ export function NotificationCenter() {
   }, [notifications])
 
   useEffect(() => {
-    // Update unread count when notifications change
-    const count = notifications.filter(n => !n.read).length
-    setUnreadCount(count)
+    // Persist to localStorage but do NOT override DB-sourced unreadCount
     localStorage.setItem('notifications', JSON.stringify(notifications))
   }, [notifications])
 
@@ -131,13 +186,33 @@ export function NotificationCenter() {
   }, [])
 
   const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    )
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      const target = prev.find((n) => n.id === id)
+      if (target?.dbId) {
+        const token = localStorage.getItem('accessToken')
+        if (token) {
+          fetch('/api/notifications', {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationId: target.dbId }),
+          }).catch(() => {})
+        }
+      }
+      return updated
+    })
   }
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    const token = localStorage.getItem('accessToken')
+    if (token) {
+      fetch('/api/notifications', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllRead: true }),
+      }).catch(() => {})
+    }
   }
 
   const deleteNotification = (id: string) => {

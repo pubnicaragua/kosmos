@@ -22,11 +22,19 @@ interface Quote {
   terms: string | null
   validUntil: string
   createdAt: string
+  companyId: string
+  company?: {
+    name: string
+    logo: string | null
+    industry: string | null
+  }
   client: {
     name: string
     email: string | null
     phone: string | null
     contactName: string | null
+    ruc?: string | null
+    address?: string | null
   }
   items: Array<{
     id: string
@@ -55,6 +63,7 @@ export default function DetalleCotizacionPage() {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [whatsAppNumber, setWhatsAppNumber] = useState('')
   const [approvalComment, setApprovalComment] = useState('')
+  const [companyDetails, setCompanyDetails] = useState<any>(null)
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -70,6 +79,19 @@ export default function DetalleCotizacionPage() {
         if (data.success) {
           setQuote(data.data)
           setWhatsAppNumber(data.data.client?.phone || '')
+          // Fetch company details for print layout
+          if (data.data.companyId) {
+            try {
+              const compRes = await fetch('/api/companies', {
+                headers: { 'Authorization': `Bearer ${token}` },
+              })
+              const compData = await compRes.json()
+              if (compData.success) {
+                const found = compData.data.find((c: any) => c.id === data.data.companyId)
+                if (found) setCompanyDetails(found)
+              }
+            } catch { /* ignore */ }
+          }
         }
       } catch (error) {
         console.error('Error fetching quote:', error)
@@ -115,10 +137,36 @@ export default function DetalleCotizacionPage() {
       return
     }
 
-    const subject = `Cotización ${quote.quoteNumber} - ${quote.client.name}`
-    const body = `Estimado/a ${quote.client.name},\n\nAdjunto encontrará la cotización ${quote.quoteNumber} por un total de ${quote.currency} ${quote.total.toLocaleString()}.\n\nVálida hasta: ${new Date(quote.validUntil).toLocaleDateString()}\n\nQuedamos atentos a sus comentarios.\n\nSaludos cordiales`
-    
+    const sym = quote.currency === 'NIO' ? 'C$' : '$'
+    const itemsText = quote.items.map((it, i) =>
+      `  ${i + 1}. ${it.description} — Cant: ${it.quantity} × ${sym}${it.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })} = ${sym}${it.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+    ).join('\n')
+
+    const subject = `Proforma ${quote.quoteNumber} - ${companyDetails?.name || quote.company?.name || ''}`
+    const body = [
+      `Estimado/a ${quote.client.contactName || quote.client.name},`,
+      '',
+      `Adjunto encontrará la proforma No. ${quote.quoteNumber} con el siguiente detalle:`,
+      '',
+      itemsText,
+      '',
+      quote.discount > 0 ? `Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
+      quote.taxApplies ? `IVA (15%): ${sym}${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
+      `TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+      '',
+      `Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`,
+      `Forma de pago: ${quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}`,
+      '',
+      quote.notes ? `Notas: ${quote.notes}` : '',
+      '',
+      'Quedamos atentos a sus comentarios.',
+      '',
+      `Atentamente,`,
+      companyDetails?.name || '',
+    ].filter(l => l !== null && l !== undefined).join('\n')
+
     window.open(`mailto:${quote.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
+    setIsSendModalOpen(false)
   }
 
   const handleSendWhatsApp = () => {
@@ -130,9 +178,36 @@ export default function DetalleCotizacionPage() {
       return
     }
 
-    const message = `Hola ${quote.client.name}, le enviamos la cotización ${quote.quoteNumber} por ${quote.currency} ${quote.total.toLocaleString()}. Válida hasta ${new Date(quote.validUntil).toLocaleDateString()}. ¿Le interesa?`
+    const sym = quote.currency === 'NIO' ? 'C$' : '$'
+    const itemsText = quote.items.map((it, i) =>
+      `  ${i + 1}. ${it.description} (x${it.quantity}) = ${sym}${it.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+    ).join('\n')
+
+    const message = [
+      `Hola ${quote.client.contactName || quote.client.name} 👋`,
+      '',
+      `Le compartimos nuestra Proforma *${quote.quoteNumber}*:`,
+      '',
+      itemsText,
+      '',
+      quote.discount > 0 ? `Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
+      `*TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}*`,
+      '',
+      `📅 Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`,
+      `💳 Pago: ${quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}`,
+      '',
+      '¿Desea proceder con esta proforma?',
+    ].filter(Boolean).join('\n')
 
     window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    setIsSendModalOpen(false)
+  }
+
+  const handlePrintAndSend = () => {
+    const el = document.getElementById('proforma-print')
+    if (el) el.style.display = 'block'
+    window.print()
+    setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
   }
 
   const handleReject = async () => {
@@ -179,8 +254,131 @@ export default function DetalleCotizacionPage() {
     )
   }
 
+  const currencySymbol = quote.currency === 'NIO' ? 'C$' : '$'
+
   return (
     <div className="space-y-6">
+      {/* ===== PRINT-ONLY PROFORMA (hidden on screen) ===== */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #proforma-print, #proforma-print * { visibility: visible !important; }
+          #proforma-print { position: fixed !important; top: 0; left: 0; width: 100%; z-index: 9999; background: white; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+      <div id="proforma-print" className="hidden print:block bg-white p-8 font-sans text-sm text-gray-900" style={{display:'none'}}>
+        {/* Header: Logo left, Title right */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            {companyDetails?.logo ? (
+              <img src={companyDetails.logo} alt={companyDetails.name} className="h-16 object-contain mb-1" />
+            ) : (
+              <div className="text-2xl font-extrabold text-blue-700 tracking-wider mb-1">{companyDetails?.name || quote.company?.name || 'EMPRESA'}</div>
+            )}
+            {companyDetails?.industry && (
+              <div className="text-xs text-gray-500 italic">{companyDetails.industry}</div>
+            )}
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-extrabold text-gray-800 tracking-wider">PROFORMA {quote.quoteNumber}</div>
+            <div className="mt-2 text-xs text-gray-600">
+              <div className="flex justify-end gap-4">
+                <span className="font-semibold">FECHA</span>
+                <span>{new Date(quote.createdAt).toLocaleDateString('es-NI')}</span>
+              </div>
+              <div className="flex justify-end gap-4 mt-1 border border-green-600 px-2 py-0.5 rounded">
+                <span className="font-semibold">VALIDO HASTA</span>
+                <span>{new Date(quote.validUntil).toLocaleDateString('es-NI')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Info table: Company info left, Client info right */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="border border-gray-400">
+            <div className="bg-blue-700 text-white text-center font-bold py-1 text-xs tracking-wider">INFORMACION</div>
+            <div className="p-2 space-y-0.5 text-xs">
+              <div><span className="font-semibold">Asesor:</span> {companyDetails?.name || quote.company?.name || ''}</div>
+              <div><span className="font-semibold">Email:</span> {companyDetails?.email || ''}</div>
+              <div><span className="font-semibold">Teléfono:</span> {companyDetails?.phone || ''}</div>
+              <div><span className="font-semibold">Fax:</span> {companyDetails?.fax || ''}</div>
+              <div><span className="font-semibold">Ruc:</span> {companyDetails?.ruc || ''}</div>
+            </div>
+          </div>
+          <div className="border border-gray-400">
+            <div className="bg-blue-700 text-white text-center font-bold py-1 text-xs tracking-wider flex justify-between px-3">
+              <span>CLIENTE:</span>
+              <span className="font-extrabold">{quote.client.name.toUpperCase()}</span>
+            </div>
+            <div className="p-2 space-y-0.5 text-xs">
+              <div><span className="font-semibold">Atención:</span> {quote.client.contactName || ''}</div>
+              <div><span className="font-semibold">Email:</span> {quote.client.email || ''}</div>
+              <div><span className="font-semibold"># Telf:</span> {quote.client.phone || ''}</div>
+              <div><span className="font-semibold">Ruc:</span> {quote.client.ruc || ''}</div>
+              <div><span className="font-semibold">Teléfono:</span> {quote.client.phone || ''}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Items table */}
+        <table className="w-full border-collapse text-xs mb-4">
+          <thead>
+            <tr className="bg-blue-700 text-white">
+              <th className="border border-gray-400 px-2 py-1 text-left font-bold">CODIGO</th>
+              <th className="border border-gray-400 px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
+              <th className="border border-gray-400 px-2 py-1 text-center font-bold">CANT.</th>
+              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO</th>
+              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {quote.items.map((item, i) => (
+              <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border border-gray-300 px-2 py-1">{`Item ${String(i + 1).padStart(2, '0')}`}</td>
+                <td className="border border-gray-300 px-2 py-1">{item.description}</td>
+                <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Totals */}
+        <div className="flex justify-end mb-4">
+          <table className="text-xs border-collapse">
+            {quote.discount > 0 && (
+              <tr>
+                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO</td>
+                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            )}
+            {quote.taxApplies && (
+              <tr>
+                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">IVA (15%)</td>
+                <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            )}
+            <tr className="bg-blue-700 text-white">
+              <td className="border border-blue-800 px-3 py-1.5 font-extrabold text-sm">TOTAL</td>
+              <td className="border border-blue-800 px-3 py-1.5 text-right font-extrabold text-sm">{currencySymbol} {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+          </table>
+        </div>
+
+        {/* Notes and payment */}
+        {quote.notes && (
+          <div className="text-xs mb-2 border-t pt-2">
+            <span className="font-semibold">Notas: </span>{quote.notes}
+          </div>
+        )}
+        <div className="text-xs text-gray-600">
+          <span className="font-semibold">Forma de pago: </span>{quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}
+        </div>
+      </div>
+      {/* ===== END PRINT SECTION ===== */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -196,13 +394,18 @@ export default function DetalleCotizacionPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.push('/clientes/cotizacion/nueva')}>
+          <Button variant="outline" onClick={() => router.push(`/clientes/cotizacion/${params.id}/editar`)}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             EDITAR
           </Button>
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={() => {
+            const el = document.getElementById('proforma-print')
+            if (el) el.style.display = 'block'
+            window.print()
+            setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
+          }}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
@@ -298,7 +501,7 @@ export default function DetalleCotizacionPage() {
             </div>
           )}
 
-          {quote.internalNotes && (
+          {(quote.internalNotes || '').split('[DISCOUNT_APPROVAL_AUDIT]')[0].trim() && (
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,13 +512,17 @@ export default function DetalleCotizacionPage() {
               <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-orange-600 font-semibold text-sm">JP</span>
+                    <span className="text-orange-600 font-semibold text-sm">
+                      {(quote.internalNotes || '').split('[DISCOUNT_APPROVAL_AUDIT]')[0].trim().split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || 'N'}
+                    </span>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-orange-900">NOTA DE JUAN PÉREZ:</span>
+                      <span className="font-medium text-orange-900">NOTA INTERNA:</span>
                     </div>
-                    <p className="text-sm text-orange-800">{quote.internalNotes}</p>
+                    <p className="text-sm text-orange-800 whitespace-pre-wrap">
+                      {(quote.internalNotes || '').split('[DISCOUNT_APPROVAL_AUDIT]')[0].trim()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -467,30 +674,72 @@ export default function DetalleCotizacionPage() {
       <Modal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
-        title="Enviar al cliente"
+        title={`Enviar Proforma ${quote.quoteNumber}`}
         size="md"
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 p-4">
-            <p className="text-sm text-gray-700 mb-3">
-              Envía la cotización {quote.quoteNumber} por email con asunto y mensaje prearmado.
-            </p>
-            <Button onClick={handleSendEmail} fullWidth>
-              ENVIAR POR EMAIL
-            </Button>
+          {/* Summary */}
+          <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="font-semibold text-gray-800 mb-1">{quote.client.name}</div>
+            <div className="text-gray-500 flex gap-4">
+              <span>Total: <strong className="text-gray-800">{currencySymbol}{quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+              <span>Válida hasta: <strong className="text-gray-800">{new Date(quote.validUntil).toLocaleDateString('es-NI')}</strong></span>
+            </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+          {/* Print first */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <p className="text-sm text-blue-700 font-medium mb-2">📄 Paso 1: Imprimir / Guardar PDF</p>
+            <p className="text-xs text-blue-600 mb-3">Genera el PDF de la proforma para adjuntarlo al email o enviarlo por WhatsApp.</p>
+            <button
+              onClick={handlePrintAndSend}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              IMPRIMIR / GUARDAR PDF
+            </button>
+          </div>
+
+          {/* Email */}
+          <div className="rounded-lg border border-gray-200 p-3">
+            <p className="text-sm text-gray-700 font-medium mb-2">📧 Paso 2a: Enviar por Email</p>
+            {quote.client.email ? (
+              <>
+                <p className="text-xs text-gray-500 mb-3">Se abrirá tu cliente de correo con asunto y cuerpo pre-llenado para <strong>{quote.client.email}</strong>.</p>
+                <button
+                  onClick={handleSendEmail}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm font-medium transition-colors"
+                >
+                  ENVIAR POR EMAIL
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-red-500">El cliente no tiene email registrado.</p>
+            )}
+          </div>
+
+          {/* WhatsApp */}
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-2">
+            <p className="text-sm text-green-800 font-medium">💬 Paso 2b: Enviar por WhatsApp</p>
             <Input
-              label="Número WhatsApp destino"
+              label="Número WhatsApp (con código de país)"
               value={whatsAppNumber}
               onChange={(e) => setWhatsAppNumber(e.target.value)}
               placeholder="Ej: 50588889999"
               fullWidth
             />
-            <Button onClick={handleSendWhatsApp} className="w-full bg-green-600 hover:bg-green-700">
+            <button
+              onClick={handleSendWhatsApp}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.556 4.122 1.528 5.856L.057 23.882l6.204-1.628A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.667-.52-5.185-1.424l-.371-.22-3.843 1.007 1.025-3.742-.241-.383A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+              </svg>
               ENVIAR POR WHATSAPP
-            </Button>
+            </button>
           </div>
         </div>
       </Modal>

@@ -18,6 +18,9 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
+    const assignedToMe = searchParams.get('assignedToMe')
+    const status = searchParams.get('status')
+    const type = searchParams.get('type')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
 
@@ -27,6 +30,16 @@ export async function GET(request: NextRequest) {
 
     const where: any = {
       companyId: companyId || { in: companyIds },
+    }
+
+    if (assignedToMe) {
+      where.assignedTo = { contains: assignedToMe }
+    }
+    if (status && status !== 'all') {
+      where.status = status
+    }
+    if (type && type !== 'all') {
+      where.type = type
     }
 
     const [meetings, calls, quotes, others] = await Promise.all([

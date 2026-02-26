@@ -71,6 +71,43 @@ export default function RecursosHumanosPage() {
     }
   }
 
+  const handleSeedTestData = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !activeCompany?.id) return
+
+    const samplePeriods = [
+      { period: 'Enero 2026', amount: 185000, notes: 'Planilla regular. 24 empleados activos.' },
+      { period: 'Diciembre 2025', amount: 192500, notes: 'Incluye aguinaldo y bonificaciones navideñas.' },
+      { period: 'Noviembre 2025', amount: 183000, notes: 'Planilla regular. 24 empleados activos.' },
+      { period: 'Octubre 2025', amount: 181500, notes: 'Planilla regular con descuentos INSS.' },
+      { period: 'Septiembre 2025', amount: 179000, notes: 'Planilla regular. 23 empleados activos.' },
+    ]
+
+    setLoading(true)
+    try {
+      for (const sample of samplePeriods) {
+        await fetch('/api/payrolls', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyId: activeCompany.id,
+            period: sample.period,
+            fileName: `planilla_${sample.period.replace(' ', '_').toLowerCase()}.xlsx`,
+            fileUrl: '#',
+            totalAmount: sample.amount,
+            notes: sample.notes,
+            createExpense: true,
+          }),
+        })
+      }
+      await fetchPayrolls()
+    } catch (err) {
+      console.error('Error seeding test data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleExport = () => {
     if (!payrolls.length) {
       alert('No hay planillas para exportar')
@@ -228,6 +265,10 @@ export default function RecursosHumanosPage() {
           <Button variant="outline" onClick={handleExport} disabled={payrolls.length === 0}>
             <Download className="w-4 h-4 mr-2" />
             Exportar XLSX
+          </Button>
+          <Button variant="outline" onClick={handleSeedTestData} disabled={loading}>
+            <Download className="w-4 h-4 mr-2" />
+            Datos de Prueba
           </Button>
           <Button onClick={() => setShowModal(true)}>
             <Upload className="w-4 h-4 mr-2" />

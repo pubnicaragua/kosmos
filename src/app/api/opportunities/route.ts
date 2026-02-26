@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     return apiSuccess(opportunities.map((opp: any) => ({
       id: opp.id,
       company: opp.company.name,
+      companyId: opp.companyId,
       title: opp.title,
       client: opp.client,
       value: opp.value,
@@ -40,6 +41,8 @@ export async function GET(request: NextRequest) {
       status: opp.status,
       assignedTo: opp.assignedTo,
       closeDate: opp.closeDate?.toISOString(),
+      priority: opp.priority || 'MEDIA',
+      description: opp.description || null,
       createdAt: opp.createdAt.toISOString(),
     })))
   } catch (error) {

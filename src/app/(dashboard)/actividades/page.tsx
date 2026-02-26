@@ -84,7 +84,7 @@ export default function ActividadesPage() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
     const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
-    if (storedUser?.id) setCurrentUserId(storedUser.id)
+    if (storedUser?.name) setCurrentUserId(storedUser.name)
 
     setIsLoading(true)
     try {
@@ -92,7 +92,7 @@ export default function ActividadesPage() {
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedType !== 'all') params.append('type', selectedType)
       if (selectedStatus !== 'all') params.append('status', selectedStatus)
-      if (onlyMine && storedUser?.id) params.append('assignedToMe', storedUser.id)
+      if (onlyMine && storedUser?.name) params.append('assignedToMe', storedUser.name)
       params.append('sortBy', sortBy)
       params.append('sortOrder', sortOrder)
       params.append('page', currentPage.toString())

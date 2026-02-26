@@ -27,6 +27,14 @@ const ALLOWED_EXTENSIONS = new Set([
   'zip',
   'rar',
   '7z',
+  'mp4',
+  'mov',
+  'avi',
+  'webm',
+  'mkv',
+  'wmv',
+  'flv',
+  'm4v',
 ])
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -48,6 +56,15 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/x-rar-compressed',
   'application/x-7z-compressed',
   'application/octet-stream',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
+  'video/webm',
+  'video/x-matroska',
+  'video/x-ms-wmv',
+  'video/x-flv',
+  'video/mp2t',
+  'video/mpeg',
 ])
 
 export async function POST(request: NextRequest) {

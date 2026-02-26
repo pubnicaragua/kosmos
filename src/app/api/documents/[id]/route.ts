@@ -19,14 +19,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, document.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const updated = await prisma.document.update({
+    const updated = await (prisma.document as any).update({
       where: { id: params.id },
       data: {
         name: body.name,
         type: body.type,
         concept: body.concept,
-        category: body.category,
+        category: body.category || body.area,
         fileUrl: body.fileUrl,
+        ...(body.area !== undefined ? { area: body.area } : {}),
+        ...(body.visibility !== undefined ? { visibility: body.visibility } : {}),
       },
       include: { company: { select: { name: true } } },
     })

@@ -261,16 +261,20 @@ export function Sidebar() {
             {!isCollapsed ? (
               <>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-semibold text-sm">
-                      {user.name?.charAt(0).toUpperCase() || 'U'}
-                    </span>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white font-semibold text-sm">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{user.name || 'Usuario'}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {customRoleName || 
-                       (user.role === 'SUPER_ADMIN' ? 'Super Administrador' : 
+                      {customRoleName ||
+                       (user.role === 'SUPER_ADMIN' ? 'Super Administrador' :
                         user.role === 'ADMIN' ? 'Administrador' :
                         user.role === 'MANAGER' ? 'Gerente' :
                         user.role === 'USER' ? 'Usuario' :
@@ -288,10 +292,14 @@ export function Sidebar() {
               </>
             ) : (
               <div className="hidden lg:flex flex-col items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center cursor-pointer" title={user.name || 'Usuario'}>
-                  <span className="text-white font-semibold text-sm">
-                    {user.name?.charAt(0).toUpperCase() || 'U'}
-                  </span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center cursor-pointer overflow-hidden" title={user.name || 'Usuario'}>
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-white font-semibold text-sm">
+                      {user.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={handleLogout}

@@ -373,10 +373,14 @@ export function Header() {
               </div>
             </div>
             <div className="relative group">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center cursor-pointer">
-                <span className="text-sm font-semibold text-primary">
-                  {user?.name?.charAt(0) || 'U'}
-                </span>
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center cursor-pointer overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <span className="text-sm font-semibold text-primary">
+                    {user?.name?.charAt(0) || 'U'}
+                  </span>
+                )}
               </div>
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                 <button

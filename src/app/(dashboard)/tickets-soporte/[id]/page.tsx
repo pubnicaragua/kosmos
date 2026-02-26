@@ -186,14 +186,99 @@ export default function TicketDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.push('/tickets-soporte')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-          <ArrowLeft className="w-4 h-4" /> Volver
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{ticket.title}</h1>
-          <p className="text-sm text-gray-500">{ticket.company.name}</p>
+      {/* Print-only layout */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #ticket-print, #ticket-print * { visibility: visible !important; }
+          #ticket-print { position: fixed !important; top: 0; left: 0; width: 100%; z-index: 9999; background: white; padding: 32px; }
+        }
+      `}</style>
+      <div id="ticket-print" style={{display:'none'}} className="bg-white font-sans text-sm text-gray-900">
+        <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{ticket.company.name}</div>
+            <div className="text-gray-500 text-xs mt-1">Ticket de Soporte</div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold">#{ticket.id.slice(-8).toUpperCase()}</div>
+            <div className="text-xs text-gray-500">{new Date(ticket.createdAt).toLocaleDateString('es-NI')}</div>
+          </div>
         </div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Título</div>
+            <div className="font-semibold">{ticket.title}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Cliente</div>
+            <div>{ticket.client?.name || 'N/A'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Estado</div>
+            <div>{STATUS_LABELS[ticket.status] || ticket.status}</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Prioridad</div>
+            <div>{PRIORITY_LABELS[ticket.priority] || ticket.priority}</div>
+          </div>
+          {ticket.assignedTo && (
+            <div>
+              <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Asignado a</div>
+              <div>{ticket.assignedTo}</div>
+            </div>
+          )}
+          {ticket.dueDate && (
+            <div>
+              <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Fecha límite</div>
+              <div>{new Date(ticket.dueDate).toLocaleDateString('es-NI')}</div>
+            </div>
+          )}
+        </div>
+        {ticket.description && (
+          <div className="mb-4">
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Descripción</div>
+            <div className="border border-gray-200 rounded p-3 bg-gray-50 text-sm whitespace-pre-wrap">{ticket.description}</div>
+          </div>
+        )}
+        {comments.length > 0 && (
+          <div>
+            <div className="text-xs text-gray-500 uppercase font-semibold mb-2">Comentarios ({comments.length})</div>
+            {comments.map((c, i) => (
+              <div key={c.id} className="mb-2 border border-gray-100 rounded p-2 bg-gray-50">
+                <div className="text-xs text-gray-500 mb-0.5">{c.user.name} — {new Date(c.createdAt).toLocaleString('es-NI')}</div>
+                <div className="text-sm">{c.content}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/tickets-soporte')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-4 h-4" /> Volver
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{ticket.title}</h1>
+            <p className="text-sm text-gray-500">{ticket.company.name}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            const el = document.getElementById('ticket-print')
+            if (el) el.style.display = 'block'
+            window.print()
+            setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
+          title="Imprimir ticket"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          IMPRIMIR
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

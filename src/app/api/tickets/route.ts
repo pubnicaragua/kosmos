@@ -95,15 +95,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send notification if ticket is assigned to someone
-    if (validatedData.assignedTo && validatedData.assignedTo !== decoded.userId) {
-      await notifyAssignment({
-        assignedUserId: validatedData.assignedTo,
-        assignedByUserId: decoded.userId,
-        itemType: 'ticket',
-        itemTitle: validatedData.title,
-        itemId: ticket.id,
-      })
+    // Notify ALL assigned users (supports comma-separated names)
+    if (validatedData.assignedTo) {
+      const assignees = validatedData.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      for (const name of assignees) {
+        const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
+        if (userRecord && userRecord.id !== decoded.userId) {
+          await notifyAssignment({
+            assignedUserId: userRecord.id,
+            assignedByUserId: decoded.userId,
+            itemType: 'ticket',
+            itemTitle: validatedData.title,
+            itemId: ticket.id,
+          })
+        }
+      }
     }
 
     return apiSuccess(ticket, undefined, 201)

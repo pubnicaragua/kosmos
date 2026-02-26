@@ -336,6 +336,7 @@ export default function NuevaCampanaPage() {
                 ref={evidenceFileRef}
                 type="file"
                 className="hidden"
+                accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f) }}
               />
               {evidenceFile ? (
@@ -354,7 +355,7 @@ export default function NuevaCampanaPage() {
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm text-gray-500"
                 >
                   <Upload className="w-5 h-5" />
-                  {uploadingEvidence ? 'Subiendo...' : 'Subir evidencia (PDF, imagen, Excel, etc.)'}
+                  {uploadingEvidence ? 'Subiendo...' : 'Subir evidencia (PDF, imagen, video, Excel, etc.)'}
                 </button>
               )}
               <p className="text-xs text-gray-400 mt-1">Reportes, capturas de pantalla, análisis, comprobantes, etc.</p>
