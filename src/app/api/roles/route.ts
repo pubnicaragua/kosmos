@@ -184,7 +184,11 @@ export async function POST(request: NextRequest) {
     return apiSuccess(role, undefined, 201)
   } catch (error: any) {
     if (error?.code === 'P2002') return apiError('Ya existe un rol con ese nombre en esta empresa', 409)
-    console.error('Error creating role:', error?.message)
+    if (isMissingTable(error)) {
+      console.error('Error creating role: tabla custom_roles no existe en la BD —', error?.message)
+      return apiError('La tabla de roles no existe en la base de datos. Ejecuta la migración SQL.', 503)
+    }
+    console.error('Error creating role:', error?.message, '| code:', error?.code)
     return apiError('Error al crear rol', 500)
   }
 }
