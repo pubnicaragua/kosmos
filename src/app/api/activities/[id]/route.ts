@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -78,6 +79,28 @@ export async function PUT(
       where: { id: params.id },
       data: updateData,
     })
+
+    // Notify each newly added assignee (supports comma-separated multi-assignee names)
+    if (body.assignedTo && body.assignedTo !== activity.assignedTo) {
+      const prevAssignees = new Set(
+        (activity.assignedTo || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      )
+      const newAssignees = body.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      for (const name of newAssignees) {
+        if (!prevAssignees.has(name)) {
+          const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
+          if (userRecord && userRecord.id !== decoded.userId) {
+            await notifyAssignment({
+              assignedUserId: userRecord.id,
+              assignedByUserId: decoded.userId,
+              itemType: 'activity',
+              itemTitle: activity.title,
+              itemId: activity.id,
+            })
+          }
+        }
+      }
+    }
 
     return apiSuccess(updated)
   } catch (error) {

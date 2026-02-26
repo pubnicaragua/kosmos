@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +21,9 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const type = searchParams.get('type')
     const status = searchParams.get('status')
+    const assignedToMe = searchParams.get('assignedToMe')
+    const sortBy = searchParams.get('sortBy') || 'dueDate'
+    const sortOrder = searchParams.get('sortOrder') || 'asc'
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const skip = (page - 1) * limit
@@ -36,6 +40,9 @@ export async function GET(request: NextRequest) {
 
     if (type) where.type = type
     if (status) where.status = status
+    if (assignedToMe) {
+      where.assignedTo = { contains: assignedToMe }
+    }
 
     const [total, activities] = await Promise.all([
       prisma.activity.count({ where }),
@@ -44,7 +51,7 @@ export async function GET(request: NextRequest) {
         include: {
           company: { select: { name: true } },
         },
-        orderBy: { dueDate: 'asc' },
+        orderBy: { [sortBy]: sortOrder as 'asc' | 'desc' },
         skip,
         take: limit,
       }),
@@ -63,6 +70,7 @@ export async function GET(request: NextRequest) {
       dueDate: activity.dueDate.toISOString(),
       meetingLink: activity.meetingLink,
       completedAt: activity.completedAt?.toISOString(),
+      createdAt: activity.createdAt?.toISOString(),
     }))
 
     return apiSuccess({
@@ -107,6 +115,23 @@ export async function POST(request: NextRequest) {
         dueDate: new Date(activityData.dueDate),
       },
     })
+
+    // Notify each assigned user (supports comma-separated multi-assignee names)
+    if (activityData.assignedTo) {
+      const assignees = activityData.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      for (const name of assignees) {
+        const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
+        if (userRecord && userRecord.id !== decoded.userId) {
+          await notifyAssignment({
+            assignedUserId: userRecord.id,
+            assignedByUserId: decoded.userId,
+            itemType: 'activity',
+            itemTitle: activityData.title,
+            itemId: activity.id,
+          })
+        }
+      }
+    }
 
     return apiSuccess(activity, undefined, 201)
   } catch (error) {

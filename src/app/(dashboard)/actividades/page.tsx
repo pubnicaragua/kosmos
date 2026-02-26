@@ -7,7 +7,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonKPI, SkeletonTable } from '@/components/ui-kit/Skeleton'
-import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
+import { MultiUserAutocomplete } from '@/components/ui-kit/MultiUserAutocomplete'
 import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 import * as XLSX from 'xlsx'
 
@@ -63,6 +63,7 @@ export default function ActividadesPage() {
   const [summary, setSummary] = useState<ActivitySummary | null>(null)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState<string>('')
   const [selectedCompany, setSelectedCompany] = useState(() => {
     if (typeof window === 'undefined') return 'all'
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
@@ -70,15 +71,20 @@ export default function ActividadesPage() {
   })
   const [selectedType, setSelectedType] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [onlyMine, setOnlyMine] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [isExporting, setIsExporting] = useState(false)
+  const [sortBy, setSortBy] = useState('createdAt')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [draftRows, setDraftRows] = useState<ActivityRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, ActivityRowDraft>>({})
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    if (storedUser?.id) setCurrentUserId(storedUser.id)
 
     setIsLoading(true)
     try {
@@ -86,6 +92,9 @@ export default function ActividadesPage() {
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedType !== 'all') params.append('type', selectedType)
       if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      if (onlyMine && storedUser?.id) params.append('assignedToMe', storedUser.id)
+      params.append('sortBy', sortBy)
+      params.append('sortOrder', sortOrder)
       params.append('page', currentPage.toString())
       params.append('limit', '10')
 
@@ -125,7 +134,7 @@ export default function ActividadesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedType, selectedStatus, currentPage])
+  }, [selectedCompany, selectedType, selectedStatus, onlyMine, sortBy, sortOrder, currentPage])
 
   useEffect(() => {
     fetchData()
@@ -458,30 +467,74 @@ export default function ActividadesPage() {
           onChange={(e) => setSelectedType(e.target.value)}
           className="w-56"
         />
+        <Select
+          options={[
+            { value: 'createdAt_desc', label: 'Más recientes primero' },
+            { value: 'createdAt_asc', label: 'Más antiguas primero' },
+            { value: 'dueDate_asc', label: 'Fecha límite ↑' },
+            { value: 'dueDate_desc', label: 'Fecha límite ↓' },
+          ]}
+          value={`${sortBy}_${sortOrder}`}
+          onChange={(e) => {
+            const [field, order] = e.target.value.split('_')
+            setSortBy(field)
+            setSortOrder(order)
+            setCurrentPage(1)
+          }}
+          className="w-52"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <KPICard title="LLAMADAS" value={summary?.totalCalls?.toString() || '0'} icon={<svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>} />
-        <KPICard title="REUNIONES" value={summary?.totalMeetings?.toString() || '0'} icon={<svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
-        <KPICard title="COTIZACIONES" value={summary?.totalQuotes?.toString() || '0'} icon={<svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>} />
-        <KPICard title="OTRAS" value={summary?.totalOther?.toString() || '0'} icon={<svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>} />
+        {[
+          { key: 'CALL', title: 'LLAMADAS', value: summary?.totalCalls ?? 0, color: 'text-primary', ringColor: 'ring-primary/40 bg-primary/5', icon: <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg> },
+          { key: 'MEETING', title: 'REUNIONES', value: summary?.totalMeetings ?? 0, color: 'text-success', ringColor: 'ring-success/40 bg-success/5', icon: <svg className="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
+          { key: 'QUOTE', title: 'COTIZACIONES', value: summary?.totalQuotes ?? 0, color: 'text-warning', ringColor: 'ring-warning/40 bg-warning/5', icon: <svg className="w-6 h-6 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
+          { key: 'OTHER', title: 'OTRAS', value: summary?.totalOther ?? 0, color: 'text-gray-500', ringColor: 'ring-gray-300 bg-gray-50', icon: <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> },
+        ].map((kpi) => (
+          <button
+            key={kpi.key}
+            type="button"
+            onClick={() => { setSelectedType(selectedType === kpi.key ? 'all' : kpi.key); setCurrentPage(1) }}
+            className={`text-left w-full rounded-xl transition-all duration-150 focus:outline-none ${
+              selectedType === kpi.key ? `ring-2 ${kpi.ringColor} scale-[1.02] shadow-md` : 'hover:scale-[1.01] hover:shadow-sm'
+            }`}
+          >
+            <KPICard title={kpi.title} value={kpi.value.toString()} icon={kpi.icon} />
+          </button>
+        ))}
       </div>
 
       <Card>
-        <div className="flex items-center gap-4 mb-6">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedStatus(tab.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedStatus === tab.id
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2 flex-wrap">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { setSelectedStatus(tab.id); setCurrentPage(1) }}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedStatus === tab.id
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setOnlyMine((v) => !v); setCurrentPage(1) }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              onlyMine
+                ? 'bg-indigo-600 text-white border-indigo-600'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {onlyMine ? 'Mis actividades' : 'Todas las actividades'}
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -527,12 +580,11 @@ export default function ActividadesPage() {
                       <div className="text-xs text-gray-400">Solo para reuniones</div>
                     )}
                   </td>
-                  <td className="py-3 px-4">
-                    <UserAutocomplete
+                  <td className="py-2 px-2">
+                    <MultiUserAutocomplete
                       companyId={row.companyId}
                       value={row.assignedTo}
                       onChange={(value) => updateDraftRow(row.tempId, 'assignedTo', value)}
-                      placeholder="Asignado a..."
                       fullWidth
                     />
                   </td>
@@ -575,12 +627,11 @@ export default function ActividadesPage() {
                         <div className="text-xs text-gray-400">Solo para reuniones</div>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      <UserAutocomplete
+                    <td className="py-2 px-2">
+                      <MultiUserAutocomplete
                         companyId={editingRows[activity.id].companyId}
                         value={editingRows[activity.id].assignedTo}
                         onChange={(value) => updateEditingRow(activity.id, 'assignedTo', value)}
-                        placeholder="Asignado a..."
                         fullWidth
                       />
                     </td>
@@ -619,7 +670,17 @@ export default function ActividadesPage() {
                         <div className="text-sm text-gray-400">-</div>
                       )}
                     </td>
-                    <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.assignedTo || '-'}</div></td>
+                    <td className="py-4 px-3">
+                      {activity.assignedTo ? (
+                        <div className="flex flex-wrap gap-1">
+                          {activity.assignedTo.split(',').map((u, i) => (
+                            <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              u.trim() === currentUserId ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
+                            }`}>{u.trim()}</span>
+                          ))}
+                        </div>
+                      ) : <div className="text-sm text-gray-400">-</div>}
+                    </td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{new Date(activity.dueDate).toLocaleDateString('es-ES')}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.priority || '-'}</div></td>
                     <td className="py-4 px-3 text-center">{getStatusBadge(activity.status)}</td>
