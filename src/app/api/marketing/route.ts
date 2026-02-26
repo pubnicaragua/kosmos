@@ -17,6 +17,8 @@ const marketingSchema = z.object({
   targetAudience: z.string().optional(),
   metrics: z.string().optional(),
   assignedTo: z.string().optional(),
+  adType: z.string().optional(),
+  evidenceUrl: z.string().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })
 
@@ -85,6 +87,9 @@ export async function POST(request: NextRequest) {
         targetAudience: validatedData.targetAudience || null,
         metrics: validatedData.metrics || null,
         assignedTo: validatedData.assignedTo || null,
+        adType: validatedData.adType || null,
+        evidenceUrl: validatedData.evidenceUrl || null,
+        approvalStatus: 'PENDING',
         companyId: validatedData.companyId,
         createdBy: decoded.userId,
       },

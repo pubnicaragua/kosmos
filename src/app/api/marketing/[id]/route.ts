@@ -17,6 +17,8 @@ const marketingUpdateSchema = z.object({
   targetAudience: z.string().optional(),
   metrics: z.string().optional(),
   assignedTo: z.string().optional(),
+  adType: z.string().optional(),
+  evidenceUrl: z.string().optional(),
 })
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -86,6 +88,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (validatedData.targetAudience !== undefined) updateData.targetAudience = validatedData.targetAudience
     if (validatedData.metrics !== undefined) updateData.metrics = validatedData.metrics
     if (validatedData.assignedTo !== undefined) updateData.assignedTo = validatedData.assignedTo
+    if (validatedData.adType !== undefined) updateData.adType = validatedData.adType
+    if (validatedData.evidenceUrl !== undefined) updateData.evidenceUrl = validatedData.evidenceUrl
 
     const campaign = await prisma.marketingCampaign.update({
       where: { id: params.id },

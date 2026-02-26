@@ -72,6 +72,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, quote.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    if (quote.status === 'APPROVED') {
+      return apiError('No se puede editar una cotización aprobada', 400)
+    }
+
     if ('status' in body || 'approvalAction' in body) {
       return apiError('Usa el endpoint de estado para aprobar/rechazar o cambiar estado', 400)
     }
