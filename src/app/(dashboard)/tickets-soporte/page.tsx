@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
@@ -53,6 +54,7 @@ const COLUMNS = [
 ]
 
 export default function TicketsSoportePage() {
+  const router = useRouter()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
@@ -465,12 +467,12 @@ export default function TicketsSoportePage() {
                       <div
                         key={ticket.id}
                         draggable
-                        onClick={() => openEditModal(ticket)}
+                        onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
                         onDragStart={() => handleDragStart(ticket.id)}
                         onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null) }}
-                        className={`group bg-white border rounded-lg p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 ${
+                        className={`group bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 ${
                           isDragging 
-                            ? 'opacity-50 scale-95 rotate-1' 
+                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing' 
                             : selectedTicketId === ticket.id 
                             ? 'border-primary ring-1 ring-primary/40 scale-100' 
                             : 'border-gray-200 scale-100'

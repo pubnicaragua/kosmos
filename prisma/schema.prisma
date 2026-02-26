@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  name          String
-  avatar        String?
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  refreshTokens RefreshToken[]
-  userCompanies UserCompany[]
-  notifications Notification[]
+  id              String            @id @default(cuid())
+  email           String            @unique
+  password        String
+  name            String
+  avatar          String?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  refreshTokens   RefreshToken[]
+  userCompanies   UserCompany[]
+  notifications   Notification[]
+  userPreferences UserPreferences?
 
   @@map("users")
 }
@@ -44,7 +45,7 @@ model Company {
   tickets            Ticket[]
   userCompanies      UserCompany[]
   customRoles        CustomRole[]
-
+  pipelineColumns    PipelineColumn[]
   @@map("companies")
 }
 
@@ -357,6 +358,34 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model UserPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique @map("user_id")
+  ticketColumns         Json?    @map("ticket_columns")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model PipelineColumn {
+  id          String   @id @default(cuid())
+  companyId   String   @map("company_id")
+  name        String
+  color       String   @default("#6366f1")
+  order       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("pipeline_columns")
 }
 
 model CustomRole {
