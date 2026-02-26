@@ -56,6 +56,22 @@ export function Sidebar() {
   const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null)
   const [customRoleName, setCustomRoleName] = useState<string | null>(null)
 
+  const syncUserFromStorage = useCallback(() => {
+    const storedUser = localStorage.getItem('user')
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+
+    if (!storedUser) {
+      setUser(null)
+      return
+    }
+
+    const parsedUser = JSON.parse(storedUser)
+    setUser({
+      ...parsedUser,
+      role: activeCompany?.role || parsedUser.role,
+    })
+  }, [])
+
   const loadPermissions = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
@@ -71,6 +87,11 @@ export function Sidebar() {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
       const me = data.data.find((m: any) => m.userId === storedUser.id)
       if (!me) return
+
+      setUser((prev: any) => ({
+        ...(prev || storedUser),
+        role: me.role || prev?.role || storedUser.role,
+      }))
 
       // Custom role always takes precedence for visual module filtering
       if (me.customRole) {
@@ -97,19 +118,21 @@ export function Sidebar() {
   }, [])
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) setUser(JSON.parse(storedUser))
+    syncUserFromStorage()
     loadPermissions()
-  }, [loadPermissions])
+  }, [loadPermissions, syncUserFromStorage])
 
   // Reload when active company changes (storage event from other tabs or same page)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'activeCompany') loadPermissions()
+      if (!e.key || e.key === 'activeCompany' || e.key === 'user') {
+        syncUserFromStorage()
+        loadPermissions()
+      }
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
-  }, [loadPermissions])
+  }, [loadPermissions, syncUserFromStorage])
 
   const isItemVisible = (itemId: string): boolean => {
     if (allowedModules === null) return true // full access

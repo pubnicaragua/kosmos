@@ -484,13 +484,14 @@ export default function ActividadesPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[1450px]">
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">TIPO</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">TÍTULO</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">DESCRIPCIÓN</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
+                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">GOOGLE MEET/CALENDAR</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">ASIGNADO A</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">FECHA LÍMITE</th>
                 <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">PRIORIDAD</th>
@@ -509,9 +510,22 @@ export default function ActividadesPage() {
                       <option value="OTHER">Otra</option>
                     </select>
                   </td>
-                  <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título de la actividad" /></td>
-                  <td className="py-2 px-2"><textarea value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Descripción detallada" rows={2} /></td>
-                  <td className="py-2 px-2"><input value={row.client} onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Cliente" /></td>
+                  <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título de la actividad" /></td>
+                  <td className="py-2 px-2"><textarea value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} className="w-full min-w-[260px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Descripción detallada" rows={2} /></td>
+                  <td className="py-2 px-2"><input value={row.client} onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full min-w-[160px] px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Cliente" /></td>
+                  <td className="py-2 px-2">
+                    {row.type === 'MEETING' ? (
+                      <input
+                        value={row.meetingLink}
+                        onChange={(e) => updateDraftRow(row.tempId, 'meetingLink', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full min-w-[220px] px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="https://meet.google.com/..."
+                      />
+                    ) : (
+                      <div className="text-xs text-gray-400">Solo para reuniones</div>
+                    )}
+                  </td>
                   <td className="py-3 px-4">
                     <UserAutocomplete
                       companyId={row.companyId}
@@ -544,9 +558,22 @@ export default function ActividadesPage() {
                         <option value="OTHER">Otra</option>
                       </select>
                     </td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full min-w-[250px] px-3 py-2 border border-gray-300 rounded-lg text-sm" /></td>
-                    <td className="py-2 px-2"><textarea value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} className="w-full min-w-[300px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" rows={2} /></td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].client} onChange={(e) => updateEditingRow(activity.id, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full min-w-[220px] px-3 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2"><textarea value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} className="w-full min-w-[260px] px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" rows={2} /></td>
+                    <td className="py-2 px-2"><input value={editingRows[activity.id].client} onChange={(e) => updateEditingRow(activity.id, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full min-w-[160px] px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2">
+                      {editingRows[activity.id].type === 'MEETING' ? (
+                        <input
+                          value={editingRows[activity.id].meetingLink}
+                          onChange={(e) => updateEditingRow(activity.id, 'meetingLink', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')}
+                          className="w-full min-w-[220px] px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="https://meet.google.com/..."
+                        />
+                      ) : (
+                        <div className="text-xs text-gray-400">Solo para reuniones</div>
+                      )}
+                    </td>
                     <td className="py-3 px-4">
                       <UserAutocomplete
                         companyId={editingRows[activity.id].companyId}
@@ -569,9 +596,28 @@ export default function ActividadesPage() {
                 ) : (
                   <tr key={activity.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900">{getTypeLabel(activity.type)}</div></td>
-                    <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900 min-w-[250px]">{activity.title}</div></td>
-                    <td className="py-4 px-3"><div className="text-sm text-gray-600 min-w-[300px] whitespace-pre-wrap">{activity.description || '-'}</div></td>
-                    <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.client || '-'}</div></td>
+                    <td className="py-4 px-3"><div className="text-sm font-medium text-gray-900 max-w-[220px] truncate" title={activity.title}>{activity.title}</div></td>
+                    <td className="py-4 px-3"><div className="text-sm text-gray-600 max-w-[260px] whitespace-pre-wrap break-words">{activity.description || '-'}</div></td>
+                    <td className="py-4 px-3"><div className="text-sm text-gray-600 max-w-[160px] truncate" title={activity.client || '-'}>{activity.client || '-'}</div></td>
+                    <td className="py-4 px-3">
+                      {activity.type === 'MEETING' ? (
+                        activity.meetingLink ? (
+                          <a
+                            href={activity.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm text-primary hover:underline break-all"
+                            title={activity.meetingLink}
+                          >
+                            {activity.meetingLink}
+                          </a>
+                        ) : (
+                          <div className="text-sm text-amber-600">Sin enlace</div>
+                        )
+                      ) : (
+                        <div className="text-sm text-gray-400">-</div>
+                      )}
+                    </td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.assignedTo || '-'}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{new Date(activity.dueDate).toLocaleDateString('es-ES')}</div></td>
                     <td className="py-4 px-3"><div className="text-sm text-gray-600">{activity.priority || '-'}</div></td>

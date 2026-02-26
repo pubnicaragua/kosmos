@@ -23,6 +23,9 @@ interface Campaign {
   endDate: string | null
   targetAudience?: string
   metrics?: string
+  adType?: string | null
+  evidenceUrl?: string | null
+  approvalStatus?: string | null
   createdBy: string
   createdByName?: string
   createdAt: string
@@ -40,6 +43,8 @@ interface CampaignFormData {
   endDate: string
   targetAudience: string
   metrics: string
+  adType: string
+  evidenceUrl: string
 }
 
 export default function MarketingDetailPage({ params }: { params: { id: string } }) {
@@ -60,6 +65,8 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
     endDate: '',
     targetAudience: '',
     metrics: '',
+    adType: '',
+    evidenceUrl: '',
   })
 
   useEffect(() => {
@@ -106,6 +113,8 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
       endDate: targetCampaign.endDate ? targetCampaign.endDate.split('T')[0] : '',
       targetAudience: targetCampaign.targetAudience || '',
       metrics: targetCampaign.metrics || '',
+      adType: targetCampaign.adType || '',
+      evidenceUrl: targetCampaign.evidenceUrl || '',
     })
   }
 
@@ -141,6 +150,8 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
           endDate: formData.endDate || null,
           targetAudience: formData.targetAudience || null,
           metrics: formData.metrics || null,
+          adType: formData.adType || null,
+          evidenceUrl: formData.evidenceUrl || null,
         }),
       })
 
@@ -213,6 +224,9 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
       { Campo: '% Ejecución', Valor: Number(execution.toFixed(2)) },
       { Campo: 'Fecha Inicio', Valor: campaign.startDate ? new Date(campaign.startDate).toLocaleDateString('es-ES') : '' },
       { Campo: 'Fecha Fin', Valor: campaign.endDate ? new Date(campaign.endDate).toLocaleDateString('es-ES') : '' },
+      { Campo: 'Tipo de anuncio', Valor: campaign.adType || '' },
+      { Campo: 'URL de evidencia', Valor: campaign.evidenceUrl || '' },
+      { Campo: 'Estado de aprobación', Valor: campaign.approvalStatus || 'PENDING' },
       { Campo: 'Creado por', Valor: campaign.createdByName || campaign.createdBy },
     ]
 
@@ -246,6 +260,9 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
           <h1>${campaign.name}</h1>
           <p><strong>Canal:</strong> ${campaign.channel}</p>
           <p><strong>Estado:</strong> ${campaign.status}</p>
+          <p><strong>Tipo de anuncio:</strong> ${campaign.adType || '-'}</p>
+          <p><strong>Evidencia:</strong> ${campaign.evidenceUrl || '-'}</p>
+          <p><strong>Aprobación:</strong> ${campaign.approvalStatus || 'PENDING'}</p>
           <p><strong>Creado por:</strong> ${campaign.createdByName || campaign.createdBy}</p>
           <table>
             <tr><th>Campo</th><th>Valor</th></tr>
@@ -270,6 +287,28 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
       case 'COMPLETADA': return 'bg-green-100 text-green-800'
       case 'CANCELADA': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getApprovalStatusLabel = (approvalStatus?: string | null) => {
+    const labels: Record<string, string> = {
+      APPROVED: 'Aprobada',
+      REJECTED: 'Rechazada',
+      PENDING: 'Pendiente',
+    }
+    const normalizedStatus = approvalStatus || 'PENDING'
+    return labels[normalizedStatus] || normalizedStatus
+  }
+
+  const getApprovalStatusColor = (approvalStatus?: string | null) => {
+    const normalizedStatus = approvalStatus || 'PENDING'
+    switch (normalizedStatus) {
+      case 'APPROVED':
+        return 'bg-emerald-100 text-emerald-800'
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-amber-100 text-amber-800'
     }
   }
 
@@ -346,6 +385,9 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
           <Badge className={getStatusColor(campaign.status)}>
             {campaign.status.replace('_', ' ')}
           </Badge>
+          <Badge className={getApprovalStatusColor(campaign.approvalStatus)}>
+            {getApprovalStatusLabel(campaign.approvalStatus)}
+          </Badge>
           <Button variant="outline" onClick={openEditModal}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -385,6 +427,28 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
                 <p className="text-gray-600">{campaign.targetAudience}</p>
               </div>
             )}
+
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Tipo de anuncio</h3>
+                <p className="text-gray-600">{campaign.adType || 'No definido'}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Evidencia</h3>
+                {campaign.evidenceUrl ? (
+                  <a
+                    href={campaign.evidenceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline break-all"
+                  >
+                    {campaign.evidenceUrl}
+                  </a>
+                ) : (
+                  <p className="text-gray-600">No registrada</p>
+                )}
+              </div>
+            </div>
 
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Métricas</h3>
@@ -496,6 +560,12 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
                 <span className="text-gray-900">
                   {new Date(campaign.updatedAt).toLocaleDateString('es-ES')}
                 </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Aprobación</span>
+                <Badge className={getApprovalStatusColor(campaign.approvalStatus)}>
+                  {getApprovalStatusLabel(campaign.approvalStatus)}
+                </Badge>
               </div>
             </div>
           </Card>
@@ -627,6 +697,21 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
             onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
             fullWidth
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Tipo de anuncio"
+              value={formData.adType}
+              onChange={(e) => setFormData({ ...formData, adType: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="URL de evidencia"
+              value={formData.evidenceUrl}
+              onChange={(e) => setFormData({ ...formData, evidenceUrl: e.target.value })}
+              placeholder="https://..."
+              fullWidth
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
               Cancelar

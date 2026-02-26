@@ -10,6 +10,13 @@ const MODULES = [
   'tickets-soporte', 'marketing', 'entregables', 'recursos-humanos', 'sistema',
 ]
 
+const isMissingCustomRoleColumn = (error: any) => {
+  if (error?.code !== 'P2022') return false
+
+  const errorText = `${error?.meta?.column_name || ''} ${error?.message || ''}`.toLowerCase()
+  return errorText.includes('custom_role_id')
+}
+
 const PREDEFINED_ROLES = [
   {
     name: 'Vendedor',
@@ -63,16 +70,35 @@ export async function GET(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
 
-    const roles = await prisma.customRole.findMany({
-      where: { companyId },
-      include: {
-        permissions: true,
-        userCompanies: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+    let roles: any[] = []
+
+    try {
+      roles = await prisma.customRole.findMany({
+        where: { companyId },
+        include: {
+          permissions: true,
+          userCompanies: {
+            include: { user: { select: { id: true, name: true, email: true } } },
+          },
         },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
+        orderBy: { createdAt: 'asc' },
+      })
+    } catch (error: any) {
+      if (!isMissingCustomRoleColumn(error)) throw error
+
+      console.warn('Falta columna custom_role_id en user_companies; devolviendo roles sin asignaciones de usuarios')
+
+      const rolesWithoutUsers = await prisma.customRole.findMany({
+        where: { companyId },
+        include: { permissions: true },
+        orderBy: { createdAt: 'asc' },
+      })
+
+      roles = rolesWithoutUsers.map((role) => ({
+        ...role,
+        userCompanies: [],
+      }))
+    }
 
     return apiSuccess({ roles, modules: MODULES, predefinedRoles: PREDEFINED_ROLES })
   } catch (error: any) {

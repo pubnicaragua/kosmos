@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -33,6 +33,7 @@ interface Company {
 
 export default function InventarioEdicionPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [companies, setCompanies] = useState<Company[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -109,6 +110,108 @@ export default function InventarioEdicionPage() {
   const deleteRow = (index: number) => {
     if (rows.length > 1) {
       setRows(rows.filter((_, i) => i !== index))
+    }
+  }
+
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (selectedCompany === 'all') {
+      alert('Selecciona una empresa antes de importar el archivo')
+      event.target.value = ''
+      return
+    }
+
+    const normalizeHeader = (value: string) =>
+      value
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '')
+
+    const toNumber = (value: unknown) => {
+      if (value === null || value === undefined || value === '') return 0
+      const raw = String(value).trim()
+      const normalized = raw.includes(',') && raw.includes('.') ? raw.replace(/,/g, '') : raw.replace(',', '.')
+      const parsed = Number(normalized)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+
+    try {
+      const XLSX = await import('xlsx')
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      const parsedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' })
+
+      if (!parsedRows.length) {
+        alert('El archivo no contiene filas para importar')
+        return
+      }
+
+      const categoriesByName = new Map(
+        categories.map((category) => [normalizeHeader(category.name), category.id])
+      )
+
+      const importedRows = parsedRows
+        .map((row, index) => {
+          const normalizedRow = Object.entries(row).reduce<Record<string, unknown>>((acc, [key, value]) => {
+            acc[normalizeHeader(key)] = value
+            return acc
+          }, {})
+
+          const pickValue = (...aliases: string[]) => {
+            for (const alias of aliases) {
+              const value = normalizedRow[normalizeHeader(alias)]
+              if (value !== undefined && value !== null && String(value).trim() !== '') {
+                return value
+              }
+            }
+            return ''
+          }
+
+          const categoryInput = String(
+            pickValue('categoria', 'category', 'categoryname', 'nombrecategoria', 'categoryid')
+          ).trim()
+          const normalizedCategory = normalizeHeader(categoryInput)
+          const matchedCategoryId =
+            categoriesByName.get(normalizedCategory) ||
+            categories.find((category) => category.id === categoryInput)?.id ||
+            ''
+
+          const name = String(pickValue('nombre', 'name', 'producto', 'product')).trim()
+          const sku = String(pickValue('sku', 'codigo', 'code', 'codigointerno')).trim()
+
+          return {
+            id: '',
+            tempId: Date.now() + index,
+            name,
+            unit: String(pickValue('unidad', 'unit', 'unikg') || 'UNI').trim().toUpperCase() || 'UNI',
+            categoryId: matchedCategoryId,
+            description: String(pickValue('descripcion', 'description', 'detalle')).trim(),
+            sku,
+            cost: toNumber(pickValue('costo', 'cost', 'preciocosto')),
+            price: toNumber(pickValue('precio', 'price', 'pvp')),
+            netMargin: toNumber(pickValue('margenneto', 'netmargin', 'margen', 'margin')),
+            isNew: true,
+          }
+        })
+        .filter((row) => row.name && row.sku)
+
+      if (!importedRows.length) {
+        alert('No se encontraron filas válidas. Verifica que el archivo incluya al menos Nombre y SKU.')
+        return
+      }
+
+      setRows(importedRows)
+      alert(`${importedRows.length} productos cargados. Revisa y presiona FINALIZAR para guardar.`)
+    } catch (error) {
+      console.error('Error importing inventory file:', error)
+      alert('No se pudo procesar el archivo. Usa un archivo XLSX/XLS/CSV válido.')
+    } finally {
+      event.target.value = ''
     }
   }
 
@@ -195,6 +298,23 @@ export default function InventarioEdicionPage() {
           <p className="text-sm text-gray-500 mt-1">Completa los detalles para generar una propuesta comercial.</p>
         </div>
         <div className="flex items-center gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <Button
+            variant="outline"
+            disabled={isSaving}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            CARGAR ARCHIVO
+          </Button>
           <Button variant="outline" onClick={() => router.push('/inventario')}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

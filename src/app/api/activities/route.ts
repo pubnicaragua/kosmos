@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       priority: activity.priority,
       assignedTo: activity.assignedTo,
       dueDate: activity.dueDate.toISOString(),
+      meetingLink: activity.meetingLink,
       completedAt: activity.completedAt?.toISOString(),
     }))
 

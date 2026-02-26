@@ -27,10 +27,34 @@ export function Header() {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    const loadSession = () => {
+      const storedUser = localStorage.getItem('user')
+      const storedActiveCompany = localStorage.getItem('activeCompany')
+
+      if (!storedUser) {
+        setUser(null)
+        return
+      }
+
+      const parsedUser = JSON.parse(storedUser)
+      const parsedActiveCompany = storedActiveCompany ? JSON.parse(storedActiveCompany) : null
+
+      setUser({
+        ...parsedUser,
+        role: parsedActiveCompany?.role || parsedUser.role,
+      })
     }
+
+    loadSession()
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (!event.key || event.key === 'user' || event.key === 'activeCompany') {
+        loadSession()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   useEffect(() => {
@@ -358,7 +382,10 @@ export function Header() {
                 <button
                   onClick={() => {
                     localStorage.removeItem('accessToken')
+                    localStorage.removeItem('refreshToken')
                     localStorage.removeItem('user')
+                    localStorage.removeItem('activeCompany')
+                    localStorage.removeItem('rememberMe')
                     router.push('/login')
                   }}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

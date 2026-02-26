@@ -17,6 +17,9 @@ interface MarketingCampaign {
   startDate: string | null
   endDate: string | null
   targetAudience: string | null
+  adType?: string | null
+  evidenceUrl?: string | null
+  approvalStatus?: string | null
   company: { name: string }
 }
 
@@ -62,6 +65,18 @@ const CHANNEL_ICONS: Record<string, any> = {
   CONTENIDO: Calendar,
   EVENTOS: Calendar,
   OTRO: Calendar,
+}
+
+const APPROVAL_STATUS_STYLES: Record<string, string> = {
+  APPROVED: 'bg-emerald-100 text-emerald-700',
+  REJECTED: 'bg-red-100 text-red-700',
+  PENDING: 'bg-amber-100 text-amber-700',
+}
+
+const APPROVAL_STATUS_LABELS: Record<string, string> = {
+  APPROVED: 'Aprobada',
+  REJECTED: 'Rechazada',
+  PENDING: 'Pendiente',
 }
 
 interface Company {
@@ -130,6 +145,16 @@ export default function MarketingPage() {
   const getChannelIcon = (channel: string) => {
     const Icon = CHANNEL_ICONS[channel] || Calendar
     return <Icon className="w-4 h-4" />
+  }
+
+  const getApprovalStatusLabel = (approvalStatus?: string | null) => {
+    if (!approvalStatus) return 'Pendiente'
+    return APPROVAL_STATUS_LABELS[approvalStatus] || approvalStatus
+  }
+
+  const getApprovalStatusStyle = (approvalStatus?: string | null) => {
+    const normalizedStatus = approvalStatus || 'PENDING'
+    return APPROVAL_STATUS_STYLES[normalizedStatus] || 'bg-gray-100 text-gray-700'
   }
 
   const handleDragStart = (campaign: MarketingCampaign) => {
@@ -283,6 +308,32 @@ export default function MarketingPage() {
                       <p className="text-xs text-gray-600 mb-3 line-clamp-2">
                         {campaign.description}
                       </p>
+                    )}
+
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span
+                        className={`px-2 py-1 rounded-full text-[11px] font-medium ${getApprovalStatusStyle(campaign.approvalStatus)}`}
+                      >
+                        {getApprovalStatusLabel(campaign.approvalStatus)}
+                      </span>
+                      {campaign.adType && (
+                        <span className="px-2 py-1 rounded-full text-[11px] font-medium bg-indigo-100 text-indigo-700">
+                          {campaign.adType}
+                        </span>
+                      )}
+                    </div>
+
+                    {campaign.evidenceUrl && (
+                      <a
+                        href={campaign.evidenceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block text-[11px] text-primary hover:underline mb-2 truncate"
+                        title={campaign.evidenceUrl}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Evidencia: {campaign.evidenceUrl}
+                      </a>
                     )}
                     
                     {campaign.budget && (
