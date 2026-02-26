@@ -18,6 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       where: { companyId: params.id },
       include: {
         user: { select: { id: true, name: true, email: true, avatar: true } },
+        customRole: { include: { permissions: true } },
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -73,9 +74,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         userId: targetUser.id,
         companyId: params.id,
         role: role || 'USER',
+        customRoleId: customRoleId || null,
       },
       include: {
         user: { select: { id: true, name: true, email: true, avatar: true } },
+        customRole: { include: { permissions: true } },
       },
     })
 

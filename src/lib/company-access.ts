@@ -49,6 +49,13 @@ export async function getModuleAccess(
 
   const userCompany = await prisma.userCompany.findFirst({
     where: { userId, companyId },
+    include: {
+      customRole: {
+        include: {
+          permissions: true,
+        },
+      },
+    },
   })
 
   if (!userCompany) {
@@ -59,16 +66,31 @@ export async function getModuleAccess(
       canEdit: false,
       canDelete: false,
       canExport: false,
+      restrictedByCustomRole: false,
     }
   }
 
+  if (!userCompany.customRole) {
+    return {
+      canAccess: true,
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      canExport: true,
+      restrictedByCustomRole: false,
+    }
+  }
+
+  const perm = userCompany.customRole.permissions.find((p) => p.module === module)
+
   return {
     canAccess: true,
-    canView: true,
-    canCreate: true,
-    canEdit: true,
-    canDelete: true,
-    canExport: true,
-    effectiveRole: userCompany.role,
+    canView: Boolean(perm?.canView),
+    canCreate: Boolean(perm?.canCreate),
+    canEdit: Boolean(perm?.canEdit),
+    canDelete: Boolean(perm?.canDelete),
+    canExport: Boolean(perm?.canExport),
+    restrictedByCustomRole: true,
   }
 }
