@@ -8,16 +8,16 @@ datasource db {
 }
 
 model User {
-  id              String            @id @default(cuid())
-  email           String            @unique
+  id              String           @id @default(cuid())
+  email           String           @unique
   password        String
   name            String
   avatar          String?
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  notifications   Notification[]
   refreshTokens   RefreshToken[]
   userCompanies   UserCompany[]
-  notifications   Notification[]
   userPreferences UserPreferences?
 
   @@map("users")
@@ -34,18 +34,19 @@ model Company {
   activities         Activity[]
   clients            Client[]
   contracts          Contract[]
+  customRoles        CustomRole[]
   documents          Document[]
   expenses           Expense[]
   incomes            Income[]
   marketingCampaigns MarketingCampaign[]
   opportunities      Opportunity[]
+  pipelineColumns    PipelineColumn[]
   productCategories  ProductCategory[]
   products           Product[]
   quotes             Quote[]
   tickets            Ticket[]
   userCompanies      UserCompany[]
-  customRoles        CustomRole[]
-  pipelineColumns    PipelineColumn[]
+
   @@map("companies")
 }
 
@@ -54,12 +55,12 @@ model UserCompany {
   userId       String      @map("user_id")
   companyId    String      @map("company_id")
   role         UserRole    @default(USER)
-  customRoleId String?     @map("custom_role_id")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
+  customRoleId String?     @map("custom_role_id")
   company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customRole   CustomRole? @relation(fields: [customRoleId], references: [id])
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
 
   @@unique([userId, companyId])
   @@map("user_companies")
@@ -332,12 +333,11 @@ model Activity {
   priority    String?
   assignedTo  String?        @map("assigned_to")
   dueDate     DateTime       @map("due_date")
-  meetingLink String?        @map("meeting_link")
   completedAt DateTime?      @map("completed_at")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  meetingLink String?        @map("meeting_link")
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("activities")
@@ -352,8 +352,7 @@ model Notification {
   link      String?
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
@@ -361,27 +360,25 @@ model Notification {
 }
 
 model UserPreferences {
-  id                    String   @id @default(cuid())
-  userId                String   @unique @map("user_id")
-  ticketColumns         Json?    @map("ticket_columns")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  ticketColumns Json?    @map("ticket_columns")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
 }
 
 model PipelineColumn {
-  id          String   @id @default(cuid())
-  companyId   String   @map("company_id")
-  name        String
-  color       String   @default("#6366f1")
-  order       Int
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  name      String
+  color     String   @default("#6366f1")
+  order     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -396,7 +393,6 @@ model CustomRole {
   color         String           @default("#6366f1")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
-  
   company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   permissions   RolePermission[]
   userCompanies UserCompany[]
@@ -414,8 +410,7 @@ model RolePermission {
   canEdit      Boolean    @default(false) @map("can_edit")
   canDelete    Boolean    @default(false) @map("can_delete")
   canExport    Boolean    @default(false) @map("can_export")
-  
-  customRole CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+  customRole   CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
 
   @@unique([customRoleId, module])
   @@map("role_permissions")
@@ -435,14 +430,14 @@ model MarketingCampaign {
   targetAudience String?          @map("target_audience")
   metrics        String?
   assignedTo     String?          @map("assigned_to")
-  adType         String?          @map("ad_type")
-  evidenceUrl    String?          @map("evidence_url")
-  approvalStatus String?          @default("PENDING") @map("approval_status")
-  approvedBy     String?          @map("approved_by")
-  approvedAt     DateTime?        @map("approved_at")
   createdBy      String           @map("created_by")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
+  adType         String?          @map("ad_type")
+  approvalStatus String?          @default("PENDING") @map("approval_status")
+  approvedAt     DateTime?        @map("approved_at")
+  approvedBy     String?          @map("approved_by")
+  evidenceUrl    String?          @map("evidence_url")
   company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])

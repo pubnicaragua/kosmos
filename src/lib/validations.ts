@@ -115,19 +115,29 @@ export const contractSchema = z.object({
 // SPRINT 3 - CLIENTES, INVENTARIO, TICKETS
 // ============================================
 
+// Nicaragua validation patterns
+const nicaraguaCedulaPattern = /^\d{3}-\d{6}-\d{4}[A-Z]$/
+const nicaraguaRucPattern = /^J\d{13}$/
+
 // Clients
 export const clientSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  email: z.string().email('Email inválido').min(1, 'Email requerido'),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   country: z.string().optional(),
-  ruc: z.string().optional(),
-  cedula: z.string().optional(),
+  ruc: z.string().optional().refine(
+    (val) => !val || nicaraguaRucPattern.test(val),
+    { message: 'RUC debe tener formato: J0310000000000 (J seguido de 13 dígitos)' }
+  ),
+  cedula: z.string().optional().refine(
+    (val) => !val || nicaraguaCedulaPattern.test(val),
+    { message: 'Cédula debe tener formato: 000-000000-0000X (ej: 001-010190-0001A)' }
+  ),
   taxId: z.string().optional(),
   status: z.enum(['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO', 'ACTIVO', 'INACTIVO']).optional(),
-  contactName: z.string().optional(),
+  contactName: z.string().min(1, 'Nombre de contacto requerido'),
   notes: z.string().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })
