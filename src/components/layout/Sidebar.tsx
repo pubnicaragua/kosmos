@@ -122,6 +122,11 @@ export function Sidebar() {
     loadPermissions()
   }, [loadPermissions, syncUserFromStorage])
 
+  // Reload permissions on route change to pick up newly assigned roles
+  useEffect(() => {
+    loadPermissions()
+  }, [pathname, loadPermissions])
+
   // Reload when active company changes (storage event from other tabs or same page)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {

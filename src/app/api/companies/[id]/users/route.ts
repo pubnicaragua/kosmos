@@ -14,14 +14,31 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, params.id)
     if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
 
-    const members = await prisma.userCompany.findMany({
-      where: { companyId: params.id },
-      include: {
-        user: { select: { id: true, name: true, email: true, avatar: true } },
-        customRole: { include: { permissions: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
+    let members: any[] = []
+    try {
+      members = await prisma.userCompany.findMany({
+        where: { companyId: params.id },
+        include: {
+          user: { select: { id: true, name: true, email: true, avatar: true } },
+          customRole: { include: { permissions: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+    } catch (err: any) {
+      // Fallback if custom_roles table doesn't exist yet
+      if (err?.code === 'P2021' || err?.message?.includes('custom_roles') || err?.message?.includes('does not exist')) {
+        members = await prisma.userCompany.findMany({
+          where: { companyId: params.id },
+          include: {
+            user: { select: { id: true, name: true, email: true, avatar: true } },
+          },
+          orderBy: { createdAt: 'asc' },
+        })
+        members = members.map((m) => ({ ...m, customRole: null }))
+      } else {
+        throw err
+      }
+    }
 
     return apiSuccess(members)
   } catch (error: any) {
