@@ -299,27 +299,44 @@ model ProductCategory {
 }
 
 model Ticket {
-  id          String         @id @default(cuid())
-  companyId   String         @map("company_id")
-  clientId    String?        @map("client_id")
+  id          String          @id @default(cuid())
+  companyId   String          @map("company_id")
+  clientId    String?         @map("client_id")
   title       String
   description String?
-  status      TicketStatus   @default(PROCESO1)
-  priority    TicketPriority @default(MEDIUM)
-  assignedTo  String?        @map("assigned_to")
+  status      TicketStatus    @default(PROCESO1)
+  priority    TicketPriority  @default(MEDIUM)
+  assignedTo  String?         @map("assigned_to")
   amount      Float?
-  dueDate     DateTime?      @map("due_date")
-  closedAt    DateTime?      @map("closed_at")
-  createdBy   String         @map("created_by")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  client      Client?        @relation(fields: [clientId], references: [id])
-  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dueDate     DateTime?       @map("due_date")
+  closedAt    DateTime?       @map("closed_at")
+  createdBy   String          @map("created_by")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  client      Client?         @relation(fields: [clientId], references: [id])
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  comments    TicketComment[]
 
   @@index([companyId])
   @@index([status])
   @@index([assignedTo])
   @@map("tickets")
+}
+
+model TicketComment {
+  id            String   @id @default(cuid())
+  ticketId      String   @map("ticket_id")
+  userId        String   @map("user_id")
+  content       String   @db.Text
+  attachmentUrl String?  @map("attachment_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([userId])
+  @@map("ticket_comments")
 }
 
 model Activity {
