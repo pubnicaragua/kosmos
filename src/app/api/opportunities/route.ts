@@ -24,11 +24,29 @@ export async function GET(request: NextRequest) {
     const where: any = { companyId: companyId || { in: companyIds } }
     if (stage) where.stage = stage
 
-    const opportunities = await prisma.opportunity.findMany({
-      where,
-      include: { company: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    })
+    let opportunities: any[]
+    try {
+      opportunities = await prisma.opportunity.findMany({
+        where,
+        include: { company: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch (dbErr: any) {
+      // Fallback: some columns may not exist in production DB yet (e.g. priority, description)
+      if (dbErr?.code === 'P2022' || dbErr?.message?.includes('column') || dbErr?.message?.includes('priority') || dbErr?.message?.includes('description')) {
+        opportunities = await (prisma.opportunity as any).findMany({
+          where,
+          select: {
+            id: true, companyId: true, title: true, client: true, value: true,
+            stage: true, status: true, assignedTo: true, closeDate: true,
+            createdAt: true, updatedAt: true, company: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      } else {
+        throw dbErr
+      }
+    }
 
     return apiSuccess(opportunities.map((opp: any) => ({
       id: opp.id,

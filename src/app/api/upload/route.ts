@@ -4,6 +4,8 @@ import { join } from 'path'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
+export const maxDuration = 60
+
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
 const MAX_UPLOAD_SIZE = 25 * 1024 * 1024 // 25MB

@@ -45,13 +45,46 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status
     if (channel) where.channel = channel
 
-    const campaigns = await prisma.marketingCampaign.findMany({
-      where,
-      include: {
-        company: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    let campaigns: any[]
+    try {
+      campaigns = await prisma.marketingCampaign.findMany({
+        where,
+        include: {
+          company: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch (dbErr: any) {
+      // Fallback: production DB may be missing newer columns (adType, approvalStatus, evidenceUrl)
+      if (dbErr?.code === 'P2022' || dbErr?.message?.includes('column') || dbErr?.message?.includes('Unknown')) {
+        const rows = await prisma.marketingCampaign.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            channel: true,
+            status: true,
+            budget: true,
+            spent: true,
+            startDate: true,
+            endDate: true,
+            targetAudience: true,
+            metrics: true,
+            assignedTo: true,
+            companyId: true,
+            createdBy: true,
+            createdAt: true,
+            updatedAt: true,
+            company: { select: { name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+        campaigns = rows.map((r: any) => ({ ...r, adType: null, evidenceUrl: null, approvalStatus: 'PENDING' }))
+      } else {
+        throw dbErr
+      }
+    }
 
     return apiSuccess(campaigns)
   } catch (error) {

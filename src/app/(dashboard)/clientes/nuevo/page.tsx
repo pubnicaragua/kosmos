@@ -6,6 +6,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { ArrowLeft } from 'lucide-react'
+import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nicaragua-validators'
 
 export default function NuevoClientePage() {
   const router = useRouter()
@@ -64,6 +65,17 @@ export default function NuevoClientePage() {
       errs.email = 'El correo es obligatorio'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errs.email = 'Correo electrónico inválido'
+    }
+    if (formData.phone.trim() && !/^[+]?[\d\s\-()]{7,20}$/.test(formData.phone.trim())) {
+      errs.phone = 'Teléfono inválido'
+    }
+    if (formData.ruc.trim()) {
+      const rucVal = validateRuc(formData.ruc)
+      if (!rucVal.valid) errs.ruc = rucVal.message || 'RUC inválido'
+    }
+    if (formData.cedula.trim()) {
+      const cedVal = validateCedula(formData.cedula)
+      if (!cedVal.valid) errs.cedula = cedVal.message || 'Cédula inválida'
     }
     return errs
   }
@@ -166,10 +178,12 @@ export default function NuevoClientePage() {
               <Input
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => { setFormData({ ...formData, phone: e.target.value }); setErrors(prev => ({ ...prev, phone: '' })) }}
                 placeholder="+505 8888-8888"
                 fullWidth
+                className={errors.phone ? 'border-red-400' : ''}
               />
+              {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
             </div>
 
             <div className="col-span-2">
@@ -210,10 +224,13 @@ export default function NuevoClientePage() {
               <Input
                 type="text"
                 value={formData.ruc}
-                onChange={(e) => setFormData({ ...formData, ruc: e.target.value })}
+                onChange={(e) => { const v = formatRuc(e.target.value); setFormData({ ...formData, ruc: v }); setErrors(prev => ({ ...prev, ruc: '' })) }}
                 placeholder="J0310000000000"
                 fullWidth
+                className={errors.ruc ? 'border-red-400' : ''}
               />
+              {errors.ruc && <p className="mt-1 text-sm text-red-600">{errors.ruc}</p>}
+              {formData.ruc && !errors.ruc && validateRuc(formData.ruc).valid === false && <p className="mt-1 text-xs text-red-500">{validateRuc(formData.ruc).message}</p>}
             </div>
 
             <div>
@@ -221,10 +238,13 @@ export default function NuevoClientePage() {
               <Input
                 type="text"
                 value={formData.cedula}
-                onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                onChange={(e) => { const v = formatCedula(e.target.value); setFormData({ ...formData, cedula: v }); setErrors(prev => ({ ...prev, cedula: '' })) }}
                 placeholder="001-010101-0001A"
                 fullWidth
+                className={errors.cedula ? 'border-red-400' : ''}
               />
+              {errors.cedula && <p className="mt-1 text-sm text-red-600">{errors.cedula}</p>}
+              {formData.cedula && !errors.cedula && validateCedula(formData.cedula).valid === false && <p className="mt-1 text-xs text-red-500">{validateCedula(formData.cedula).message}</p>}
             </div>
 
             <div>

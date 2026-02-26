@@ -479,16 +479,19 @@ export default function TicketsSoportePage() {
                       className="font-semibold text-gray-900 bg-white border border-blue-400 rounded px-2 py-0.5 text-sm w-full mr-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   ) : (
-                    <h3
-                      className="font-semibold text-gray-900 cursor-pointer hover:text-blue-600 group flex items-center gap-1"
-                      onDoubleClick={() => startEditColumn(column.id, getColumnLabel(column))}
-                      title="Doble clic para editar nombre"
-                    >
-                      {getColumnLabel(column)}
-                      <svg className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </h3>
+                    <div className="flex items-center gap-1">
+                      <h3 className="font-semibold text-gray-900">{getColumnLabel(column)}</h3>
+                      <button
+                        type="button"
+                        onClick={() => startEditColumn(column.id, getColumnLabel(column))}
+                        className="p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="Renombrar columna"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                   <span className="text-sm text-gray-500 flex-shrink-0">{columnTickets.length}</span>
                 </div>
@@ -516,12 +519,12 @@ export default function TicketsSoportePage() {
                         onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
                         onDragStart={() => handleDragStart(ticket.id)}
                         onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null) }}
-                        className={`group bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 ${
+                        className={`group bg-white rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 border-l-4 ${column.color} ${
                           isDragging 
-                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing' 
+                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing border border-gray-200' 
                             : selectedTicketId === ticket.id 
-                            ? 'border-primary ring-1 ring-primary/40 scale-100' 
-                            : 'border-gray-200 scale-100'
+                            ? 'border border-primary ring-1 ring-primary/40 scale-100' 
+                            : 'border border-gray-200 scale-100'
                         }`}
                         style={{ 
                           animationDelay: `${index * 50}ms`,
@@ -530,7 +533,18 @@ export default function TicketsSoportePage() {
                         }}
                       >
                       <div className="flex items-start justify-between mb-2">
-                        <Badge variant="warning">{ticket.status}</Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {ticket.priority && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
+                              ticket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                              ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                              ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {ticket.priority === 'URGENT' ? 'Urgente' : ticket.priority === 'HIGH' ? 'Alta' : ticket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={(e) => {

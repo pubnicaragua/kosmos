@@ -29,12 +29,29 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const decoded = verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const campaign = await prisma.marketingCampaign.findUnique({
-      where: { id: params.id },
-      include: {
-        company: { select: { name: true } },
-      },
-    })
+    let campaign: any
+    try {
+      campaign = await prisma.marketingCampaign.findUnique({
+        where: { id: params.id },
+        include: { company: { select: { name: true } } },
+      })
+    } catch (dbErr: any) {
+      if (dbErr?.code === 'P2022' || dbErr?.message?.includes('column') || dbErr?.message?.includes('Unknown')) {
+        campaign = await prisma.marketingCampaign.findUnique({
+          where: { id: params.id },
+          select: {
+            id: true, name: true, description: true, channel: true, status: true,
+            budget: true, spent: true, startDate: true, endDate: true,
+            targetAudience: true, metrics: true, assignedTo: true,
+            companyId: true, createdBy: true, createdAt: true, updatedAt: true,
+            company: { select: { name: true } },
+          },
+        })
+        if (campaign) campaign = { ...campaign, adType: null, evidenceUrl: null, approvalStatus: 'PENDING' }
+      } else {
+        throw dbErr
+      }
+    }
 
     if (!campaign) return apiError('Campaña no encontrada', 404)
 
@@ -91,13 +108,27 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (validatedData.adType !== undefined) updateData.adType = validatedData.adType
     if (validatedData.evidenceUrl !== undefined) updateData.evidenceUrl = validatedData.evidenceUrl
 
-    const campaign = await prisma.marketingCampaign.update({
-      where: { id: params.id },
-      data: updateData,
-      include: {
-        company: { select: { name: true } },
-      },
-    })
+    // Strip columns that may not exist in production DB
+    const safeUpdateData = { ...updateData }
+    let campaign: any
+    try {
+      campaign = await prisma.marketingCampaign.update({
+        where: { id: params.id },
+        data: safeUpdateData,
+        include: { company: { select: { name: true } } },
+      })
+    } catch (dbErr: any) {
+      if (dbErr?.code === 'P2022' || dbErr?.message?.includes('column') || dbErr?.message?.includes('Unknown')) {
+        const { adType, evidenceUrl, approvalStatus, ...coreSafeData } = safeUpdateData
+        campaign = await prisma.marketingCampaign.update({
+          where: { id: params.id },
+          data: coreSafeData,
+          include: { company: { select: { name: true } } },
+        })
+      } else {
+        throw dbErr
+      }
+    }
 
     return apiSuccess(campaign)
   } catch (error) {

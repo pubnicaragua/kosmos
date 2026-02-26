@@ -537,20 +537,32 @@ export default function ActividadesPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+        <div className="overflow-x-auto -mx-2">
+          <table className="w-full" style={{minWidth: '780px', tableLayout: 'fixed'}}>
+            <colgroup>
+              <col style={{width:'80px'}} />
+              <col style={{width:'130px'}} />
+              <col style={{width:'140px'}} />
+              <col style={{width:'110px'}} />
+              <col style={{width:'100px'}} />
+              <col style={{width:'110px'}} />
+              <col style={{width:'90px'}} />
+              <col style={{width:'70px'}} />
+              <col style={{width:'85px'}} />
+              <col style={{width:'120px'}} />
+            </colgroup>
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">TIPO</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">TÍTULO</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">DESCRIPCIÓN</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">GOOGLE MEET/CALENDAR</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">ASIGNADO A</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">FECHA LÍMITE</th>
-                <th className="text-left py-3 px-3 text-xs font-medium text-gray-500 uppercase">PRIORIDAD</th>
-                <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">ESTADO</th>
-                <th className="text-center py-3 px-3 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">TIPO</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">TÍTULO</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">DESCRIPCIÓN</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">MEET/CAL</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">ASIGNADO</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">F. LÍMITE</th>
+                <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">PRIOR.</th>
+                <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase">ESTADO</th>
+                <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
               </tr>
             </thead>
             <tbody>

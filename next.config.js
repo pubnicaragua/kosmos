@@ -3,6 +3,11 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '30mb',
+    },
+  },
 }
 
 module.exports = nextConfig

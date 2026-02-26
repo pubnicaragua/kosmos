@@ -375,8 +375,14 @@ export function Header() {
             <div className="relative group">
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center cursor-pointer overflow-hidden">
                 {user?.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover rounded-full" />
-                ) : (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-full h-full object-cover rounded-full"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                ) : null}
+                {!user?.avatar && (
                   <span className="text-sm font-semibold text-primary">
                     {user?.name?.charAt(0) || 'U'}
                   </span>

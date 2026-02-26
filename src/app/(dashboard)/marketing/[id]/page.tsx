@@ -691,12 +691,19 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
             onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
             fullWidth
           />
-          <Input
-            label="Métricas"
-            value={formData.metrics}
-            onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Métricas <span className="text-xs text-gray-400 font-normal">(formato: Nombre: Valor, una por línea)</span>
+            </label>
+            <textarea
+              value={formData.metrics}
+              onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              rows={5}
+              placeholder={"Clicks: 1500\nImpresiones: 45000\nConversiones: 320\nCTR: 3.5\nROI: 210"}
+            />
+            <p className="text-xs text-gray-400 mt-1">Cada línea: <code>Nombre de métrica: valor numérico</code> — aparecerá en la gráfica de barras.</p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Tipo de anuncio"

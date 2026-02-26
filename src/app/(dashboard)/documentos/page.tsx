@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import React from 'react'
 import { Upload } from 'lucide-react'
 
 interface Document {
@@ -36,10 +37,28 @@ const AREAS = [
   'Ventas',
 ]
 
+const VISIBILITY_ICONS: Record<string, React.ReactNode> = {
+  PRIVADO: (
+    <svg className="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ),
+  COMPARTIDO: (
+    <svg className="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  PUBLICO: (
+    <svg className="w-3 h-3 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+}
+
 const VISIBILITY_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  PRIVADO:    { label: 'Privado',    color: 'bg-red-100 text-red-700',    icon: '🔒' },
-  COMPARTIDO: { label: 'Compartido', color: 'bg-yellow-100 text-yellow-700', icon: '👥' },
-  PUBLICO:    { label: 'Público',    color: 'bg-green-100 text-green-700',  icon: '🌐' },
+  PRIVADO:    { label: 'Privado',    color: 'bg-red-100 text-red-700',    icon: 'lock' },
+  COMPARTIDO: { label: 'Compartido', color: 'bg-yellow-100 text-yellow-700', icon: 'users' },
+  PUBLICO:    { label: 'Público',    color: 'bg-green-100 text-green-700',  icon: 'globe' },
 }
 
 interface Company {
@@ -421,11 +440,12 @@ export default function DocumentosPage() {
             <div className="p-2">
               <button
                 onClick={() => setSelectedArea('all')}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                   selectedArea === 'all' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                📁 Todas las áreas
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
+                Todas las áreas
                 <span className={`ml-auto float-right text-xs ${
                   selectedArea === 'all' ? 'text-blue-200' : 'text-gray-400'
                 }`}>{documents.length}</span>
@@ -467,11 +487,11 @@ export default function DocumentosPage() {
                 <button
                   key={key}
                   onClick={() => setSelectedVisibility(key)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mt-0.5 ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mt-0.5 flex items-center gap-1.5 ${
                     selectedVisibility === key ? 'bg-blue-600 text-white font-medium' : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {cfg.icon} {cfg.label}
+                  {VISIBILITY_ICONS[key]}{cfg.label}
                 </button>
               ))}
             </div>
@@ -544,8 +564,8 @@ export default function DocumentosPage() {
                           <span className="text-sm text-gray-600">{doc.type}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${visCfg.color}`}>
-                            {visCfg.icon} {visCfg.label}
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-0.5 ${visCfg.color}`}>
+                            {VISIBILITY_ICONS[vis]}{visCfg.label}
                           </span>
                         </td>
                         <td className="py-3 px-4">
