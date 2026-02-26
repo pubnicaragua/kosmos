@@ -605,44 +605,27 @@ export default function ContratosPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Archivo del Contrato</label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="URL del contrato o sube uno..."
-                value={formData.fileUrl}
-                onChange={(e) => setFormData({ ...formData, fileUrl: e.target.value })}
-                fullWidth
-              />
-              <div>
-                <input
-                  id="contract-file-upload"
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) setSelectedFile(file)
-                  }}
-                  disabled={uploading}
-                />
-                <label htmlFor="contract-file-upload" className="cursor-pointer inline-block">
-                  <span className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                    uploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}>
-                    <Upload className="w-4 h-4 mr-1" />
-                    {uploading ? 'Subiendo...' : 'Subir'}
-                  </span>
-                </label>
-              </div>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Archivo del Contrato{!editingContractId && <span className="text-red-500 ml-1">*</span>}</label>
+            <input
+              id="contract-file-upload"
+              type="file"
+              accept=".pdf,.doc,.docx,.xlsx,.png,.jpg"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) setSelectedFile(file)
+              }}
+              disabled={uploading}
+            />
+            <label htmlFor="contract-file-upload" className="cursor-pointer flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors">
+              <Upload className="w-5 h-5 text-gray-400" />
+              <span className="text-sm text-gray-600">
+                {uploading ? 'Subiendo...' : selectedFile ? selectedFile.name : editingContractId ? 'Subir nuevo archivo (opcional)' : 'Haz clic para seleccionar PDF, Word, Excel o imagen'}
+              </span>
+            </label>
             {selectedFile && (
-              <p className="text-sm text-green-600 mt-1">✓ {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)</p>
+              <p className="text-xs text-green-600 mt-1">✓ {selectedFile.name} — {(selectedFile.size / 1024).toFixed(1)} KB</p>
             )}
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Nota:</strong> En producción, aquí iría un componente de upload real para adjuntar el PDF del contrato.
-            </p>
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>

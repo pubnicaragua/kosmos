@@ -1,16 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Upload, BarChart2, X } from 'lucide-react'
 
 export default function NuevaCampanaPage() {
   const router = useRouter()
   const [selectedCompany, setSelectedCompany] = useState('')
   const [companies, setCompanies] = useState<any[]>([])
+  const evidenceFileRef = useRef<HTMLInputElement>(null)
+  const [uploadingEvidence, setUploadingEvidence] = useState(false)
+  const [evidenceFile, setEvidenceFile] = useState<{ name: string; url: string } | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -23,7 +26,6 @@ export default function NuevaCampanaPage() {
     endDate: '',
     targetAudience: '',
     metrics: '',
-    evidenceUrl: '',
     assignedTo: '',
   })
 
@@ -53,6 +55,41 @@ export default function NuevaCampanaPage() {
     }
   }
 
+  const handleEvidenceUpload = async (file: File) => {
+    setUploadingEvidence(true)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEvidenceFile({ name: file.name, url: data.data.url })
+      } else {
+        alert('Error al subir evidencia: ' + (data.error || 'Error desconocido'))
+      }
+    } catch {
+      alert('Error al subir evidencia')
+    } finally {
+      setUploadingEvidence(false)
+    }
+  }
+
+  const parseMetrics = (raw: string): { label: string; value: number }[] => {
+    return raw
+      .split('\n')
+      .map((line) => {
+        const [label, val] = line.split(':')
+        const value = parseFloat(val?.trim() || '0')
+        return { label: label?.trim() || '', value: isNaN(value) ? 0 : value }
+      })
+      .filter((m) => m.label && m.value > 0)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -76,6 +113,7 @@ export default function NuevaCampanaPage() {
           companyId: selectedCompany,
           budget: formData.budget ? parseFloat(formData.budget) : null,
           spent: parseFloat(formData.spent),
+          evidenceUrl: evidenceFile?.url || null,
         }),
       })
 
@@ -254,27 +292,72 @@ export default function NuevaCampanaPage() {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Métricas</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                <BarChart2 className="w-4 h-4" /> Métricas
+              </label>
               <textarea
                 value={formData.metrics}
                 onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
-                placeholder="Ej: CTR: 2.5&#10;Conversiones: 150&#10;ROI: 300"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                rows={3}
+                placeholder="CTR: 2.5&#10;Conversiones: 150&#10;ROI: 300&#10;Alcance: 5000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                rows={4}
               />
-              <p className="text-xs text-gray-500 mt-1">Formato: Nombre: Valor (una métrica por línea)</p>
+              <p className="text-xs text-gray-400 mt-1">Formato: Nombre: Valor (una métrica por línea)</p>
+              {/* Mini preview de métricas como gráfica de barras */}
+              {formData.metrics.trim() && (() => {
+                const metrics = parseMetrics(formData.metrics)
+                if (metrics.length === 0) return null
+                const max = Math.max(...metrics.map((m) => m.value))
+                return (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-xs font-medium text-gray-500 mb-2">Vista previa</p>
+                    <div className="space-y-2">
+                      {metrics.map((m, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-600 w-28 truncate flex-shrink-0">{m.label}</span>
+                          <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+                            <div
+                              className="h-4 rounded-full bg-primary transition-all"
+                              style={{ width: `${(m.value / max) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 w-12 text-right flex-shrink-0">{m.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">URL de Evidencia</label>
-              <Input
-                type="url"
-                value={formData.evidenceUrl}
-                onChange={(e) => setFormData({ ...formData, evidenceUrl: e.target.value })}
-                placeholder="https://ejemplo.com/evidencia-campana.pdf"
-                fullWidth
+              <label className="block text-sm font-medium text-gray-700 mb-2">Evidencia de la Campaña</label>
+              <input
+                ref={evidenceFileRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f) }}
               />
-              <p className="text-xs text-gray-500 mt-1">Sube evidencias de la campaña (reportes, capturas, etc.) y pega el enlace aquí</p>
+              {evidenceFile ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                  <Upload className="w-4 h-4 text-green-600 flex-shrink-0" />
+                  <span className="text-sm text-green-700 flex-1 truncate">{evidenceFile.name}</span>
+                  <button type="button" onClick={() => setEvidenceFile(null)} className="text-gray-400 hover:text-red-500">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => evidenceFileRef.current?.click()}
+                  disabled={uploadingEvidence}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors text-sm text-gray-500"
+                >
+                  <Upload className="w-5 h-5" />
+                  {uploadingEvidence ? 'Subiendo...' : 'Subir evidencia (PDF, imagen, Excel, etc.)'}
+                </button>
+              )}
+              <p className="text-xs text-gray-400 mt-1">Reportes, capturas de pantalla, análisis, comprobantes, etc.</p>
             </div>
           </div>
 

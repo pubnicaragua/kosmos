@@ -4,6 +4,8 @@ import { join } from 'path'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
 const MAX_UPLOAD_SIZE = 25 * 1024 * 1024 // 25MB
 
 const ALLOWED_EXTENSIONS = new Set([
@@ -98,19 +100,30 @@ export async function POST(request: NextRequest) {
     const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'bin'
     const fileName = `${timestamp}-${randomStr}.${safeExtension}`
 
-    // Guardar en public/uploads
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const uploadDir = join(process.cwd(), 'public', 'uploads')
-    const filePath = join(uploadDir, fileName)
 
-    // Crear directorio si no existe
-    await mkdir(uploadDir, { recursive: true })
+    let publicUrl: string
 
-    await writeFile(filePath, buffer)
-
-    // Retornar URL pública
-    const publicUrl = `/uploads/${fileName}`
+    if (IS_PRODUCTION) {
+      // En producción (Vercel/serverless): guardar en /tmp y retornar base64 data URL
+      // o guardar en /tmp y servir desde una ruta de API
+      const tmpDir = '/tmp/uploads'
+      const filePath = join(tmpDir, fileName)
+      await mkdir(tmpDir, { recursive: true })
+      await writeFile(filePath, buffer)
+      // Retornar como data URL para uso inmediato
+      const base64 = buffer.toString('base64')
+      const detectedMime = file.type || 'application/octet-stream'
+      publicUrl = `data:${detectedMime};base64,${base64}`
+    } else {
+      // En desarrollo: guardar en public/uploads
+      const uploadDir = join(process.cwd(), 'public', 'uploads')
+      const filePath = join(uploadDir, fileName)
+      await mkdir(uploadDir, { recursive: true })
+      await writeFile(filePath, buffer)
+      publicUrl = `/uploads/${fileName}`
+    }
 
     return successResponse({
       url: publicUrl,

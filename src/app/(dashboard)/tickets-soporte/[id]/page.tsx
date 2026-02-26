@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Paperclip, Clock, User } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileText, Image as ImageIcon, X } from 'lucide-react'
 import { Card } from '@/components/ui-kit/Card'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Button } from '@/components/ui-kit/Button'
@@ -17,162 +17,159 @@ interface Ticket {
   dueDate: string | null
   assignedTo: string | null
   createdAt: string
+  updatedAt: string
   company: { name: string }
   client: { name: string } | null
 }
 
-interface Comment {
+interface TicketComment {
   id: string
   content: string
+  attachmentUrl: string | null
   createdAt: string
-  createdBy: string
+  updatedAt: string
+  user: { id: string; name: string; email: string; avatar: string | null }
 }
 
-interface Attachment {
-  id: string
-  fileName: string
-  fileUrl: string
-  uploadedAt: string
+const STATUS_LABELS: Record<string, string> = {
+  PROCESO1: 'Proceso 1',
+  PROCESO2: 'Proceso 2',
+  PROCESO3: 'Proceso 3',
+  PROCESO4: 'Proceso 4',
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  LOW: 'bg-gray-100 text-gray-600',
+  MEDIUM: 'bg-blue-100 text-blue-700',
+  HIGH: 'bg-orange-100 text-orange-700',
+  URGENT: 'bg-red-100 text-red-700',
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  LOW: 'Baja',
+  MEDIUM: 'Media',
+  HIGH: 'Alta',
+  URGENT: 'Urgente',
 }
 
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [comments, setComments] = useState<TicketComment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
-  const [uploading, setUploading] = useState(false)
+  const [sendingComment, setSendingComment] = useState(false)
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [commentError, setCommentError] = useState('')
+  const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string } | null>(null)
 
   useEffect(() => {
-    const fetchTicket = async () => {
+    if (!params.id) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) { router.push('/login'); return }
+
+    const load = async () => {
       try {
-        const token = localStorage.getItem('accessToken')
-        if (!token) {
-          router.push('/login')
-          return
+        const [ticketRes, commentsRes] = await Promise.all([
+          fetch(`/api/tickets/${params.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`/api/tickets/${params.id}/comments`, { headers: { Authorization: `Bearer ${token}` } }),
+        ])
+
+        if (ticketRes.status === 401) { router.push('/login'); return }
+
+        const ticketData = await ticketRes.json()
+        if (ticketData.success) setTicket(ticketData.data)
+
+        if (commentsRes.ok) {
+          const commentsData = await commentsRes.json()
+          if (commentsData.success) setComments(commentsData.data || [])
         }
-
-        const response = await fetch(`/api/tickets/${params.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('user')
-            router.push('/login')
-            return
-          }
-          throw new Error('Error al cargar ticket')
-        }
-
-        const data = await response.json()
-        setTicket(data.data || data)
       } catch (err) {
-        console.error('Error fetching ticket:', err)
+        console.error('Error loading ticket:', err)
       } finally {
         setLoading(false)
       }
     }
-
-    if (params.id) {
-      fetchTicket()
-    }
+    load()
   }, [params.id, router])
 
-  const handleAddComment = async () => {
-    if (!newComment.trim()) return
-
+  const handleSendComment = async () => {
+    if (!newComment.trim() && !pendingAttachment) return
+    setSendingComment(true)
+    setCommentError('')
     try {
       const token = localStorage.getItem('accessToken')
-      const response = await fetch(`/api/tickets/${params.id}/comments`, {
+      const res = await fetch(`/api/tickets/${params.id}/comments`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: newComment }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newComment.trim() || '📎 Archivo adjunto',
+          attachmentUrl: pendingAttachment?.url || null,
+        }),
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        setComments([...comments, data.data])
+      const data = await res.json()
+      if (data.success) {
+        setComments((prev) => [...prev, data.data])
         setNewComment('')
+        setPendingAttachment(null)
+      } else {
+        setCommentError(data.error || 'Error al enviar comentario')
       }
-    } catch (err) {
-      console.error('Error adding comment:', err)
+    } catch {
+      setCommentError('Error de conexión')
+    } finally {
+      setSendingComment(false)
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    e.target.value = ''
 
-    setUploading(true)
+    setUploadingFile(true)
     try {
       const token = localStorage.getItem('accessToken')
       const formData = new FormData()
       formData.append('file', file)
 
-      const uploadResponse = await fetch('/api/upload', {
+      const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
-
-      if (uploadResponse.ok) {
-        const uploadData = await uploadResponse.json()
-        
-        const attachResponse = await fetch(`/api/tickets/${params.id}/attachments`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            fileUrl: uploadData.data.url,
-          }),
-        })
-
-        if (attachResponse.ok) {
-          const attachData = await attachResponse.json()
-          setAttachments([...attachments, attachData.data])
-        }
+      const data = await res.json()
+      if (data.success) {
+        setPendingAttachment({ url: data.data.url, name: file.name })
+      } else {
+        alert('Error al subir archivo: ' + (data.error || 'Error desconocido'))
       }
-    } catch (err) {
-      console.error('Error uploading file:', err)
+    } catch {
+      alert('Error al subir archivo')
     } finally {
-      setUploading(false)
+      setUploadingFile(false)
     }
   }
 
+  const isImage = (url: string) => url.startsWith('data:image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
+      <div className="space-y-4 p-6">
+        <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+        <div className="h-48 bg-gray-200 rounded animate-pulse" />
+        <div className="h-64 bg-gray-200 rounded animate-pulse" />
       </div>
     )
   }
 
   if (!ticket) {
     return (
-      <div className="p-8">
-        <button
-          onClick={() => router.push('/tickets-soporte')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a Tickets
+      <div className="p-6">
+        <button onClick={() => router.push('/tickets-soporte')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
+          <ArrowLeft className="w-4 h-4" /> Volver a Tickets
         </button>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-800">Ticket no encontrado</p>
@@ -182,172 +179,199 @@ export default function TicketDetailPage() {
   }
 
   return (
-    <div className="p-8">
-      <button
-        onClick={() => router.push('/tickets-soporte')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Volver a Tickets
-      </button>
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={() => router.push('/tickets-soporte')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+          <ArrowLeft className="w-4 h-4" /> Volver
+        </button>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{ticket.title}</h1>
+          <p className="text-sm text-gray-500">{ticket.company.name}</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        {/* Columna principal */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Descripción */}
           <Card>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{ticket.title}</h1>
-                <div className="flex items-center gap-2">
-                  <Badge variant="info">{ticket.status}</Badge>
-                  <Badge variant="warning">{ticket.priority}</Badge>
-                </div>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                  {STATUS_LABELS[ticket.status] || ticket.status}
+                </span>
+                <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${PRIORITY_COLORS[ticket.priority] || 'bg-gray-100 text-gray-600'}`}>
+                  {PRIORITY_LABELS[ticket.priority] || ticket.priority}
+                </span>
               </div>
+              <span className="text-xs text-gray-400">
+                {new Date(ticket.createdAt).toLocaleDateString('es-NI', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
             </div>
-            
-            {ticket.description && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-700">{ticket.description}</p>
-              </div>
+            {ticket.description ? (
+              <p className="text-gray-700 text-sm leading-relaxed">{ticket.description}</p>
+            ) : (
+              <p className="text-gray-400 text-sm italic">Sin descripción</p>
             )}
           </Card>
 
+          {/* Comentarios */}
           <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Comentarios
+            <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Comentarios <span className="text-gray-400 font-normal text-sm">({comments.length})</span>
             </h2>
-            
-            <div className="space-y-4 mb-4">
+
+            <div className="space-y-3 mb-4 max-h-96 overflow-y-auto">
               {comments.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">No hay comentarios aún</p>
+                <p className="text-sm text-gray-400 text-center py-6">No hay comentarios aún. Sé el primero en comentar.</p>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">{comment.createdBy}</span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(comment.createdAt).toLocaleDateString('es-ES')}
-                      </span>
+                  <div key={comment.id} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-semibold text-xs">
+                      {comment.user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <p className="text-sm text-gray-700">{comment.content}</p>
+                    <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-gray-900">{comment.user.name}</span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(comment.createdAt).toLocaleDateString('es-NI', { day: '2-digit', month: 'short' })}
+                          {' '}
+                          {new Date(comment.createdAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700">{comment.content}</p>
+                      {comment.attachmentUrl && (
+                        <div className="mt-2">
+                          {isImage(comment.attachmentUrl) ? (
+                            <img src={comment.attachmentUrl} alt="adjunto" className="max-w-xs max-h-48 rounded-lg border border-gray-200 object-contain" />
+                          ) : (
+                            <a href={comment.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline bg-primary/5 px-2.5 py-1.5 rounded-lg">
+                              <FileText className="w-3.5 h-3.5" />
+                              Ver archivo adjunto
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
             </div>
 
-            <div className="flex gap-2">
+            {/* Adjunto pendiente */}
+            {pendingAttachment && (
+              <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                <Paperclip className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate flex-1">{pendingAttachment.name}</span>
+                <button onClick={() => setPendingAttachment(null)} className="flex-shrink-0 hover:text-red-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {commentError && <p className="text-xs text-red-600 mb-2">{commentError}</p>}
+
+            <div className="flex gap-2 items-end">
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Agregar un comentario..."
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment() } }}
+                placeholder="Escribe un comentario... (Enter para enviar)"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
                 rows={3}
               />
-              <Button onClick={handleAddComment} disabled={!newComment.trim()}>
-                Enviar
-              </Button>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingFile}
+                  className="p-2 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors border border-gray-200"
+                  title="Adjuntar archivo"
+                >
+                  {uploadingFile ? (
+                    <div className="w-5 h-5 border-2 border-gray-300 border-t-primary rounded-full animate-spin" />
+                  ) : (
+                    <Paperclip className="w-5 h-5" />
+                  )}
+                </button>
+                <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
+                <button
+                  type="button"
+                  onClick={handleSendComment}
+                  disabled={sendingComment || (!newComment.trim() && !pendingAttachment)}
+                  className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Enviar comentario"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Paperclip className="w-5 h-5" />
-              Archivos Adjuntos
-            </h2>
-            
-            <div className="space-y-2 mb-4">
-              {attachments.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">No hay archivos adjuntos</p>
-              ) : (
-                attachments.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Paperclip className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-900">{attachment.fileName}</span>
-                    </div>
-                    <a
-                      href={attachment.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-primary hover:underline"
-                    >
-                      Descargar
-                    </a>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <label className="block">
-              <input
-                type="file"
-                onChange={handleFileUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-              <Button variant="outline" disabled={uploading} className="w-full">
-                {uploading ? 'Subiendo...' : 'Adjuntar Archivo'}
-              </Button>
-            </label>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        {/* Columna lateral */}
+        <div className="space-y-5">
           <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Detalles</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Empresa</p>
-                <p className="text-sm font-medium text-gray-900">{ticket.company.name}</p>
+            <h2 className="text-base font-semibold text-gray-900 mb-4">Detalles</h2>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Empresa</span>
+                <span className="font-medium text-gray-900">{ticket.company.name}</span>
               </div>
-
               {ticket.client && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Cliente</p>
-                  <p className="text-sm font-medium text-gray-900">{ticket.client.name}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Cliente</span>
+                  <span className="font-medium text-gray-900">{ticket.client.name}</span>
                 </div>
               )}
-
               {ticket.assignedTo && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Asignado a</p>
-                  <p className="text-sm font-medium text-gray-900">{ticket.assignedTo}</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Asignado a</span>
+                  <span className="font-medium text-gray-900 truncate max-w-32">{ticket.assignedTo}</span>
                 </div>
               )}
-
-              {ticket.amount && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Monto</p>
-                  <p className="text-sm font-medium text-gray-900">${ticket.amount.toLocaleString()}</p>
+              {ticket.amount != null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Monto</span>
+                  <span className="font-medium text-gray-900">${ticket.amount.toLocaleString()}</span>
                 </div>
               )}
-
               {ticket.dueDate && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">Fecha de vencimiento</p>
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Date(ticket.dueDate).toLocaleDateString('es-ES')}
-                  </p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Vencimiento</span>
+                  <span className="font-medium text-gray-900">{new Date(ticket.dueDate).toLocaleDateString('es-NI')}</span>
                 </div>
               )}
-
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Creado</p>
-                <p className="text-sm font-medium text-gray-900">
-                  {new Date(ticket.createdAt).toLocaleDateString('es-ES')}
-                </p>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Creado</span>
+                <span className="font-medium text-gray-900">{new Date(ticket.createdAt).toLocaleDateString('es-NI')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Actualizado</span>
+                <span className="font-medium text-gray-900">{new Date(ticket.updatedAt).toLocaleDateString('es-NI')}</span>
               </div>
             </div>
           </Card>
 
           <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Historial
+            <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Historial de actividad
             </h2>
-            <p className="text-sm text-gray-500">Próximamente: historial de cambios</p>
+            <div className="space-y-2">
+              <div className="flex gap-2 text-xs text-gray-500">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 flex-shrink-0" />
+                <span>Ticket creado el {new Date(ticket.createdAt).toLocaleDateString('es-NI')}</span>
+              </div>
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2 text-xs text-gray-500">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0" />
+                  <span>{c.user.name} comentó el {new Date(c.createdAt).toLocaleDateString('es-NI')} a las {new Date(c.createdAt).toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       </div>

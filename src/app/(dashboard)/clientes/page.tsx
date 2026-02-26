@@ -664,39 +664,55 @@ export default function ClientesPage() {
                     </div>
                   </td>
                   <td className="py-2 px-2">
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <input
                         value={row.ruc}
                         onChange={(e) => updateDraftRow(row.tempId, 'ruc', e.target.value)}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        placeholder="RUC"
+                        className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                          row.ruc && !validateRuc(row.ruc).valid ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                        }`}
+                        placeholder="RUC (J0310000000000)"
                       />
+                      {row.ruc && !validateRuc(row.ruc).valid && (
+                        <p className="text-xs text-red-500">{validateRuc(row.ruc).message}</p>
+                      )}
                       <input
                         value={row.cedula}
                         onChange={(e) => updateDraftRow(row.tempId, 'cedula', e.target.value)}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Cédula"
+                        className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                          row.cedula && !validateCedula(row.cedula).valid ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                        }`}
+                        placeholder="Cédula (001-010190-0001A)"
                       />
+                      {row.cedula && !validateCedula(row.cedula).valid && (
+                        <p className="text-xs text-red-500">{validateCedula(row.cedula).message}</p>
+                      )}
                     </div>
                   </td>
                   <td className="py-2 px-2">
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <input
                         value={row.contactName}
                         onChange={(e) => updateDraftRow(row.tempId, 'contactName', e.target.value)}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Contacto"
+                        className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                          !row.contactName ? 'border-orange-300 bg-orange-50' : 'border-gray-300'
+                        }`}
+                        placeholder="Contacto *"
                       />
+                      {!row.contactName && <p className="text-xs text-orange-500">Requerido</p>}
                       <input
                         value={row.email}
                         onChange={(e) => updateDraftRow(row.tempId, 'email', e.target.value)}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Email"
+                        className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                          !row.email ? 'border-orange-300 bg-orange-50' : 'border-gray-300'
+                        }`}
+                        placeholder="Email *"
                       />
+                      {!row.email && <p className="text-xs text-orange-500">Requerido</p>}
                       <input
                         value={row.phone}
                         onChange={(e) => updateDraftRow(row.tempId, 'phone', e.target.value)}
