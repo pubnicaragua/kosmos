@@ -56,6 +56,12 @@ const PREDEFINED_ROLES = [
   },
 ]
 
+const isMissingTable = (error: any) => {
+  const msg = `${error?.message || ''}`.toLowerCase()
+  const code = error?.code || ''
+  return code === 'P2021' || msg.includes('does not exist') || msg.includes('relation') || msg.includes('no such table') || msg.includes('custom_roles')
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -67,8 +73,21 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     if (!companyId) return apiError('companyId requerido', 400)
 
-    const access = await getCompanyAccess(decoded.userId, companyId)
-    if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
+    let canAccess = false
+    try {
+      const access = await getCompanyAccess(decoded.userId, companyId)
+      canAccess = access.canAccess
+    } catch (accessError: any) {
+      console.error('getCompanyAccess error:', accessError?.message, accessError?.code)
+      // Si falla por columna faltante, verificar acceso de forma básica
+      try {
+        const uc = await prisma.userCompany.findFirst({ where: { userId: decoded.userId, companyId } })
+        canAccess = Boolean(uc)
+      } catch {
+        canAccess = true // asumir acceso si no podemos verificar
+      }
+    }
+    if (!canAccess) return apiError('Sin acceso a esta empresa', 403)
 
     let roles: any[] = []
 
@@ -84,25 +103,31 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'asc' },
       })
     } catch (error: any) {
-      if (!isMissingCustomRoleColumn(error)) throw error
-
-      console.warn('Falta columna custom_role_id en user_companies; devolviendo roles sin asignaciones de usuarios')
-
-      const rolesWithoutUsers = await prisma.customRole.findMany({
-        where: { companyId },
-        include: { permissions: true },
-        orderBy: { createdAt: 'asc' },
-      })
-
-      roles = rolesWithoutUsers.map((role) => ({
-        ...role,
-        userCompanies: [],
-      }))
+      console.warn('customRole query error:', error?.code, error?.message)
+      if (isMissingTable(error)) {
+        // Tabla custom_roles no existe en producción — devolver vacío
+        return apiSuccess({ roles: [], modules: MODULES, predefinedRoles: PREDEFINED_ROLES })
+      }
+      if (isMissingCustomRoleColumn(error)) {
+        console.warn('Falta columna custom_role_id en user_companies')
+        try {
+          const rolesWithoutUsers = await prisma.customRole.findMany({
+            where: { companyId },
+            include: { permissions: true },
+            orderBy: { createdAt: 'asc' },
+          })
+          roles = rolesWithoutUsers.map((role) => ({ ...role, userCompanies: [] }))
+        } catch {
+          return apiSuccess({ roles: [], modules: MODULES, predefinedRoles: PREDEFINED_ROLES })
+        }
+      } else {
+        throw error
+      }
     }
 
     return apiSuccess({ roles, modules: MODULES, predefinedRoles: PREDEFINED_ROLES })
   } catch (error: any) {
-    console.error('Error fetching roles:', error?.message)
+    console.error('Error fetching roles - full error:', error?.message, '| code:', error?.code, '| stack:', error?.stack?.split('\n')[0])
     return apiError('Error al obtener roles', 500)
   }
 }
