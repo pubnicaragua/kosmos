@@ -87,6 +87,17 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   USER: 'bg-gray-100 text-gray-600',
 }
 
+const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
+
+const FALLBACK_PREDEFINED_ROLES = [
+  { name: 'Vendedor', description: 'Acceso a clientes, pipeline y cotizaciones', color: '#10b981', modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
+  { name: 'RRHH', description: 'Gestión de personal y actividades internas', color: '#f59e0b', modules: { actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
+  { name: 'Inventario', description: 'Control de productos e inventario', color: '#8b5cf6', modules: { inventario: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
+  { name: 'Contabilidad', description: 'Acceso a ingresos, gastos y reportes financieros', color: '#3b82f6', modules: { ingresos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, gastos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true } } },
+  { name: 'Marketing', description: 'Gestión de campañas y entregables', color: '#ec4899', modules: { marketing: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, entregables: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
+  { name: 'Soporte', description: 'Gestión de tickets de soporte', color: '#ef4444', modules: { 'tickets-soporte': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
+]
+
 type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles'
 
 export default function AjustesPage() {
@@ -321,13 +332,20 @@ export default function AjustesPage() {
       const rolesData = await rolesRes.json()
       const membersData = await membersRes.json()
       if (rolesData.success) {
-        setRoles(rolesData.data.roles)
-        setModules(rolesData.data.modules)
-        setPredefinedRoles(rolesData.data.predefinedRoles)
+        setRoles(rolesData.data.roles || [])
+        setModules(rolesData.data.modules?.length ? rolesData.data.modules : FALLBACK_MODULES)
+        setPredefinedRoles(rolesData.data.predefinedRoles?.length ? rolesData.data.predefinedRoles : FALLBACK_PREDEFINED_ROLES)
+      } else {
+        console.error('Roles API error:', rolesData.error || rolesData.message)
+        setModules(FALLBACK_MODULES)
+        setPredefinedRoles(FALLBACK_PREDEFINED_ROLES)
+        setRoles([])
       }
       if (membersData.success) setMembers(membersData.data)
     } catch (err) {
       console.error('Error fetching roles data:', err)
+      setModules(FALLBACK_MODULES)
+      setPredefinedRoles(FALLBACK_PREDEFINED_ROLES)
     } finally {
       setRolesLoading(false)
     }
@@ -530,7 +548,8 @@ export default function AjustesPage() {
   }
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
-  const canManageRoles = companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
+  const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
+  const canManageRoles = isSuperAdmin || companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
 
   if (isLoading) {
     return (
