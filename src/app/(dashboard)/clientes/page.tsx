@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
+import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nicaragua-validators'
 
 interface Client {
   id: string
@@ -281,17 +282,25 @@ export default function ClientesPage() {
   }
 
   const updateDraftRow = (tempId: number, field: keyof ClientRowDraft, value: string) => {
+    let processedValue = value
+    if (field === 'cedula') processedValue = formatCedula(value)
+    if (field === 'ruc') processedValue = formatRuc(value)
+    
     setDraftRows((prev) =>
-      prev.map((row) => (row.tempId === tempId ? { ...row, [field]: value } : row))
+      prev.map((row) => (row.tempId === tempId ? { ...row, [field]: processedValue } : row))
     )
   }
 
   const updateEditingRow = (clientId: string, field: keyof ClientRowDraft, value: string) => {
+    let processedValue = value
+    if (field === 'cedula') processedValue = formatCedula(value)
+    if (field === 'ruc') processedValue = formatRuc(value)
+    
     setEditingRows((prev) => ({
       ...prev,
       [clientId]: {
         ...prev[clientId],
-        [field]: value,
+        [field]: processedValue,
       },
     }))
   }
@@ -299,6 +308,23 @@ export default function ClientesPage() {
   const saveRow = async (row: ClientRowDraft, mode: 'create' | 'update') => {
     if (!row.name || (mode === 'create' && !row.companyId)) {
       alert('Completa empresa y nombre del cliente')
+      return
+    }
+
+    if (!row.email || !row.contactName) {
+      alert('Email y nombre de contacto son obligatorios')
+      return
+    }
+
+    const cedulaValidation = validateCedula(row.cedula)
+    if (!cedulaValidation.valid) {
+      alert('Cédula inválida: ' + cedulaValidation.message)
+      return
+    }
+
+    const rucValidation = validateRuc(row.ruc)
+    if (!rucValidation.valid) {
+      alert('RUC inválido: ' + rucValidation.message)
       return
     }
 

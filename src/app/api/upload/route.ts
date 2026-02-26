@@ -118,8 +118,10 @@ export async function POST(request: NextRequest) {
       mimeType: file.type || 'application/octet-stream',
       size: file.size,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error)
-    return errorResponse('Error al subir el archivo', 500)
+    console.error('Upload error stack:', error?.stack)
+    console.error('Upload error message:', error?.message)
+    return errorResponse(`Error al subir el archivo: ${error?.message || 'Error desconocido'}`, 500)
   }
 }

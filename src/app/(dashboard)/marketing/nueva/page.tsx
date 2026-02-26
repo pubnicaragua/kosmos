@@ -18,10 +18,12 @@ export default function NuevaCampanaPage() {
     status: 'PLANIFICACION',
     budget: '',
     spent: '0',
+    currency: 'USD',
     startDate: '',
     endDate: '',
     targetAudience: '',
     metrics: '',
+    evidenceUrl: '',
     assignedTo: '',
   })
 
@@ -178,15 +180,34 @@ export default function NuevaCampanaPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Presupuesto ($)</label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.budget}
-                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                placeholder="0.00"
+              <label className="block text-sm font-medium text-gray-700 mb-2">Moneda</label>
+              <Select
+                options={[
+                  { value: 'USD', label: 'USD ($)' },
+                  { value: 'NIO', label: 'Córdobas (C$)' },
+                ]}
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                 fullWidth
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Presupuesto</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                  {formData.currency === 'NIO' ? 'C$' : '$'}
+                </span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.budget}
+                  onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                  placeholder="0.00"
+                  className="pl-10"
+                  fullWidth
+                />
+              </div>
             </div>
 
             <div>
@@ -242,6 +263,18 @@ export default function NuevaCampanaPage() {
                 rows={3}
               />
               <p className="text-xs text-gray-500 mt-1">Formato: Nombre: Valor (una métrica por línea)</p>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">URL de Evidencia</label>
+              <Input
+                type="url"
+                value={formData.evidenceUrl}
+                onChange={(e) => setFormData({ ...formData, evidenceUrl: e.target.value })}
+                placeholder="https://ejemplo.com/evidencia-campana.pdf"
+                fullWidth
+              />
+              <p className="text-xs text-gray-500 mt-1">Sube evidencias de la campaña (reportes, capturas, etc.) y pega el enlace aquí</p>
             </div>
           </div>
 
