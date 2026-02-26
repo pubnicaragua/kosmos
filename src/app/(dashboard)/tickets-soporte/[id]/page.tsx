@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileText, Image as ImageIcon, X } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileText, Image as ImageIcon, X, Download, ZoomIn } from 'lucide-react'
 import { Card } from '@/components/ui-kit/Card'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Button } from '@/components/ui-kit/Button'
@@ -64,6 +64,7 @@ export default function TicketDetailPage() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const [commentError, setCommentError] = useState('')
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string } | null>(null)
+  const [viewingFile, setViewingFile] = useState<{ url: string; name: string } | null>(null)
 
   useEffect(() => {
     if (!params.id) return
@@ -153,7 +154,12 @@ export default function TicketDetailPage() {
     }
   }
 
-  const isImage = (url: string) => url.startsWith('data:image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(url)
+  const isImage = (url: string) => url.startsWith('data:image') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url)
+  const isPdf = (url: string) => url.startsWith('data:application/pdf') || /\.pdf$/i.test(url)
+  const getFileName = (url: string) => {
+    if (url.startsWith('data:')) return 'archivo'
+    return url.split('/').pop() || 'archivo'
+  }
 
   if (loading) {
     return (
@@ -244,13 +250,20 @@ export default function TicketDetailPage() {
                       {comment.attachmentUrl && (
                         <div className="mt-2">
                           {isImage(comment.attachmentUrl) ? (
-                            <img src={comment.attachmentUrl} alt="adjunto" className="max-w-xs max-h-48 rounded-lg border border-gray-200 object-contain" />
+                            <button
+                              onClick={() => setViewingFile({ url: comment.attachmentUrl!, name: getFileName(comment.attachmentUrl!) })}
+                              className="block hover:opacity-90 transition-opacity"
+                            >
+                              <img src={comment.attachmentUrl} alt="adjunto" className="max-w-xs max-h-48 rounded-lg border border-gray-200 object-contain cursor-zoom-in" />
+                            </button>
                           ) : (
-                            <a href={comment.attachmentUrl} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline bg-primary/5 px-2.5 py-1.5 rounded-lg">
+                            <button
+                              onClick={() => setViewingFile({ url: comment.attachmentUrl!, name: getFileName(comment.attachmentUrl!) })}
+                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline bg-primary/5 px-2.5 py-1.5 rounded-lg"
+                            >
                               <FileText className="w-3.5 h-3.5" />
                               Ver archivo adjunto
-                            </a>
+                            </button>
                           )}
                         </div>
                       )}
@@ -375,6 +388,64 @@ export default function TicketDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modal visor de archivos */}
+      {viewingFile && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setViewingFile(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-gray-900 truncate">{viewingFile.name}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <a
+                  href={viewingFile.url}
+                  download={viewingFile.name}
+                  className="p-1.5 text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                  title="Descargar"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+                <button onClick={() => setViewingFile(null)} className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-2 min-h-0">
+              {isImage(viewingFile.url) ? (
+                <img
+                  src={viewingFile.url}
+                  alt={viewingFile.name}
+                  className="max-w-full max-h-full mx-auto rounded-lg object-contain"
+                  style={{ maxHeight: 'calc(90vh - 80px)' }}
+                />
+              ) : isPdf(viewingFile.url) ? (
+                <iframe
+                  src={viewingFile.url}
+                  className="w-full rounded-lg border border-gray-200"
+                  style={{ height: 'calc(90vh - 80px)' }}
+                  title={viewingFile.name}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500 gap-4">
+                  <FileText className="w-16 h-16 text-gray-300" />
+                  <p className="text-sm">Vista previa no disponible para este tipo de archivo</p>
+                  <a
+                    href={viewingFile.url}
+                    download={viewingFile.name}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
+                  >
+                    <Download className="w-4 h-4" />
+                    Descargar archivo
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

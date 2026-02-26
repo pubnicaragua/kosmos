@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonKPI, SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
+import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 import * as XLSX from 'xlsx'
 
 interface Activity {
@@ -512,7 +513,7 @@ export default function ActividadesPage() {
                   </td>
                   <td className="py-2 px-2"><input value={row.title} onChange={(e) => updateDraftRow(row.tempId, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Título de la actividad" /></td>
                   <td className="py-2 px-2"><textarea value={row.description} onChange={(e) => updateDraftRow(row.tempId, 'description', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" placeholder="Descripción detallada" rows={2} /></td>
-                  <td className="py-2 px-2"><input value={row.client} onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, row, 'create')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Cliente" /></td>
+                  <td className="py-2 px-2 min-w-[180px]"><ClientAutocomplete companyId={row.companyId} value={row.client} onChange={(v) => updateDraftRow(row.tempId, 'client', v)} placeholder="Buscar cliente..." /></td>
                   <td className="py-2 px-2">
                     {row.type === 'MEETING' ? (
                       <input
@@ -560,7 +561,7 @@ export default function ActividadesPage() {
                     </td>
                     <td className="py-2 px-2"><input value={editingRows[activity.id].title} onChange={(e) => updateEditingRow(activity.id, 'title', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" /></td>
                     <td className="py-2 px-2"><textarea value={editingRows[activity.id].description} onChange={(e) => updateEditingRow(activity.id, 'description', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" rows={2} /></td>
-                    <td className="py-2 px-2"><input value={editingRows[activity.id].client} onChange={(e) => updateEditingRow(activity.id, 'client', e.target.value)} onKeyDown={(e) => handleRowKeyDown(e, editingRows[activity.id], 'update')} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm" /></td>
+                    <td className="py-2 px-2 min-w-[180px]"><ClientAutocomplete companyId={editingRows[activity.id].companyId} value={editingRows[activity.id].client} onChange={(v) => updateEditingRow(activity.id, 'client', v)} placeholder="Buscar cliente..." /></td>
                     <td className="py-2 px-2">
                       {editingRows[activity.id].type === 'MEETING' ? (
                         <input

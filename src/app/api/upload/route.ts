@@ -106,16 +106,12 @@ export async function POST(request: NextRequest) {
     let publicUrl: string
 
     if (IS_PRODUCTION) {
-      // En producción (Vercel/serverless): guardar en /tmp y retornar base64 data URL
-      // o guardar en /tmp y servir desde una ruta de API
+      // En producción (VPS/PM2): guardar en /tmp/uploads y servir via /api/files/[filename]
       const tmpDir = '/tmp/uploads'
       const filePath = join(tmpDir, fileName)
       await mkdir(tmpDir, { recursive: true })
       await writeFile(filePath, buffer)
-      // Retornar como data URL para uso inmediato
-      const base64 = buffer.toString('base64')
-      const detectedMime = file.type || 'application/octet-stream'
-      publicUrl = `data:${detectedMime};base64,${base64}`
+      publicUrl = `/api/files/${fileName}`
     } else {
       // En desarrollo: guardar en public/uploads
       const uploadDir = join(process.cwd(), 'public', 'uploads')
