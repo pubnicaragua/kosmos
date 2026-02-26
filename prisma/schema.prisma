@@ -19,6 +19,7 @@ model User {
   refreshTokens   RefreshToken[]
   userCompanies   UserCompany[]
   userPreferences UserPreferences?
+  ticketComments  TicketComment[]
 
   @@map("users")
 }
