@@ -45,7 +45,7 @@ export async function GET(
     const ext = filename.split('.').pop()?.toLowerCase() || ''
     const mimeType = MIME_MAP[ext] || 'application/octet-stream'
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': mimeType,
