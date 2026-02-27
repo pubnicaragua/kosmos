@@ -549,7 +549,11 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
-  const canManageRoles = isSuperAdmin || companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
+  // Verificar permisos personalizados del módulo sistema
+  const userPermissions = JSON.parse(localStorage.getItem('permissions') || '{}')
+  const sistemaPerms = userPermissions?.sistema || {}
+  const hasCustomRolePermission = sistemaPerms.canCreate || sistemaPerms.canEdit
+  const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
 
   if (isLoading) {
     return (

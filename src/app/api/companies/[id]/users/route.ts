@@ -65,20 +65,26 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Auto-create user if doesn't exist
     let targetUser = await prisma.user.findUnique({ where: { email } })
+    let generatedPassword: string | null = null
     
     if (!targetUser) {
       const { hashPassword } = await import('@/lib/auth')
-      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!'
+      // Generar contraseña segura: 12 caracteres con mayúsculas, minúsculas, números y símbolos
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+      const symbols = '!@#$%&*'
+      generatedPassword = Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+        + symbols[Math.floor(Math.random() * symbols.length)]
+        + Math.floor(Math.random() * 10)
       
       targetUser = await prisma.user.create({
         data: {
           email,
           name: name || email.split('@')[0],
-          password: await hashPassword(tempPassword),
+          password: await hashPassword(generatedPassword),
         },
       })
       
-      console.log(`Usuario creado: ${email} con contraseña temporal: ${tempPassword}`)
+      console.log(`Usuario creado: ${email}`)
     }
 
     const existing = await prisma.userCompany.findFirst({
@@ -99,7 +105,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       },
     })
 
-    return apiSuccess(newMember, undefined, 201)
+    // Incluir contraseña generada si es usuario nuevo
+    const response = {
+      ...newMember,
+      generatedPassword: generatedPassword || undefined,
+      isNewUser: Boolean(generatedPassword),
+    }
+    return apiSuccess(response, undefined, 201)
   } catch (error: any) {
     console.error('Error adding user to company:', error?.message)
     return apiError('Error al agregar usuario', 500)

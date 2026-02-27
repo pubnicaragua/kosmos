@@ -129,17 +129,26 @@ export async function POST(request: NextRequest) {
     let campaign: any
     try {
       campaign = await prisma.marketingCampaign.create({
-        data: baseData,
+        data: baseData as any,
         include: { company: { select: { name: true } } },
       })
     } catch (createErr: any) {
       // Fallback: some columns may not exist in production DB yet
-      if (createErr?.code === 'P2022' || createErr?.message?.includes('column') || createErr?.message?.includes('approval_status') || createErr?.message?.includes('ad_type') || createErr?.message?.includes('evidence_url')) {
+      const errMsg = String(createErr?.message || '').toLowerCase()
+      const isColumnMissing = createErr?.code === 'P2022' || errMsg.includes('column') || errMsg.includes('does not exist')
+      if (isColumnMissing) {
+        // Intentar sin campos opcionales que pueden no existir
         const { adType, evidenceUrl, approvalStatus, ...safeData } = baseData
-        campaign = await prisma.marketingCampaign.create({
-          data: safeData as any,
-          include: { company: { select: { name: true } } },
-        })
+        try {
+          campaign = await prisma.marketingCampaign.create({
+            data: safeData as any,
+            include: { company: { select: { name: true } } },
+          })
+        } catch (fallbackErr: any) {
+          // Si aún falla, intentar con campos mínimos
+          console.error('Marketing fallback also failed:', fallbackErr)
+          throw fallbackErr
+        }
       } else {
         throw createErr
       }

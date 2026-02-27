@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 const MODULES = [
   'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
@@ -145,8 +145,20 @@ export async function POST(request: NextRequest) {
     if (!companyId || !name) return apiError('companyId y name son requeridos', 400)
 
     const access = await getCompanyAccess(decoded.userId, companyId)
-    if (!access.canAccess || !['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || ''))
-      return apiError('Solo admins pueden crear roles', 403)
+    if (!access.canAccess) return apiError('Sin acceso a esta empresa', 403)
+    
+    // Verificar si es admin O tiene permisos personalizados en módulo sistema
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(access.effectiveRole || '')
+    let hasCustomPermission = false
+    try {
+      const sistemaAccess = await getModuleAccess(decoded.userId, companyId, 'sistema')
+      hasCustomPermission = sistemaAccess.canCreate || sistemaAccess.canEdit
+    } catch {
+      // Si falla, asumir sin permisos personalizados
+    }
+    if (!isAdmin && !hasCustomPermission) {
+      return apiError('No tienes permisos para gestionar roles. Necesitas ser Admin o tener permisos de Crear/Editar en el módulo Sistema.', 403)
+    }
 
     let rolePermissions = permissions
     if (fromPredefined) {
