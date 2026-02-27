@@ -24,11 +24,32 @@ export async function GET(request: NextRequest) {
     const where: any = { companyId: companyId || { in: companyIds } }
     if (type) where.type = type
 
-    const documents = await prisma.document.findMany({
-      where,
-      include: { company: { select: { name: true } } },
-      orderBy: { createdAt: 'desc' },
-    })
+    // Intentar con campos opcionales primero, si falla por P2022 (columnas faltantes) usar versión básica
+    let documents
+    try {
+      documents = await prisma.document.findMany({
+        where,
+        include: { company: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch (innerErr: any) {
+      if (innerErr?.code === 'P2022') {
+        // Las columnas area/visibility/category aún no existen en la BD - usar SQL raw
+        documents = await prisma.$queryRaw`
+          SELECT d.id, d.company_id as "companyId", d.name, d.type, d.concept,
+                 d.file_url as "fileUrl", d.file_size as "fileSize",
+                 d.uploaded_by as "uploadedBy", d.created_at as "createdAt", d.updated_at as "updatedAt",
+                 'General' as area, 'COMPARTIDO' as visibility, 'General' as category,
+                 json_build_object('name', c.name) as company
+          FROM documents d
+          JOIN companies c ON c.id = d.company_id
+          WHERE d.company_id = ANY(${companyId ? [companyId] : companyIds}::text[])
+          ORDER BY d.created_at DESC
+        `
+      } else {
+        throw innerErr
+      }
+    }
 
     return apiSuccess(documents)
   } catch (error: any) {
@@ -52,16 +73,32 @@ export async function POST(request: NextRequest) {
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const { area, visibility, category, ...cleanDocData } = docData as any
-    const document = await prisma.document.create({
-      data: {
-        ...cleanDocData,
-        companyId,
-        uploadedBy: decoded.userId,
-        area: area || 'General',
-        visibility: visibility || 'COMPARTIDO',
-        category: category || 'General',
-      },
-    })
+    let document
+    try {
+      document = await prisma.document.create({
+        data: {
+          ...cleanDocData,
+          companyId,
+          uploadedBy: decoded.userId,
+          area: area || 'General',
+          visibility: visibility || 'COMPARTIDO',
+          category: category || 'General',
+        },
+      })
+    } catch (innerErr: any) {
+      if (innerErr?.code === 'P2022') {
+        // Columnas opcionales aún no migradas - crear sin ellas
+        document = await prisma.document.create({
+          data: {
+            ...cleanDocData,
+            companyId,
+            uploadedBy: decoded.userId,
+          },
+        })
+      } else {
+        throw innerErr
+      }
+    }
 
     return apiSuccess(document, undefined, 201)
   } catch (error: any) {

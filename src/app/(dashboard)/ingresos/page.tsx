@@ -40,6 +40,7 @@ interface IncomeRowDraft {
   concept: string
   method: string
   amount: string
+  currency: string
   margin: string
   status: Income['status']
 }
@@ -271,6 +272,7 @@ export default function IngresosPage() {
         concept: '',
         method: '',
         amount: '',
+        currency: 'USD',
         margin: '',
         status: 'PENDING',
       },
@@ -316,6 +318,7 @@ export default function IngresosPage() {
         concept: income.concept,
         method: income.method,
         amount: String(income.amount),
+        currency: 'USD',
         margin: String(income.margin),
         status: income.status,
       },
@@ -688,12 +691,18 @@ export default function IngresosPage() {
                   </td>
                   <td className="py-2 px-2">
                     <input
+                      list="clients-datalist"
                       value={row.client}
                       onChange={(e) => updateDraftRow(row.tempId, 'client', e.target.value)}
                       onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
                       className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
                       placeholder="Cliente"
                     />
+                    <datalist id="clients-datalist">
+                      {Array.from(new Set(incomes.map(i => i.client).filter(Boolean))).map(c => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
                   </td>
                   <td className="py-2 px-2">
                     <input
@@ -713,15 +722,25 @@ export default function IngresosPage() {
                       placeholder="Método"
                     />
                   </td>
-                  <td className="py-2 px-2 text-right">
-                    <input
-                      type="number"
-                      value={row.amount}
-                      onChange={(e) => updateDraftRow(row.tempId, 'amount', e.target.value)}
-                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
-                      placeholder="0"
-                    />
+                  <td className="py-2 px-2">
+                    <div className="flex gap-1">
+                      <select
+                        value={row.currency}
+                        onChange={(e) => updateDraftRow(row.tempId, 'currency', e.target.value)}
+                        className="px-1 py-2 border border-gray-300 rounded-lg text-xs bg-white"
+                      >
+                        <option value="USD">$</option>
+                        <option value="NIO">C$</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={row.amount}
+                        onChange={(e) => updateDraftRow(row.tempId, 'amount', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm text-right"
+                        placeholder="0"
+                      />
+                    </div>
                   </td>
                   <td className="py-2 px-2 text-right">
                     <input

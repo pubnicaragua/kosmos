@@ -83,13 +83,30 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const opportunity = await prisma.opportunity.create({
-      data: {
-        ...oppData,
-        companyId,
-        closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
-      },
-    })
+    const { priority, description, ...baseOppData } = oppData
+    let opportunity: any
+    try {
+      opportunity = await prisma.opportunity.create({
+        data: {
+          ...baseOppData,
+          companyId,
+          closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
+          ...(priority !== undefined ? { priority } : {}),
+          ...(description !== undefined ? { description } : {}),
+        },
+      })
+    } catch (e: any) {
+      if (e?.code === 'P2022') {
+        // columnas opcionales no existen aún - crear sin priority/description
+        opportunity = await prisma.opportunity.create({
+          data: {
+            ...baseOppData,
+            companyId,
+            closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
+          },
+        })
+      } else throw e
+    }
 
     return apiSuccess(opportunity, undefined, 201)
   } catch (error) {

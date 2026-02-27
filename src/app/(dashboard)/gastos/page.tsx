@@ -58,9 +58,10 @@ export default function GastosPage() {
   const [formData, setFormData] = useState({
     provider: '',
     concept: '',
-    category: 'TRANSFERENCIA BAC',
-    method: 'CHEQUE',
+    category: 'Operaciones',
+    method: 'Transferencia',
     amount: '',
+    currency: 'USD',
     date: new Date().toISOString().split('T')[0],
     status: 'PENDING' as const,
   })
@@ -218,9 +219,10 @@ export default function GastosPage() {
         setFormData({
           provider: '',
           concept: '',
-          category: 'TRANSFERENCIA BAC',
-          method: 'CHEQUE',
+          category: 'Operaciones',
+          method: 'Transferencia',
           amount: '',
+          currency: 'USD',
           date: new Date().toISOString().split('T')[0],
           status: 'PENDING',
         })
@@ -532,13 +534,22 @@ export default function GastosPage() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Gasto">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            label="Proveedor"
-            value={formData.provider}
-            onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-            required
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor *</label>
+            <input
+              list="providers-list"
+              value={formData.provider}
+              onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+              required
+              placeholder="Buscar o escribir proveedor..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            />
+            <datalist id="providers-list">
+              {Array.from(new Set(expenses.map(e => e.provider).filter(Boolean))).map(p => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </div>
           <Input
             label="Concepto"
             value={formData.concept}
@@ -549,9 +560,17 @@ export default function GastosPage() {
           <Select
             label="Categoría"
             options={[
-              { value: 'TRANSFERENCIA BAC', label: 'Transferencia BAC' },
-              { value: 'SOPORTE TÉCNICO', label: 'Soporte Técnico' },
-              { value: 'SERVICIO DE MARKETING', label: 'Servicio de Marketing' },
+              { value: 'Operaciones', label: 'Operaciones' },
+              { value: 'Nómina', label: 'Nómina' },
+              { value: 'Alquiler', label: 'Alquiler' },
+              { value: 'Servicios Públicos', label: 'Servicios Públicos' },
+              { value: 'Soporte Técnico', label: 'Soporte Técnico' },
+              { value: 'Marketing', label: 'Marketing' },
+              { value: 'Logística', label: 'Logística' },
+              { value: 'Impuestos', label: 'Impuestos' },
+              { value: 'Mantenimiento', label: 'Mantenimiento' },
+              { value: 'Viáticos', label: 'Viáticos' },
+              { value: 'Otro', label: 'Otro' },
             ]}
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -560,23 +579,39 @@ export default function GastosPage() {
           <Select
             label="Método de Pago"
             options={[
-              { value: 'CHEQUE', label: 'Cheque' },
-              { value: 'TRANSFERENCIA', label: 'Transferencia' },
-              { value: 'EFECTIVO', label: 'Efectivo' },
+              { value: 'Transferencia', label: 'Transferencia Bancaria' },
+              { value: 'Efectivo', label: 'Efectivo' },
+              { value: 'Cheque', label: 'Cheque' },
+              { value: 'Tarjeta Crédito', label: 'Tarjeta de Crédito' },
+              { value: 'Tarjeta Débito', label: 'Tarjeta de Débito' },
+              { value: 'Depósito', label: 'Depósito Bancario' },
             ]}
             value={formData.method}
             onChange={(e) => setFormData({ ...formData, method: e.target.value })}
             fullWidth
           />
-          <Input
-            label="Monto"
-            type="number"
-            step="0.01"
-            value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            required
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Monto *</label>
+            <div className="flex gap-2">
+              <select
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="USD">$ USD</option>
+                <option value="NIO">C$ NIO</option>
+              </select>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                required
+                placeholder="0.00"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
           <Input
             label="Fecha"
             type="date"
