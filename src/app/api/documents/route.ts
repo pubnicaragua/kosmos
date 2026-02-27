@@ -28,13 +28,22 @@ export async function GET(request: NextRequest) {
     let documents
     try {
       documents = await prisma.document.findMany({
-        where,
+        where: {
+          ...where,
+          // Filtrar por visibilidad: PRIVADO solo visible para el dueño
+          OR: [
+            { visibility: { not: 'PRIVADO' } },
+            { visibility: 'PRIVADO', uploadedBy: decoded.userId },
+            { visibility: null }, // Documentos sin visibilidad definida (legacy)
+          ],
+        },
         include: { company: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
       })
     } catch (innerErr: any) {
       if (innerErr?.code === 'P2022') {
         // Las columnas area/visibility/category aún no existen en la BD - usar SQL raw
+        // En este caso, todos los documentos se tratan como COMPARTIDO (legacy)
         documents = await prisma.$queryRaw`
           SELECT d.id, d.company_id as "companyId", d.name, d.type, d.concept,
                  d.file_url as "fileUrl", d.file_size as "fileSize",

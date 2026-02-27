@@ -181,27 +181,39 @@ export default function InventarioEdicionPage() {
             categories.find((category) => category.id === categoryInput)?.id ||
             ''
 
-          const name = String(pickValue('nombre', 'name', 'producto', 'product')).trim()
-          const sku = String(pickValue('sku', 'codigo', 'code', 'codigointerno')).trim()
+          const name = String(pickValue('nombre', 'name', 'producto', 'product', 'articulo')).trim()
+          // SKU es opcional - usar Articulo, codigo, o generar uno automático
+          let sku = String(pickValue('sku', 'codigo', 'code', 'codigointerno', 'articulo')).trim()
+          if (!sku && name) {
+            // Generar SKU automático basado en nombre + timestamp
+            sku = `AUTO-${name.substring(0, 10).toUpperCase().replace(/\s+/g, '-')}-${index}`
+          }
+
+          // Mapear columnas del formato del usuario
+          const familia = String(pickValue('familia', 'family', 'categoria', 'category')).trim()
+          const subfamilia = String(pickValue('subfamilia', 'subfamily')).trim()
+          const marca = String(pickValue('marca', 'brand')).trim()
+          const descripcionParts = [subfamilia, marca].filter(Boolean).join(' - ')
 
           return {
             id: '',
             tempId: Date.now() + index,
             name,
             unit: String(pickValue('unidad', 'unit', 'unikg') || 'UNI').trim().toUpperCase() || 'UNI',
-            categoryId: matchedCategoryId,
-            description: String(pickValue('descripcion', 'description', 'detalle')).trim(),
+            categoryId: matchedCategoryId || (familia ? categoriesByName.get(normalizeHeader(familia)) : '') || '',
+            description: String(pickValue('descripcion', 'description', 'detalle') || descripcionParts).trim(),
             sku,
-            cost: toNumber(pickValue('costo', 'cost', 'preciocosto')),
+            cost: toNumber(pickValue('costo', 'cost', 'preciocosto', 'costopromedio', 'costoenbodega')),
             price: toNumber(pickValue('precio', 'price', 'pvp')),
             netMargin: toNumber(pickValue('margenneto', 'netmargin', 'margen', 'margin')),
+            stock: toNumber(pickValue('stock', 'cantidad', 'cantidadenbodega', 'existencia')),
             isNew: true,
           }
         })
-        .filter((row) => row.name && row.sku)
+        .filter((row) => row.name) // Solo nombre es requerido, SKU es opcional
 
       if (!importedRows.length) {
-        alert('No se encontraron filas válidas. Verifica que el archivo incluya al menos Nombre y SKU.')
+        alert('No se encontraron filas válidas. Verifica que el archivo incluya al menos una columna de Nombre, Producto o Articulo.')
         return
       }
 
@@ -222,11 +234,16 @@ export default function InventarioEdicionPage() {
       return
     }
 
-    const validRows = rows.filter(row => row.name.trim() !== '' && row.sku.trim() !== '')
+    const validRows = rows.filter(row => row.name.trim() !== '')
     if (validRows.length === 0) {
-      alert('Agregue al menos un producto válido')
+      alert('Agregue al menos un producto con nombre')
       return
     }
+    // Generar SKU automático para productos sin SKU
+    const rowsWithSku = validRows.map((row, idx) => ({
+      ...row,
+      sku: row.sku.trim() || `AUTO-${Date.now()}-${idx}`,
+    }))
 
     setIsSaving(true)
     try {
@@ -238,7 +255,7 @@ export default function InventarioEdicionPage() {
         },
         body: JSON.stringify({
           companyId: selectedCompany,
-          products: validRows.map(row => ({
+          products: rowsWithSku.map(row => ({
             name: row.name,
             unit: row.unit,
             categoryId: row.categoryId || null,
