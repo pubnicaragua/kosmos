@@ -5,6 +5,7 @@ import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 

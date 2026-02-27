@@ -146,16 +146,17 @@ export function Header() {
             : []
         incomesList
           .filter((i: any) => 
-            i.description?.toLowerCase().includes(lowerQuery) ||
-            i.client?.name?.toLowerCase().includes(lowerQuery)
+            i.concept?.toLowerCase().includes(lowerQuery) ||
+            i.client?.toLowerCase().includes(lowerQuery) ||
+            i.refNumber?.toLowerCase().includes(lowerQuery)
           )
           .slice(0, 3)
           .forEach((i: any) => {
             results.push({
               id: i.id,
               type: 'income',
-              title: i.description,
-              subtitle: `$${i.amount?.toLocaleString()} - ${i.client?.name || 'Sin cliente'}`,
+              title: i.concept || i.refNumber || 'Ingreso',
+              subtitle: `$${i.amount?.toLocaleString() || 0} - ${i.client || 'Sin cliente'}`,
               url: `/ingresos?highlight=${i.id}`,
             })
           })
@@ -175,7 +176,7 @@ export function Header() {
         opportunitiesList
           .filter((o: any) => 
             o.title?.toLowerCase().includes(lowerQuery) ||
-            o.client?.name?.toLowerCase().includes(lowerQuery)
+            o.client?.toLowerCase().includes(lowerQuery)
           )
           .slice(0, 3)
           .forEach((o: any) => {
@@ -183,7 +184,7 @@ export function Header() {
               id: o.id,
               type: 'opportunity',
               title: o.title,
-              subtitle: `${o.client?.name || 'Sin cliente'} - $${o.value?.toLocaleString()}`,
+              subtitle: `${o.client || 'Sin cliente'} - $${o.value?.toLocaleString() || 0}`,
               url: `/pipeline-ventas?highlight=${o.id}`,
             })
           })
@@ -203,7 +204,8 @@ export function Header() {
         contractsList
           .filter((c: any) => 
             c.title?.toLowerCase().includes(lowerQuery) ||
-            c.client?.name?.toLowerCase().includes(lowerQuery)
+            c.clientName?.toLowerCase().includes(lowerQuery) ||
+            c.client?.toLowerCase().includes(lowerQuery)
           )
           .slice(0, 3)
           .forEach((c: any) => {
@@ -211,7 +213,7 @@ export function Header() {
               id: c.id,
               type: 'contract',
               title: c.title,
-              subtitle: c.client?.name || 'Sin cliente',
+              subtitle: c.clientName || c.client || 'Sin cliente',
               url: `/contratos?highlight=${c.id}`,
             })
           })
