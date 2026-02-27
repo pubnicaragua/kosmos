@@ -367,16 +367,25 @@ export default function RecursosHumanosPage() {
                 required
                 fullWidth
               />
-              <Input
-                label="Monto Total"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={formData.totalAmount}
-                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                required
-                fullWidth
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Monto Total de la Planilla *
+                  <span className="ml-1 text-xs font-normal text-gray-400">(suma total de salarios a pagar)</span>
+                </label>
+                <div className="flex gap-2">
+                  <span className="inline-flex items-center px-3 py-2 border border-r-0 border-gray-200 rounded-l-lg bg-gray-50 text-sm text-gray-600">C$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.totalAmount}
+                    onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                    required
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Este monto se registrará como gasto de nómina si activas la opción de abajo.</p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Archivo de planilla (Excel, PDF, etc.)

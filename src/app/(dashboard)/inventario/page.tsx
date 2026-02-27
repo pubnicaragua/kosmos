@@ -37,6 +37,19 @@ const STOCK_TABS = [
   { id: 'low', label: 'MENOR STOCK' },
 ]
 
+interface EditingProduct {
+  name: string
+  sku: string
+  description: string
+  stock: string
+  cost: string
+  price: string
+  netMargin: string
+  promotion: string
+  promotionCost: string
+  promotionDiscount: string
+}
+
 export default function InventarioPage() {
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
@@ -50,6 +63,73 @@ export default function InventarioPage() {
   const [totalItems, setTotalItems] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const [showFilters, setShowFilters] = useState(false)
+  const [editingRows, setEditingRows] = useState<Record<string, EditingProduct>>({})
+  const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
+
+  const startEditing = (product: Product) => {
+    setEditingRows(prev => ({
+      ...prev,
+      [product.id]: {
+        name: product.name,
+        sku: product.sku,
+        description: product.description || '',
+        stock: String(product.stock),
+        cost: String(product.cost),
+        price: String(product.price),
+        netMargin: product.netMargin != null ? String(product.netMargin) : '',
+        promotion: product.promotion || '',
+        promotionCost: product.promotionCost != null ? String(product.promotionCost) : '',
+        promotionDiscount: product.promotionDiscount != null ? String(product.promotionDiscount) : '',
+      },
+    }))
+  }
+
+  const cancelEditing = (productId: string) => {
+    setEditingRows(prev => { const n = { ...prev }; delete n[productId]; return n })
+  }
+
+  const saveEditing = async (productId: string) => {
+    const row = editingRows[productId]
+    if (!row) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    setSavingRows(prev => ({ ...prev, [productId]: true }))
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: row.name,
+          sku: row.sku,
+          description: row.description || null,
+          stock: Number(row.stock) || 0,
+          cost: Number(row.cost) || 0,
+          price: Number(row.price) || 0,
+          netMargin: row.netMargin !== '' ? Number(row.netMargin) : null,
+          promotion: row.promotion || null,
+          promotionCost: row.promotionCost !== '' ? Number(row.promotionCost) : null,
+          promotionDiscount: row.promotionDiscount !== '' ? Number(row.promotionDiscount) : null,
+        }),
+      })
+      if (res.ok) {
+        cancelEditing(productId)
+        fetchData()
+      } else {
+        alert('Error al guardar cambios')
+      }
+    } catch {
+      alert('Error al guardar cambios')
+    } finally {
+      setSavingRows(prev => { const n = { ...prev }; delete n[productId]; return n })
+    }
+  }
+
+  const updateEditField = (productId: string, field: keyof EditingProduct, value: string) => {
+    setEditingRows(prev => ({
+      ...prev,
+      [productId]: { ...prev[productId], [field]: value },
+    }))
+  }
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -258,70 +338,114 @@ export default function InventarioPage() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">SKU</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRECIO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN NETO %</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROMOCIONES</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO PROMO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">DESC. PROMO %</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN %</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROMO</th>
+                <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      product.stock > 100 ? 'bg-green-100 text-green-800' :
-                      product.stock > 20 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">{product.category?.name || 'Sin categoría'}</div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600 max-w-xs truncate">
-                      {product.description || '-'}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm font-mono text-gray-600">{product.sku}</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm text-gray-900">{product.cost} $</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm font-medium text-gray-900">{product.price} $</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm font-medium text-gray-900">
-                      {product.netMargin !== null && product.netMargin !== undefined
-                        ? `${product.netMargin.toFixed(2)}%`
-                        : '-'}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="text-sm text-gray-600">{product.promotion || '-'}</div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm text-gray-900">
-                      {product.promotionCost !== null && product.promotionCost !== undefined
-                        ? `${product.promotionCost} $`
-                        : '-'}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-right">
-                    <div className="text-sm text-gray-900">
-                      {product.promotionDiscount !== null && product.promotionDiscount !== undefined
-                        ? `${product.promotionDiscount.toFixed(2)}%`
-                        : '-'}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {products.map((product) => {
+                const editing = editingRows[product.id]
+                const saving = savingRows[product.id]
+                if (editing) {
+                  return (
+                    <tr key={product.id} className="border-b border-blue-100 bg-blue-50/40">
+                      <td className="py-2 px-2">
+                        <input value={editing.name} onChange={e => updateEditField(product.id, 'name', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="Nombre" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input type="number" value={editing.stock} onChange={e => updateEditField(product.id, 'stock', e.target.value)}
+                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" placeholder="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <div className="text-sm text-gray-500">{product.category?.name || '-'}</div>
+                      </td>
+                      <td className="py-2 px-2">
+                        <input value={editing.description} onChange={e => updateEditField(product.id, 'description', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="Descripción" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input value={editing.sku} onChange={e => updateEditField(product.id, 'sku', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono" placeholder="SKU" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input type="number" value={editing.cost} onChange={e => updateEditField(product.id, 'cost', e.target.value)}
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input type="number" value={editing.price} onChange={e => updateEditField(product.id, 'price', e.target.value)}
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input type="number" value={editing.netMargin} onChange={e => updateEditField(product.id, 'netMargin', e.target.value)}
+                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input value={editing.promotion} onChange={e => updateEditField(product.id, 'promotion', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="Promo" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <div className="flex gap-1 justify-center">
+                          <button onClick={() => saveEditing(product.id)} disabled={saving}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                            {saving ? '...' : 'Guardar'}
+                          </button>
+                          <button onClick={() => cancelEditing(product.id)}
+                            className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-xs font-medium hover:bg-gray-200">
+                            Cancelar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                }
+                return (
+                  <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50 group">
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        product.stock > 100 ? 'bg-green-100 text-green-800' :
+                        product.stock > 20 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {product.stock}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{product.category?.name || 'Sin categoría'}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600 max-w-xs truncate">{product.description || '-'}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm font-mono text-gray-600">{product.sku}</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm text-gray-900">{product.cost} $</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm font-medium text-gray-900">{product.price} $</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm font-medium text-gray-900">
+                        {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-600">{product.promotion || '-'}</div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <button onClick={() => startEditing(product)}
+                        className="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-opacity">
+                        Editar
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
