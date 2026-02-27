@@ -20,6 +20,14 @@ const MIME_MAP: Record<string, string> = {
   ppt: 'application/vnd.ms-powerpoint',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   zip: 'application/zip',
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  webm: 'video/webm',
+  mkv: 'video/x-matroska',
+  wmv: 'video/x-ms-wmv',
+  flv: 'video/x-flv',
+  m4v: 'video/mp4',
 }
 
 export async function GET(
@@ -33,15 +41,22 @@ export async function GET(
       return NextResponse.json({ error: 'Nombre de archivo inválido' }, { status: 400 })
     }
 
-    const IS_PRODUCTION = process.env.NODE_ENV === 'production'
-    const primaryDir = IS_PRODUCTION ? '/tmp/uploads' : join(process.cwd(), 'public', 'uploads')
-    const fallbackDir = IS_PRODUCTION ? join(process.cwd(), 'public', 'uploads') : '/tmp/uploads'
-    let filePath = join(primaryDir, filename)
-    if (!existsSync(filePath)) {
-      filePath = join(fallbackDir, filename)
+    // Search all candidate directories in priority order
+    const candidateDirs: string[] = []
+    if (process.env.UPLOAD_DIR) candidateDirs.push(process.env.UPLOAD_DIR)
+    candidateDirs.push('/tmp/uploads')
+    candidateDirs.push(join(process.cwd(), 'public', 'uploads'))
+
+    let filePath: string | null = null
+    for (const dir of candidateDirs) {
+      const candidate = join(dir, filename)
+      if (existsSync(candidate)) {
+        filePath = candidate
+        break
+      }
     }
 
-    if (!existsSync(filePath)) {
+    if (!filePath) {
       return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 })
     }
 

@@ -8,7 +8,15 @@ export const maxDuration = 60
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
-const MAX_UPLOAD_SIZE = 25 * 1024 * 1024 // 25MB
+// Use UPLOAD_DIR env var for persistent storage across restarts
+// Set UPLOAD_DIR=/var/www/kosmos/uploads (or any persistent path) in production .env
+const getUploadDir = () => {
+  if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR
+  if (IS_PRODUCTION) return '/tmp/uploads'
+  return join(process.cwd(), 'public', 'uploads')
+}
+
+const MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100MB (supports videos)
 
 const ALLOWED_EXTENSIONS = new Set([
   'jpg',
@@ -98,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (file.size > MAX_UPLOAD_SIZE) {
-      return errorResponse('El archivo es demasiado grande. Tamaño máximo: 25MB', 400)
+      return errorResponse('El archivo es demasiado grande. Tamaño máximo: 100MB', 400)
     }
 
     const extension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() || '' : ''
@@ -122,23 +130,13 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    let publicUrl: string
+    const uploadDir = getUploadDir()
+    const filePath = join(uploadDir, fileName)
+    await mkdir(uploadDir, { recursive: true })
+    await writeFile(filePath, buffer)
 
-    if (IS_PRODUCTION) {
-      // En producción (VPS/PM2): guardar en /tmp/uploads y servir via /api/files/[filename]
-      const tmpDir = '/tmp/uploads'
-      const filePath = join(tmpDir, fileName)
-      await mkdir(tmpDir, { recursive: true })
-      await writeFile(filePath, buffer)
-      publicUrl = `/api/files/${fileName}`
-    } else {
-      // En desarrollo: guardar en public/uploads
-      const uploadDir = join(process.cwd(), 'public', 'uploads')
-      const filePath = join(uploadDir, fileName)
-      await mkdir(uploadDir, { recursive: true })
-      await writeFile(filePath, buffer)
-      publicUrl = `/uploads/${fileName}`
-    }
+    // Always serve via /api/files/ so the route handles both environments
+    const publicUrl = `/api/files/${fileName}`
 
     return successResponse({
       url: publicUrl,

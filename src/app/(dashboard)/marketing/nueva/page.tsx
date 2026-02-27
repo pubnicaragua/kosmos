@@ -5,7 +5,81 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
-import { ArrowLeft, Upload, BarChart2, X } from 'lucide-react'
+import { ArrowLeft, Upload, BarChart2, X, Plus, Trash2 } from 'lucide-react'
+
+const DEFAULT_METRICS = [
+  { label: 'CTR (%)', value: '' },
+  { label: 'Conversiones', value: '' },
+  { label: 'ROI (%)', value: '' },
+  { label: 'Alcance', value: '' },
+  { label: 'Impresiones', value: '' },
+  { label: 'Clics', value: '' },
+]
+
+function MetricsEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const parseRows = (raw: string) => {
+    if (!raw.trim()) return DEFAULT_METRICS.map(m => ({ ...m }))
+    const parsed = raw.split('\n').map(line => {
+      const idx = line.indexOf(':')
+      if (idx === -1) return { label: line.trim(), value: '' }
+      return { label: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() }
+    }).filter(r => r.label)
+    return parsed.length ? parsed : DEFAULT_METRICS.map(m => ({ ...m }))
+  }
+
+  const [rows, setRows] = useState(() => parseRows(value))
+
+  const serialize = (r: { label: string; value: string }[]) =>
+    r.filter(x => x.label).map(x => `${x.label}: ${x.value || '0'}`).join('\n')
+
+  const update = (newRows: { label: string; value: string }[]) => {
+    setRows(newRows)
+    onChange(serialize(newRows))
+  }
+
+  const max = Math.max(...rows.map(r => parseFloat(r.value) || 0), 1)
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-2">
+        {rows.map((row, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={row.label}
+              onChange={e => update(rows.map((r, j) => j === i ? { ...r, label: e.target.value } : r))}
+              placeholder="Nombre métrica"
+              className="w-36 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <input
+              type="number"
+              value={row.value}
+              onChange={e => update(rows.map((r, j) => j === i ? { ...r, value: e.target.value } : r))}
+              placeholder="0"
+              className="w-28 px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            />
+            <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 rounded-full bg-blue-500 transition-all"
+                style={{ width: `${((parseFloat(row.value) || 0) / max) * 100}%` }}
+              />
+            </div>
+            <button type="button" onClick={() => update(rows.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => update([...rows, { label: '', value: '' }])}
+        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
+      >
+        <Plus className="w-4 h-4" /> Agregar métrica
+      </button>
+    </div>
+  )
+}
 
 export default function NuevaCampanaPage() {
   const router = useRouter()
@@ -77,17 +151,6 @@ export default function NuevaCampanaPage() {
     } finally {
       setUploadingEvidence(false)
     }
-  }
-
-  const parseMetrics = (raw: string): { label: string; value: number }[] => {
-    return raw
-      .split('\n')
-      .map((line) => {
-        const [label, val] = line.split(':')
-        const value = parseFloat(val?.trim() || '0')
-        return { label: label?.trim() || '', value: isNaN(value) ? 0 : value }
-      })
-      .filter((m) => m.label && m.value > 0)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,42 +355,13 @@ export default function NuevaCampanaPage() {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1.5">
-                <BarChart2 className="w-4 h-4" /> Métricas
+              <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center gap-1.5">
+                <BarChart2 className="w-4 h-4" /> Métricas de Campaña
               </label>
-              <textarea
+              <MetricsEditor
                 value={formData.metrics}
-                onChange={(e) => setFormData({ ...formData, metrics: e.target.value })}
-                placeholder="CTR: 2.5&#10;Conversiones: 150&#10;ROI: 300&#10;Alcance: 5000"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                rows={4}
+                onChange={(v) => setFormData({ ...formData, metrics: v })}
               />
-              <p className="text-xs text-gray-400 mt-1">Formato: Nombre: Valor (una métrica por línea)</p>
-              {/* Mini preview de métricas como gráfica de barras */}
-              {formData.metrics.trim() && (() => {
-                const metrics = parseMetrics(formData.metrics)
-                if (metrics.length === 0) return null
-                const max = Math.max(...metrics.map((m) => m.value))
-                return (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-xs font-medium text-gray-500 mb-2">Vista previa</p>
-                    <div className="space-y-2">
-                      {metrics.map((m, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600 w-28 truncate flex-shrink-0">{m.label}</span>
-                          <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
-                            <div
-                              className="h-4 rounded-full bg-primary transition-all"
-                              style={{ width: `${(m.value / max) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-semibold text-gray-700 w-12 text-right flex-shrink-0">{m.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
             </div>
 
             <div className="col-span-2">

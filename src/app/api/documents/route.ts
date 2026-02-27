@@ -24,16 +24,16 @@ export async function GET(request: NextRequest) {
     const where: any = { companyId: companyId || { in: companyIds } }
     if (type) where.type = type
 
-    const documents = await (prisma.document as any).findMany({
+    const documents = await prisma.document.findMany({
       where,
       include: { company: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },
     })
 
     return apiSuccess(documents)
-  } catch (error) {
-    console.error('Error fetching documents:', error)
-    return apiError('Error al obtener documentos', 500)
+  } catch (error: any) {
+    console.error('Error fetching documents:', error?.message, error?.code)
+    return apiError(`Error al obtener documentos: ${error?.message || 'Error desconocido'}`, 500)
   }
 }
 
@@ -51,20 +51,21 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const { area, visibility, ...cleanDocData } = docData as any
-    const document = await (prisma.document as any).create({
+    const { area, visibility, category, ...cleanDocData } = docData as any
+    const document = await prisma.document.create({
       data: {
         ...cleanDocData,
         companyId,
         uploadedBy: decoded.userId,
         area: area || 'General',
         visibility: visibility || 'COMPARTIDO',
+        category: category || 'General',
       },
     })
 
     return apiSuccess(document, undefined, 201)
-  } catch (error) {
-    console.error('Error creating document:', error)
-    return apiError('Error al crear documento', 500)
+  } catch (error: any) {
+    console.error('Error creating document:', error?.message, error?.code, JSON.stringify(error))
+    return apiError(`Error al crear documento: ${error?.message || 'Error desconocido'}`, 500)
   }
 }

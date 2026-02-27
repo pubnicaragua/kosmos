@@ -77,6 +77,7 @@ export default function ActividadesPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
+  const [pageSize, setPageSize] = useState(15)
   const [draftRows, setDraftRows] = useState<ActivityRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, ActivityRowDraft>>({})
 
@@ -96,7 +97,7 @@ export default function ActividadesPage() {
       params.append('sortBy', sortBy)
       params.append('sortOrder', sortOrder)
       params.append('page', currentPage.toString())
-      params.append('limit', '10')
+      params.append('limit', pageSize.toString())
 
       const [activitiesRes, summaryRes] = await Promise.all([
         fetch(`/api/activities?${params}`, {
@@ -134,7 +135,7 @@ export default function ActividadesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedType, selectedStatus, onlyMine, sortBy, sortOrder, currentPage])
+  }, [selectedCompany, selectedType, selectedStatus, onlyMine, sortBy, sortOrder, currentPage, pageSize])
 
   useEffect(() => {
     fetchData()
@@ -713,21 +714,40 @@ export default function ActividadesPage() {
           <div className="text-center py-12 text-gray-500">No se encontraron actividades</div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-end gap-2 mt-6 pt-6 border-t border-gray-200">
-            <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </Button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((page) => (
-              <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 rounded ${currentPage === page ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
-                {page}
+        <div className="flex items-center justify-between gap-2 mt-6 pt-6 border-t border-gray-200">
+          {/* Page size selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Mostrar:</span>
+            {[15, 30, 45].map((size) => (
+              <button
+                key={size}
+                onClick={() => { setPageSize(size); setCurrentPage(1) }}
+                className={`px-3 py-1 text-sm rounded-lg border transition-colors ${pageSize === size ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+              >
+                {size}
               </button>
             ))}
-            <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </Button>
           </div>
-        )}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </Button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i
+                if (page > totalPages) return null
+                return (
+                  <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 rounded ${currentPage === page ? 'bg-primary text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>
+                    {page}
+                  </button>
+                )
+              })}
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </Button>
+            </div>
+          )}
+        </div>
       </Card>
     </div>
   )

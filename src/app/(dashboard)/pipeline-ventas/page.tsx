@@ -6,7 +6,8 @@ import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonCard } from '@/components/ui-kit/Skeleton'
-import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
+import { MultiUserAutocomplete } from '@/components/ui-kit/MultiUserAutocomplete'
+import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 
 interface Opportunity {
   id: string
@@ -32,6 +33,7 @@ interface OpportunityFormData {
   title: string
   client: string
   value: string
+  currency: 'USD' | 'NIO'
   stage: Opportunity['stage']
   assignedTo: string
   closeDate: string
@@ -105,6 +107,7 @@ export default function PipelineVentasPage() {
     title: '',
     client: '',
     value: '',
+    currency: 'USD',
     stage: 'PROSPECTO',
     assignedTo: '',
     closeDate: new Date().toISOString().split('T')[0],
@@ -175,6 +178,7 @@ export default function PipelineVentasPage() {
       title: '',
       client: '',
       value: '',
+      currency: 'USD',
       stage: 'PROSPECTO',
       assignedTo: '',
       closeDate: new Date().toISOString().split('T')[0],
@@ -196,6 +200,7 @@ export default function PipelineVentasPage() {
       title: opportunity.title,
       client: opportunity.client,
       value: opportunity.value.toString(),
+      currency: 'USD',
       stage: opportunity.stage,
       assignedTo: opportunity.assignedTo || '',
       closeDate: opportunity.closeDate
@@ -447,15 +452,8 @@ export default function PipelineVentasPage() {
   }
 
   const getOpportunitiesByStage = (stage: string) => {
-    return opportunities
-      .filter(opp => opp.stage === stage)
-      .sort((a, b) => {
-        const priorityOrder = { ALTA: 0, MEDIA: 1, BAJA: 2 }
-        const pA = priorityOrder[(a.priority || 'MEDIA') as keyof typeof priorityOrder] ?? 1
-        const pB = priorityOrder[(b.priority || 'MEDIA') as keyof typeof priorityOrder] ?? 1
-        if (pA !== pB) return pA - pB
-        return b.value - a.value
-      })
+    // Return in the order stored in state (drag order is preserved by setOpportunities)
+    return opportunities.filter(opp => opp.stage === stage)
   }
 
   const getTotalByStage = (stage: string) => {
@@ -795,22 +793,37 @@ export default function PipelineVentasPage() {
             required
             fullWidth
           />
-          <Input
-            label="Cliente"
-            value={formData.client}
-            onChange={(e) => setFormData({ ...formData, client: e.target.value })}
-            required
-            fullWidth
-          />
-          <Input
-            label="Valor"
-            type="number"
-            step="0.01"
-            value={formData.value}
-            onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-            required
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+            <ClientAutocomplete
+              companyId={formData.companyId || (selectedCompany !== 'all' ? selectedCompany : '')}
+              value={formData.client}
+              onChange={(value) => setFormData({ ...formData, client: value })}
+              placeholder="Buscar o escribir nombre del cliente..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Valor *</label>
+            <div className="flex gap-2">
+              <select
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="USD">$ USD</option>
+                <option value="NIO">C$ NIO</option>
+              </select>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.value}
+                onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                required
+                placeholder="0.00"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
           <Select
             label="Etapa"
             options={STAGES.map(s => ({ value: s.id, label: s.label }))}
@@ -839,13 +852,14 @@ export default function PipelineVentasPage() {
               rows={2}
             />
           </div>
-          <UserAutocomplete
-            label="Asignado a"
-            companyId={formData.companyId}
-            value={formData.assignedTo}
-            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Asignado a</label>
+            <MultiUserAutocomplete
+              companyId={formData.companyId || (selectedCompany !== 'all' ? selectedCompany : '')}
+              value={formData.assignedTo}
+              onChange={(value) => setFormData({ ...formData, assignedTo: value })}
+            />
+          </div>
           <Input
             label="Fecha de Cierre Estimada"
             type="date"
