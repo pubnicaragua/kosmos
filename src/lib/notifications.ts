@@ -47,11 +47,6 @@ export async function notifyAssignment(params: {
 }) {
   const { assignedUserId, assignedByUserId, itemType, itemTitle, itemId } = params
 
-  // Don't notify if user assigns to themselves
-  if (assignedUserId === assignedByUserId) {
-    return null
-  }
-
   // Get assigner name
   const assigner = await prisma.user.findUnique({
     where: { id: assignedByUserId },

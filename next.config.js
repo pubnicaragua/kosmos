@@ -8,6 +8,13 @@ const nextConfig = {
       bodySizeLimit: '30mb',
     },
   },
+  // Increase body size limit for file uploads via API routes
+  api: {
+    bodyParser: {
+      sizeLimit: '30mb',
+    },
+    responseLimit: '30mb',
+  },
 }
 
 module.exports = nextConfig

@@ -47,9 +47,9 @@ export default function SistemaMonitorPage() {
 
         setIsCapturingErrors(false)
         alert(`Se capturaron ${logs.length} entradas de log`)
-      }, 30000)
+      }, 180000)
 
-      alert('Capturando errores durante 30 segundos. Reproduce el error ahora.')
+      alert('Capturando errores durante 180 segundos. Reproduce el error ahora.')
     } catch (error) {
       console.error('Error capturing logs:', error)
       setIsCapturingErrors(false)

@@ -34,8 +34,12 @@ export async function GET(
     }
 
     const IS_PRODUCTION = process.env.NODE_ENV === 'production'
-    const uploadDir = IS_PRODUCTION ? '/tmp/uploads' : join(process.cwd(), 'public', 'uploads')
-    const filePath = join(uploadDir, filename)
+    const primaryDir = IS_PRODUCTION ? '/tmp/uploads' : join(process.cwd(), 'public', 'uploads')
+    const fallbackDir = IS_PRODUCTION ? join(process.cwd(), 'public', 'uploads') : '/tmp/uploads'
+    let filePath = join(primaryDir, filename)
+    if (!existsSync(filePath)) {
+      filePath = join(fallbackDir, filename)
+    }
 
     if (!existsSync(filePath)) {
       return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 })

@@ -27,7 +27,7 @@ export function Header() {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const loadSession = () => {
+    const loadSession = async () => {
       const storedUser = localStorage.getItem('user')
       const storedActiveCompany = localStorage.getItem('activeCompany')
 
@@ -43,6 +43,28 @@ export function Header() {
         ...parsedUser,
         role: parsedActiveCompany?.role || parsedUser.role,
       })
+
+      // Fetch fresh avatar from API to avoid stale localStorage
+      try {
+        const token = localStorage.getItem('accessToken')
+        if (token) {
+          const res = await fetch('/api/profiles/current', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const data = await res.json()
+          if (data.success && data.data?.avatar) {
+            setUser((prev: any) => prev ? { ...prev, avatar: data.data.avatar } : prev)
+            // Update localStorage too
+            const storedStr = localStorage.getItem('user')
+            if (storedStr) {
+              const stored = JSON.parse(storedStr)
+              localStorage.setItem('user', JSON.stringify({ ...stored, avatar: data.data.avatar }))
+            }
+          }
+        }
+      } catch {
+        // silently fail, avatar will use initials fallback
+      }
     }
 
     loadSession()

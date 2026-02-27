@@ -96,6 +96,7 @@ export default function PipelineVentasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [draggedItem, setDraggedItem] = useState<Opportunity | null>(null)
   const [dragOverStage, setDragOverStage] = useState<string | null>(null)
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
   const [editingOpportunityId, setEditingOpportunityId] = useState<string | null>(null)
   const [moveReasonModal, setMoveReasonModal] = useState<{ item: Opportunity; newStage: string } | null>(null)
   const [moveReason, setMoveReason] = useState('')
@@ -340,17 +341,49 @@ export default function PipelineVentasPage() {
     setDragOverStage(stageId)
   }
 
+  const handleDragOverCard = (e: React.DragEvent, cardId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverCardId(cardId)
+  }
+
   const handleDragLeave = () => {
     setDragOverStage(null)
+    setDragOverCardId(null)
   }
 
   const handleDrop = async (newStage: string) => {
-    if (!draggedItem || draggedItem.stage === newStage) {
+    if (!draggedItem) {
       setDragOverStage(null)
+      setDragOverCardId(null)
+      return
+    }
+    // Reorder within same column
+    if (draggedItem.stage === newStage && dragOverCardId && dragOverCardId !== draggedItem.id) {
+      setOpportunities(prev => {
+        const stageItems = prev.filter(o => o.stage === newStage)
+        const rest = prev.filter(o => o.stage !== newStage)
+        const fromIdx = stageItems.findIndex(o => o.id === draggedItem.id)
+        const toIdx = stageItems.findIndex(o => o.id === dragOverCardId)
+        if (fromIdx === -1 || toIdx === -1) return prev
+        const reordered = [...stageItems]
+        const [moved] = reordered.splice(fromIdx, 1)
+        reordered.splice(toIdx, 0, moved)
+        return [...rest, ...reordered]
+      })
+      setDragOverStage(null)
+      setDragOverCardId(null)
+      setDraggedItem(null)
+      return
+    }
+    if (draggedItem.stage === newStage) {
+      setDragOverStage(null)
+      setDragOverCardId(null)
       setDraggedItem(null)
       return
     }
     setDragOverStage(null)
+    setDragOverCardId(null)
     // Show reason modal before committing the move
     setMoveReasonModal({ item: draggedItem, newStage })
     setMoveReason('')
@@ -563,10 +596,13 @@ export default function PipelineVentasPage() {
                       key={opportunity.id}
                       draggable
                       onDragStart={() => handleDragStart(opportunity)}
-                      onDragEnd={() => { setDraggedItem(null); setDragOverStage(null) }}
+                      onDragOver={(e) => handleDragOverCard(e, opportunity.id)}
+                      onDragEnd={() => { setDraggedItem(null); setDragOverStage(null); setDragOverCardId(null) }}
                       className={`group rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${clientColor.border} ${clientColor.bg} select-none animate-in fade-in slide-in-from-bottom-2 ${
                         isDragging 
-                          ? 'opacity-30 scale-90' 
+                          ? 'opacity-30 scale-90'
+                          : dragOverCardId === opportunity.id && draggedItem?.stage === stage.id
+                          ? 'ring-2 ring-blue-400 scale-[1.02]'
                           : 'opacity-100 scale-100 shadow-sm hover:shadow-lg hover:-translate-y-1'
                       }`}
                       style={{ 

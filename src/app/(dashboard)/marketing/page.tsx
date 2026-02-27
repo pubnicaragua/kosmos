@@ -92,6 +92,7 @@ export default function MarketingPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [draggedCampaign, setDraggedCampaign] = useState<MarketingCampaign | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
 
   const fetchCampaigns = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -166,13 +167,42 @@ export default function MarketingPage() {
     setDragOverStatus(statusId)
   }
 
+  const handleDragOverCard = (e: React.DragEvent, cardId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverCardId(cardId)
+  }
+
   const handleDragLeave = () => {
     setDragOverStatus(null)
+    setDragOverCardId(null)
   }
 
   const handleDrop = async (newStatus: string) => {
     if (!draggedCampaign) return
     setDragOverStatus(null)
+    setDragOverCardId(null)
+
+    // Reorder within same column
+    if (draggedCampaign.status === newStatus && dragOverCardId && dragOverCardId !== draggedCampaign.id) {
+      setCampaigns(prev => {
+        const colItems = prev.filter(c => c.status === newStatus)
+        const rest = prev.filter(c => c.status !== newStatus)
+        const fromIdx = colItems.findIndex(c => c.id === draggedCampaign.id)
+        const toIdx = colItems.findIndex(c => c.id === dragOverCardId)
+        if (fromIdx === -1 || toIdx === -1) return prev
+        const reordered = [...colItems]
+        const [moved] = reordered.splice(fromIdx, 1)
+        reordered.splice(toIdx, 0, moved)
+        return [...rest, ...reordered]
+      })
+      setDraggedCampaign(null)
+      return
+    }
+    if (draggedCampaign.status === newStatus) {
+      setDraggedCampaign(null)
+      return
+    }
 
     // Optimistic update
     const previousCampaigns = [...campaigns]
@@ -283,9 +313,14 @@ export default function MarketingPage() {
                       key={campaign.id}
                       draggable
                       onDragStart={() => handleDragStart(campaign)}
-                      onDragEnd={() => { setDraggedCampaign(null); setDragOverStatus(null) }}
+                      onDragOver={(e) => handleDragOverCard(e, campaign.id)}
+                      onDragEnd={() => { setDraggedCampaign(null); setDragOverStatus(null); setDragOverCardId(null) }}
                       className={`group bg-white rounded-lg p-4 shadow-sm hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-l-4 select-none animate-in fade-in slide-in-from-bottom-2 ${
-                        isDragging ? 'opacity-50 scale-95 rotate-1' : 'opacity-100 scale-100 hover:scale-[1.02] hover:-translate-y-1'
+                        isDragging
+                          ? 'opacity-50 scale-95 rotate-1'
+                          : dragOverCardId === campaign.id && draggedCampaign?.id !== campaign.id
+                          ? 'ring-2 ring-blue-400 scale-[1.02]'
+                          : 'opacity-100 scale-100 hover:scale-[1.02] hover:-translate-y-1'
                       }`}
                       style={{ 
                         borderLeftColor: STATUS_COLUMNS.find(c => c.id === column.id)?.badgeColor.replace('bg-', ''),

@@ -56,7 +56,7 @@ export function Sidebar() {
   const [allowedModules, setAllowedModules] = useState<Set<string> | null>(null)
   const [customRoleName, setCustomRoleName] = useState<string | null>(null)
 
-  const syncUserFromStorage = useCallback(() => {
+  const syncUserFromStorage = useCallback(async () => {
     const storedUser = localStorage.getItem('user')
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
 
@@ -70,6 +70,22 @@ export function Sidebar() {
       ...parsedUser,
       role: activeCompany?.role || parsedUser.role,
     })
+
+    // Fetch fresh avatar from API
+    try {
+      const token = localStorage.getItem('accessToken')
+      if (token) {
+        const res = await fetch('/api/profiles/current', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success && data.data?.avatar) {
+          setUser((prev: any) => prev ? { ...prev, avatar: data.data.avatar } : prev)
+        }
+      }
+    } catch {
+      // silently fail
+    }
   }, [])
 
   const loadPermissions = useCallback(async () => {

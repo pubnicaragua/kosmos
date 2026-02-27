@@ -537,19 +537,19 @@ export default function ActividadesPage() {
           </button>
         </div>
 
-        <div className="overflow-x-auto -mx-2">
-          <table className="w-full" style={{minWidth: '780px', tableLayout: 'fixed'}}>
+        <div className="overflow-x-auto -mx-2 pb-2">
+          <table style={{minWidth: '1100px', tableLayout: 'fixed', width: '100%'}}>
             <colgroup>
-              <col style={{width:'80px'}} />
-              <col style={{width:'130px'}} />
+              <col style={{width:'90px'}} />
+              <col style={{width:'150px'}} />
+              <col style={{width:'170px'}} />
               <col style={{width:'140px'}} />
               <col style={{width:'110px'}} />
+              <col style={{width:'140px'}} />
               <col style={{width:'100px'}} />
-              <col style={{width:'110px'}} />
-              <col style={{width:'90px'}} />
-              <col style={{width:'70px'}} />
-              <col style={{width:'85px'}} />
-              <col style={{width:'120px'}} />
+              <col style={{width:'80px'}} />
+              <col style={{width:'100px'}} />
+              <col style={{width:'130px'}} />
             </colgroup>
             <thead>
               <tr className="border-b border-gray-200">

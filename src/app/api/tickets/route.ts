@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       const assignees = validatedData.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
       for (const name of assignees) {
         const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
-        if (userRecord && userRecord.id !== decoded.userId) {
+        if (userRecord) {
           await notifyAssignment({
             assignedUserId: userRecord.id,
             assignedByUserId: decoded.userId,

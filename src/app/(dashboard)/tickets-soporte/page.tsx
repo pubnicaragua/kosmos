@@ -63,16 +63,29 @@ export default function TicketsSoportePage() {
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
+  const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [columnLabels, setColumnLabels] = useState<Record<string, string>>(() => {
-    if (typeof window === 'undefined') return {}
-    try { return JSON.parse(localStorage.getItem('ticketColumnLabels') || '{}') } catch { return {} }
-  })
+  const [columnLabels, setColumnLabels] = useState<Record<string, string>>({})
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
   const [editingColumnValue, setEditingColumnValue] = useState('')
+
+  const getColLabelKey = () => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}')
+      return u?.id ? `ticketColumnLabels_${u.id}` : 'ticketColumnLabels'
+    } catch { return 'ticketColumnLabels' }
+  }
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(getColLabelKey()) || '{}')
+      setColumnLabels(saved)
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getColumnLabel = (col: { id: string; label: string }) =>
     columnLabels[col.id] || col.label
@@ -85,7 +98,7 @@ export default function TicketsSoportePage() {
   const saveColumnLabel = (colId: string) => {
     const updated = { ...columnLabels, [colId]: editingColumnValue.trim() || colId }
     setColumnLabels(updated)
-    localStorage.setItem('ticketColumnLabels', JSON.stringify(updated))
+    localStorage.setItem(getColLabelKey(), JSON.stringify(updated))
     setEditingColumnId(null)
   }
 
@@ -338,13 +351,43 @@ export default function TicketsSoportePage() {
     setDragOverStatus(statusId)
   }
 
+  const handleDragOverCard = (e: React.DragEvent, cardId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOverCardId(cardId)
+  }
+
   const handleDragLeave = () => {
     setDragOverStatus(null)
+    setDragOverCardId(null)
   }
 
   const handleDrop = async (newStatus: string) => {
     if (!draggedTicket) return
     setDragOverStatus(null)
+    setDragOverCardId(null)
+
+    // Reorder within same column
+    const draggedObj = tickets.find(t => t.id === draggedTicket)
+    if (draggedObj && draggedObj.status === newStatus && dragOverCardId && dragOverCardId !== draggedTicket) {
+      setTickets(prev => {
+        const colItems = prev.filter(t => t.status === newStatus)
+        const rest = prev.filter(t => t.status !== newStatus)
+        const fromIdx = colItems.findIndex(t => t.id === draggedTicket)
+        const toIdx = colItems.findIndex(t => t.id === dragOverCardId)
+        if (fromIdx === -1 || toIdx === -1) return prev
+        const reordered = [...colItems]
+        const [moved] = reordered.splice(fromIdx, 1)
+        reordered.splice(toIdx, 0, moved)
+        return [...rest, ...reordered]
+      })
+      setDraggedTicket(null)
+      return
+    }
+    if (draggedObj?.status === newStatus) {
+      setDraggedTicket(null)
+      return
+    }
 
     // Optimistic update
     const previousTickets = [...tickets]
@@ -518,10 +561,13 @@ export default function TicketsSoportePage() {
                         draggable
                         onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
                         onDragStart={() => handleDragStart(ticket.id)}
-                        onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null) }}
+                        onDragOver={(e) => handleDragOverCard(e, ticket.id)}
+                        onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null); setDragOverCardId(null) }}
                         className={`group bg-white rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 border-l-4 ${column.color} ${
                           isDragging 
-                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing border border-gray-200' 
+                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing border border-gray-200'
+                            : dragOverCardId === ticket.id && draggedTicket !== ticket.id
+                            ? 'ring-2 ring-blue-400 border border-blue-200 scale-[1.02]'
                             : selectedTicketId === ticket.id 
                             ? 'border border-primary ring-1 ring-primary/40 scale-100' 
                             : 'border border-gray-200 scale-100'
