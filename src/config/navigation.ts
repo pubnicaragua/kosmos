@@ -23,6 +23,12 @@ export const navigationSections: NavSection[] = [
         href: '/dashboards',
         icon: 'LayoutDashboard',
       },
+      {
+        id: 'notifications',
+        label: 'Notificaciones',
+        href: '/notificaciones',
+        icon: 'Bell',
+      },
     ],
   },
   {
