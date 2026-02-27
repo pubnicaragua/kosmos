@@ -79,8 +79,9 @@ export function Sidebar() {
           headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()
-        if (data.success && data.data?.avatar) {
-          setUser((prev: any) => prev ? { ...prev, avatar: data.data.avatar } : prev)
+        const freshAvatar = data.data?.user?.avatar
+        if (data.success && freshAvatar) {
+          setUser((prev: any) => prev ? { ...prev, avatar: freshAvatar } : prev)
         }
       }
     } catch {
