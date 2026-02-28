@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const status = searchParams.get('status')
     const assignedToMe = searchParams.get('assignedToMe')
+    const search = searchParams.get('search')
     const sortBy = searchParams.get('sortBy') || 'dueDate'
     const sortOrder = searchParams.get('sortOrder') || 'asc'
     const page = parseInt(searchParams.get('page') || '1', 10)
@@ -42,6 +43,15 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status
     if (assignedToMe) {
       where.assignedTo = { contains: assignedToMe }
+    }
+    
+    // Búsqueda general por título, cliente o descripción
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { client: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
     }
 
     const [total, activities] = await Promise.all([

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const status = searchParams.get('status')
+    const search = searchParams.get('search')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
     if (companyId && !companyIds.includes(companyId)) {
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
 
     const where: any = { companyId: companyId || { in: companyIds } }
     if (status) where.status = status
+    
+    // Búsqueda general por nombre, parte o concepto
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { party: { contains: search, mode: 'insensitive' } },
+        { concept: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     const contracts = await prisma.contract.findMany({
       where,

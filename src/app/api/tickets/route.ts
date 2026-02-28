@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const status = searchParams.get('status')
+    const search = searchParams.get('search')
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
 
@@ -28,6 +29,14 @@ export async function GET(request: NextRequest) {
     const where: any = {}
     where.companyId = companyId || { in: companyIds }
     if (status) where.status = status
+    
+    // Búsqueda general por título o descripción
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
     if (startDateParam || endDateParam) {
       where.createdAt = {}
       if (startDateParam) {

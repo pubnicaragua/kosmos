@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const status = searchParams.get('status')
     const channel = searchParams.get('channel')
+    const search = searchParams.get('search')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
     if (companyId && !companyIds.includes(companyId)) {
@@ -44,6 +45,14 @@ export async function GET(request: NextRequest) {
     where.companyId = companyId || { in: companyIds }
     if (status) where.status = status
     if (channel) where.channel = channel
+    
+    // Búsqueda general por nombre o descripción
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     let campaigns: any[]
     try {

@@ -61,6 +61,7 @@ export default function TicketsSoportePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
+  const [searchTerm, setSearchTerm] = useState('')
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
@@ -159,6 +160,7 @@ export default function TicketsSoportePage() {
       const params = new URLSearchParams()
       const { startDate, endDate } = getPeriodRange(selectedPeriod)
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
       params.append('startDate', startDate)
       params.append('endDate', endDate)
 
@@ -175,7 +177,7 @@ export default function TicketsSoportePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedPeriod])
+  }, [selectedCompany, selectedPeriod, searchTerm])
 
   const fetchClients = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -466,7 +468,19 @@ export default function TicketsSoportePage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <input
+            type="text"
+            placeholder="Buscar por título, cliente, descripción..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
         <Select
           options={[
             { value: 'all', label: 'TODAS LAS EMPRESAS' },

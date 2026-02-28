@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const stage = searchParams.get('stage')
+    const search = searchParams.get('search')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
     if (companyId && !companyIds.includes(companyId)) {
@@ -23,6 +24,14 @@ export async function GET(request: NextRequest) {
 
     const where: any = { companyId: companyId || { in: companyIds } }
     if (stage) where.stage = stage
+    
+    // Búsqueda general por título o cliente
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { client: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     let opportunities: any[]
     try {

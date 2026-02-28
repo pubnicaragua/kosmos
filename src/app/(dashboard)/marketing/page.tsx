@@ -90,6 +90,7 @@ export default function MarketingPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
   const [draggedCampaign, setDraggedCampaign] = useState<MarketingCampaign | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
@@ -101,6 +102,7 @@ export default function MarketingPage() {
     try {
       const params = new URLSearchParams()
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
 
       const response = await fetch(`/api/marketing?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -115,7 +117,7 @@ export default function MarketingPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany])
+  }, [selectedCompany, searchTerm])
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -258,7 +260,19 @@ export default function MarketingPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Marketing</h1>
           <p className="text-sm text-gray-500 mt-1">Gestiona tus campañas de marketing y analiza su rendimiento</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative min-w-[200px] max-w-md">
+            <input
+              type="text"
+              placeholder="Buscar campañas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
           <Select
             options={[
               { value: 'all', label: 'TODAS LAS EMPRESAS' },

@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       companyId: searchParams.get('companyId') || undefined,
       status: searchParams.get('status') || undefined,
       provider: searchParams.get('provider') || undefined,
+      search: searchParams.get('search') || undefined,
       startDate: searchParams.get('startDate') || undefined,
       endDate: searchParams.get('endDate') || undefined,
       page: searchParams.get('page') || '1',
@@ -52,6 +53,15 @@ export async function GET(request: NextRequest) {
 
     if (filters.provider) {
       where.provider = { contains: filters.provider, mode: 'insensitive' }
+    }
+
+    // Búsqueda general por proveedor, concepto o referencia
+    if (filters.search) {
+      where.OR = [
+        { provider: { contains: filters.search, mode: 'insensitive' } },
+        { concept: { contains: filters.search, mode: 'insensitive' } },
+        { refNumber: { contains: filters.search, mode: 'insensitive' } },
+      ]
     }
 
     if (filters.startDate || filters.endDate) {
