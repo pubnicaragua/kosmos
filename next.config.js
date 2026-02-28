@@ -1,4 +1,4 @@
-// build: 2026-02-26
+// build: 2026-02-27
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -7,13 +7,6 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '30mb',
     },
-  },
-  // Increase body size limit for file uploads via API routes
-  api: {
-    bodyParser: {
-      sizeLimit: '30mb',
-    },
-    responseLimit: '30mb',
   },
 }
 

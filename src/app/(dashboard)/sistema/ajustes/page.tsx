@@ -139,6 +139,7 @@ export default function AjustesPage() {
   const [editingPasswordUserId, setEditingPasswordUserId] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
+  const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
@@ -366,6 +367,17 @@ export default function AjustesPage() {
     }
   }, [companies, rolesCompanyId])
 
+  // Cargar permisos personalizados desde localStorage (solo en cliente)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const userPermissions = JSON.parse(localStorage.getItem('permissions') || '{}')
+        const sistemaPerms = userPermissions?.sistema || {}
+        setHasCustomRolePermission(Boolean(sistemaPerms.canCreate || sistemaPerms.canEdit))
+      } catch { /* ignore */ }
+    }
+  }, [])
+
   const openNewRole = () => {
     setEditingRole(null)
     setRoleForm({ name: '', description: '', color: '#6366f1' })
@@ -549,10 +561,6 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
-  // Verificar permisos personalizados del módulo sistema
-  const userPermissions = JSON.parse(localStorage.getItem('permissions') || '{}')
-  const sistemaPerms = userPermissions?.sistema || {}
-  const hasCustomRolePermission = sistemaPerms.canCreate || sistemaPerms.canEdit
   const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
 
   if (isLoading) {
