@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return apiError('Solo admins pueden agregar usuarios', 403)
 
     const body = await request.json()
-    const { email, role, customRoleId, name } = body
+    const { email, role, customRoleId, name, password } = body
 
     if (!email) return apiError('email es requerido', 400)
 
@@ -69,18 +69,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     if (!targetUser) {
       const { hashPassword } = await import('@/lib/auth')
-      // Generar contraseña segura: 12 caracteres con mayúsculas, minúsculas, números y símbolos
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-      const symbols = '!@#$%&*'
-      generatedPassword = Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
-        + symbols[Math.floor(Math.random() * symbols.length)]
-        + Math.floor(Math.random() * 10)
+      
+      // Usar contraseña proporcionada o generar una automática
+      if (password && password.length >= 6) {
+        generatedPassword = password
+      } else {
+        // Generar contraseña segura: 12 caracteres con mayúsculas, minúsculas, números y símbolos
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+        const symbols = '!@#$%&*'
+        generatedPassword = Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+          + symbols[Math.floor(Math.random() * symbols.length)]
+          + Math.floor(Math.random() * 10)
+      }
       
       targetUser = await prisma.user.create({
         data: {
           email,
           name: name || email.split('@')[0],
-          password: await hashPassword(generatedPassword),
+          password: await hashPassword(generatedPassword!),
         },
       })
       

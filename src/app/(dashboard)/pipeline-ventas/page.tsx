@@ -95,6 +95,7 @@ export default function PipelineVentasPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState('all')
+  const [selectedPriority, setSelectedPriority] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [draggedItem, setDraggedItem] = useState<Opportunity | null>(null)
@@ -455,7 +456,11 @@ export default function PipelineVentasPage() {
 
   const getOpportunitiesByStage = (stage: string) => {
     // Return in the order stored in state (drag order is preserved by setOpportunities)
-    return opportunities.filter(opp => opp.stage === stage)
+    return opportunities.filter(opp => {
+      if (opp.stage !== stage) return false
+      if (selectedPriority !== 'all' && opp.priority !== selectedPriority) return false
+      return true
+    })
   }
 
   const getTotalByStage = (stage: string) => {
@@ -525,7 +530,18 @@ export default function PipelineVentasPage() {
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
-          className="w-52"
+          className="w-48"
+        />
+        <Select
+          options={[
+            { value: 'all', label: 'TODAS LAS PRIORIDADES' },
+            { value: 'ALTA', label: '🔴 Alta' },
+            { value: 'MEDIA', label: '🟡 Media' },
+            { value: 'BAJA', label: '🟢 Baja' },
+          ]}
+          value={selectedPriority}
+          onChange={(e) => setSelectedPriority(e.target.value)}
+          className="w-48"
         />
         <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -591,8 +607,8 @@ export default function PipelineVentasPage() {
               onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(stage.id)}
             >
-              {/* Cards */}
-              <div className="p-3 space-y-3 min-h-[320px] transition-all duration-200">
+              {/* Cards - scroll continuo */}
+              <div className="p-3 space-y-3 min-h-[320px] max-h-[calc(100vh-350px)] overflow-y-auto transition-all duration-200 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                 {stageOpportunities.map((opportunity) => {
                   const statusKey = (opportunity.status || 'PENDIENTE').toUpperCase()
                   const badgeClass = STATUS_BADGE_COLORS[statusKey] || 'bg-gray-100 text-gray-600'

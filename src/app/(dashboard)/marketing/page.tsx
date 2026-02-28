@@ -316,7 +316,7 @@ export default function MarketingPage() {
                 </div>
               </div>
               
-              <div className={`flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[500px] transition-all duration-200 ${
+              <div className={`flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[300px] max-h-[calc(100vh-300px)] overflow-y-auto transition-all duration-200 scrollbar-thin scrollbar-thumb-gray-300 ${
                 isDropTarget ? 'bg-blue-50' : ''
               }`}>
                 {columnCampaigns.map((campaign, index) => {

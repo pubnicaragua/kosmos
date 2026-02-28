@@ -21,10 +21,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const status = searchParams.get('status')
+    const method = searchParams.get('method')
+    const search = searchParams.get('search')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
     const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const limit = parseInt(searchParams.get('limit') || '25')
 
     const { companyIds } = await getAccessibleCompanies(payload.userId)
 
@@ -38,6 +40,19 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       whereClause.status = status
+    }
+
+    if (method) {
+      whereClause.method = { contains: method, mode: 'insensitive' }
+    }
+
+    // Búsqueda general por cliente, referencia o concepto
+    if (search) {
+      whereClause.OR = [
+        { client: { contains: search, mode: 'insensitive' } },
+        { refNumber: { contains: search, mode: 'insensitive' } },
+        { concept: { contains: search, mode: 'insensitive' } },
+      ]
     }
 
     if (startDate || endDate) {

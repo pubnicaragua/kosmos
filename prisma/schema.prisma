@@ -142,20 +142,21 @@ model Opportunity {
 }
 
 model Document {
-  id         String       @id @default(cuid())
-  companyId  String       @map("company_id")
-  name       String
-  type       DocumentType
-  concept    String
-  category   String?
-  area       String?      @default("General")
-  visibility String?      @default("COMPARTIDO")
-  fileUrl    String       @map("file_url")
-  fileSize   Int          @map("file_size")
-  uploadedBy String       @map("uploaded_by")
-  createdAt  DateTime     @default(now()) @map("created_at")
-  updatedAt  DateTime     @updatedAt @map("updated_at")
-  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id          String       @id @default(cuid())
+  companyId   String       @map("company_id")
+  name        String
+  type        DocumentType
+  concept     String
+  category    String?
+  area        String?      @default("General")
+  visibility  String?      @default("COMPARTIDO")
+  sharedWith  String?      @map("shared_with") // JSON array de IDs de usuarios con acceso
+  fileUrl     String       @map("file_url")
+  fileSize    Int          @map("file_size")
+  uploadedBy  String       @map("uploaded_by")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("documents")
 }
@@ -304,23 +305,25 @@ model ProductCategory {
 }
 
 model Ticket {
-  id          String          @id @default(cuid())
-  companyId   String          @map("company_id")
-  clientId    String?         @map("client_id")
-  title       String
-  description String?
-  status      TicketStatus    @default(PROCESO1)
-  priority    TicketPriority  @default(MEDIUM)
-  assignedTo  String?         @map("assigned_to")
-  amount      Float?
-  dueDate     DateTime?       @map("due_date")
-  closedAt    DateTime?       @map("closed_at")
-  createdBy   String          @map("created_by")
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  client      Client?         @relation(fields: [clientId], references: [id])
-  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  comments    TicketComment[]
+  id            String          @id @default(cuid())
+  companyId     String          @map("company_id")
+  clientId      String?         @map("client_id")
+  title         String
+  description   String?
+  status        TicketStatus    @default(PROCESO1)
+  priority      TicketPriority  @default(MEDIUM)
+  assignedTo    String?         @map("assigned_to")
+  assignedUsers String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
+  amount        Float?
+  currency      String          @default("USD") // USD o NIO (C$)
+  dueDate       DateTime?       @map("due_date")
+  closedAt      DateTime?       @map("closed_at")
+  createdBy     String          @map("created_by")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  client        Client?         @relation(fields: [clientId], references: [id])
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  comments      TicketComment[]
 
   @@index([companyId])
   @@index([status])

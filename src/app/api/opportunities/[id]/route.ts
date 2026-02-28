@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -55,6 +56,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         // columnas opcionales no existen todavía - guardar solo campos base
         updated = await prisma.opportunity.update({ where: { id: params.id }, data: baseData })
       } else throw e
+    }
+
+    // Notificar si se cambió el asignado
+    if (body.assignedTo && body.assignedTo !== opportunity.assignedTo) {
+      const userRecord = await prisma.user.findFirst({ 
+        where: { name: body.assignedTo }, 
+        select: { id: true } 
+      })
+      if (userRecord && userRecord.id !== decoded.userId) {
+        await notifyAssignment({
+          assignedUserId: userRecord.id,
+          assignedByUserId: decoded.userId,
+          itemType: 'opportunity',
+          itemTitle: body.title || opportunity.title,
+          itemId: params.id,
+        })
+      }
     }
 
     return apiSuccess(updated)

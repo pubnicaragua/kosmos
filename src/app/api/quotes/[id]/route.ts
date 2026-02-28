@@ -41,6 +41,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         company: { select: { name: true } },
       },
     })
+    
+    // Obtener datos del usuario creador (asesor)
+    let createdByUser = null
+    if (quote?.createdBy) {
+      createdByUser = await prisma.user.findUnique({
+        where: { id: quote.createdBy },
+        select: { id: true, name: true, email: true },
+      })
+    }
 
     if (!quote) return apiError('Cotización no encontrada', 404)
 
@@ -49,6 +58,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return apiSuccess({
       ...quote,
+      createdByUser,
       discountApproval: extractDiscountApproval(quote.internalNotes),
     })
   } catch (error) {

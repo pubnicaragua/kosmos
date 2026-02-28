@@ -27,10 +27,20 @@ interface ClientOption {
   name: string
 }
 
+interface InventoryProduct {
+  id: string
+  name: string
+  sku: string
+  price: number
+  stock: number
+  category?: { name: string }
+}
+
 export default function NuevaCotizacionPage() {
   const router = useRouter()
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
+  const [products, setProducts] = useState<InventoryProduct[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedClient, setSelectedClient] = useState('')
   const [currency, setCurrency] = useState('USD')
@@ -124,6 +134,35 @@ export default function NuevaCotizacionPage() {
     fetchClients()
   }, [selectedCompany])
 
+  // Cargar productos del inventario cuando cambia la empresa
+  useEffect(() => {
+    if (selectedCompany === 'all') {
+      setProducts([])
+      return
+    }
+
+    const fetchProducts = async () => {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const params = new URLSearchParams({ companyId: selectedCompany })
+        const response = await fetch(`/api/products?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          setProducts(data.data || [])
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      }
+    }
+
+    fetchProducts()
+  }, [selectedCompany])
+
   useEffect(() => {
     setItems((prev) => prev.map((item) => ({
       ...item,
@@ -149,6 +188,22 @@ export default function NuevaCotizacionPage() {
     updated[index] = { ...updated[index], [field]: value }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     
+    setItems(updated)
+  }
+
+  // Seleccionar producto del inventario
+  const selectProduct = (index: number, productId: string) => {
+    const product = products.find(p => p.id === productId)
+    if (!product) return
+
+    const updated = [...items]
+    updated[index] = {
+      ...updated[index],
+      productId: product.id,
+      description: product.name,
+      unitPrice: product.price,
+    }
+    updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
   }
 
@@ -299,13 +354,29 @@ export default function NuevaCotizacionPage() {
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-2 px-2">
-                        <Input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => updateItem(index, 'description', e.target.value)}
-                          placeholder={index === items.length - 1 ? 'Producto...' : 'Descripción'}
-                          fullWidth
-                        />
+                        <div className="space-y-1">
+                          {products.length > 0 && (
+                            <select
+                              value={item.productId}
+                              onChange={(e) => selectProduct(index, e.target.value)}
+                              className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-primary focus:border-primary bg-gray-50"
+                            >
+                              <option value="">📦 Seleccionar del inventario...</option>
+                              {products.map((product) => (
+                                <option key={product.id} value={product.id}>
+                                  {product.name} - ${product.price} ({product.stock} disp.)
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          <Input
+                            type="text"
+                            value={item.description}
+                            onChange={(e) => updateItem(index, 'description', e.target.value)}
+                            placeholder={index === items.length - 1 ? 'Producto o servicio...' : 'Descripción'}
+                            fullWidth
+                          />
+                        </div>
                       </td>
                       <td className="py-2 px-2">
                         <Input

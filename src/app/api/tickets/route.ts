@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
       description: body.description ?? undefined,
       clientId: body.clientId ?? undefined,
       assignedTo: body.assignedTo ?? undefined,
+      assignedUsers: body.assignedUsers ?? undefined,
       amount: body.amount ?? undefined,
+      currency: body.currency ?? 'USD',
       dueDate: body.dueDate ?? undefined,
     }
     const parsed = ticketSchema.safeParse(normalizedBody)
@@ -95,7 +97,16 @@ export async function POST(request: NextRequest) {
 
     const ticket = await prisma.ticket.create({
       data: {
-        ...validatedData,
+        companyId: validatedData.companyId,
+        title: validatedData.title,
+        description: validatedData.description,
+        status: validatedData.status,
+        priority: validatedData.priority,
+        clientId: validatedData.clientId,
+        assignedTo: validatedData.assignedTo,
+        assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : null,
+        amount: validatedData.amount,
+        currency: body.currency || 'USD',
         createdBy: decoded.userId,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
       },

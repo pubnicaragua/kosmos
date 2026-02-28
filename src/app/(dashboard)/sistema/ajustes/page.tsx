@@ -129,6 +129,8 @@ export default function AjustesPage() {
   const [savingRole, setSavingRole] = useState(false)
   const [roleMsg, setRoleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [addUserEmail, setAddUserEmail] = useState('')
+  const [addUserPassword, setAddUserPassword] = useState('')
+  const [addUserName, setAddUserName] = useState('')
   const [addUserRole, setAddUserRole] = useState('USER')
   const [addUserCustomRoleId, setAddUserCustomRoleId] = useState('')
   const [addingUser, setAddingUser] = useState(false)
@@ -482,12 +484,20 @@ export default function AjustesPage() {
       const res = await fetch(`/api/companies/${rolesCompanyId}/users`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: addUserEmail, role: addUserRole, customRoleId: addUserCustomRoleId || null }),
+        body: JSON.stringify({ 
+          email: addUserEmail, 
+          password: addUserPassword || undefined,
+          name: addUserName || undefined,
+          role: addUserRole, 
+          customRoleId: addUserCustomRoleId || null 
+        }),
       })
       const data = await res.json()
       if (data.success) {
         setAddUserMsg({ type: 'success', text: 'Usuario agregado correctamente' })
         setAddUserEmail('')
+        setAddUserPassword('')
+        setAddUserName('')
         setAddUserCustomRoleId('')
         await fetchRolesData(rolesCompanyId)
       } else {
@@ -920,10 +930,24 @@ export default function AjustesPage() {
                   <div className="mb-4 p-3 bg-gray-50 rounded-xl space-y-3">
                     <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Agregar usuario</p>
                     <input
+                      type="text"
+                      placeholder="Nombre completo"
+                      value={addUserName}
+                      onChange={(e) => setAddUserName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <input
                       type="email"
-                      placeholder="Email del usuario"
+                      placeholder="Email del usuario *"
                       value={addUserEmail}
                       onChange={(e) => setAddUserEmail(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <input
+                      type="password"
+                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      value={addUserPassword}
+                      onChange={(e) => setAddUserPassword(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                     <div>

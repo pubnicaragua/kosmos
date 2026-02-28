@@ -131,8 +131,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     return apiSuccess(campaign)
-  } catch (error) {
-    console.error('Error updating marketing campaign:', error)
+  } catch (error: any) {
+    console.error('Error updating marketing campaign:', error?.message || error)
+    if (error?.name === 'ZodError') {
+      return apiError(`Datos inválidos: ${error.errors?.map((e: any) => e.message).join(', ')}`, 400)
+    }
     return apiError('Error al actualizar campaña', 500)
   }
 }

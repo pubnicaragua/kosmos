@@ -276,7 +276,7 @@ export default function InventarioPage() {
         <div className="flex-1 max-w-md">
           <Input
             type="text"
-            placeholder="Buscar cliente, toneo..."
+            placeholder="Buscar producto, categoría..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             fullWidth
@@ -326,6 +326,49 @@ export default function InventarioPage() {
             </button>
           </div>
         </div>
+
+        {/* Panel de filtros avanzados */}
+        {showFilters && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Stock mínimo</label>
+                <input
+                  type="number"
+                  placeholder="Ej: 10"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Stock máximo</label>
+                <input
+                  type="number"
+                  placeholder="Ej: 100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Precio mínimo</label>
+                <input
+                  type="number"
+                  placeholder="Ej: $50"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Precio máximo</label>
+                <input
+                  type="number"
+                  placeholder="Ej: $500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mt-3">
+              <Button size="sm" onClick={() => setShowFilters(false)}>Aplicar Filtros</Button>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full">

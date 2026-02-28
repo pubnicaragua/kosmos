@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { notifyAssignment } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +116,23 @@ export async function POST(request: NextRequest) {
           },
         })
       } else throw e
+    }
+
+    // Notificar al usuario asignado
+    if (oppData.assignedTo) {
+      const userRecord = await prisma.user.findFirst({ 
+        where: { name: oppData.assignedTo }, 
+        select: { id: true } 
+      })
+      if (userRecord && userRecord.id !== decoded.userId) {
+        await notifyAssignment({
+          assignedUserId: userRecord.id,
+          assignedByUserId: decoded.userId,
+          itemType: 'opportunity',
+          itemTitle: oppData.title,
+          itemId: opportunity.id,
+        })
+      }
     }
 
     return apiSuccess(opportunity, undefined, 201)

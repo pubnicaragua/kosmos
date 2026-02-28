@@ -69,7 +69,10 @@ export default function IngresosPage() {
   })
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedMethod, setSelectedMethod] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
   const [totalPages, setTotalPages] = useState(1)
   const [draftRows, setDraftRows] = useState<IncomeRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, IncomeRowDraft>>({})
@@ -164,7 +167,7 @@ export default function IngresosPage() {
 
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtersLoaded, selectedCompany, selectedPeriod, selectedStatus, currentPage])
+  }, [filtersLoaded, selectedCompany, selectedPeriod, selectedStatus, selectedMethod, searchTerm, currentPage, pageSize])
 
   const fetchData = async () => {
     const token = localStorage.getItem('accessToken')
@@ -177,10 +180,12 @@ export default function IngresosPage() {
 
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      if (selectedMethod !== 'all') params.append('method', selectedMethod)
+      if (searchTerm.trim()) params.append('search', searchTerm.trim())
       params.append('startDate', startDate)
       params.append('endDate', endDate)
       params.append('page', currentPage.toString())
-      params.append('limit', '10')
+      params.append('limit', pageSize.toString())
 
       const [incomesRes, summaryRes] = await Promise.all([
         fetch(`/api/incomes?${params}`, {
@@ -634,16 +639,29 @@ export default function IngresosPage() {
       </div>
 
       <Card>
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 mb-6">
+          {/* Primera fila: Buscador y filtros principales */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <input
+                type="text"
+                placeholder="Buscar por cliente, referencia, concepto..."
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <Select
               options={[
                 { value: 'all', label: 'TODAS LAS EMPRESAS' },
                 ...companies.map((company) => ({ value: company.id, label: company.name })),
               ]}
               value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-56"
+              onChange={(e) => { setSelectedCompany(e.target.value); setCurrentPage(1) }}
+              className="w-48"
             />
             <Select
               options={[
@@ -652,22 +670,56 @@ export default function IngresosPage() {
                 { value: 'year', label: 'ÚLTIMO AÑO' },
               ]}
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="w-56"
+              onChange={(e) => { setSelectedPeriod(e.target.value); setCurrentPage(1) }}
+              className="w-48"
             />
           </div>
-          <Select
-            options={[
-              { value: 'all', label: 'TODOS LOS ESTADOS' },
-              { value: 'PAID', label: 'Pagado' },
-              { value: 'PENDING', label: 'Pendiente' },
-              { value: 'CANCELLED', label: 'Anulado' },
-              { value: 'ERROR', label: 'Error' },
-            ]}
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-56"
-          />
+          {/* Segunda fila: Más filtros y paginación */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <Select
+                options={[
+                  { value: 'all', label: 'TODOS LOS ESTADOS' },
+                  { value: 'PAID', label: 'Pagado' },
+                  { value: 'PENDING', label: 'Pendiente' },
+                  { value: 'CANCELLED', label: 'Anulado' },
+                  { value: 'ERROR', label: 'Error' },
+                ]}
+                value={selectedStatus}
+                onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1) }}
+                className="w-48"
+              />
+              <Select
+                options={[
+                  { value: 'all', label: 'TODOS LOS MÉTODOS' },
+                  { value: 'Efectivo', label: 'Efectivo' },
+                  { value: 'Transferencia', label: 'Transferencia' },
+                  { value: 'Tarjeta', label: 'Tarjeta' },
+                  { value: 'Cheque', label: 'Cheque' },
+                  { value: 'Importado', label: 'Importado' },
+                ]}
+                value={selectedMethod}
+                onChange={(e) => { setSelectedMethod(e.target.value); setCurrentPage(1) }}
+                className="w-48"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Mostrar:</span>
+              <Select
+                options={[
+                  { value: '25', label: '25' },
+                  { value: '50', label: '50' },
+                  { value: '75', label: '75' },
+                  { value: '100', label: '100' },
+                  { value: '150', label: '150' },
+                ]}
+                value={pageSize.toString()}
+                onChange={(e) => { setPageSize(parseInt(e.target.value)); setCurrentPage(1) }}
+                className="w-20"
+              />
+              <span className="text-sm text-gray-500">por página</span>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

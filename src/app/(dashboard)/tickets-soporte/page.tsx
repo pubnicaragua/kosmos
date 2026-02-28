@@ -9,7 +9,7 @@ import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
-import * as XLSX from 'xlsx'
+import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Ticket {
   id: string
@@ -18,10 +18,12 @@ interface Ticket {
   status: 'PROCESO1' | 'PROCESO2' | 'PROCESO3' | 'PROCESO4'
   priority: string
   amount: number | null
+  currency: string
   dueDate: string | null
   company: { name: string }
   client: { id: string; name: string } | null
   assignedTo: string | null
+  assignedUsers: string | null
 }
 
 interface Company {
@@ -42,7 +44,9 @@ interface TicketFormData {
   status: Ticket['status']
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
   assignedTo: string
+  assignedUsers: string[]
   amount: string
+  currency: 'USD' | 'NIO'
   dueDate: string
 }
 
@@ -111,7 +115,9 @@ export default function TicketsSoportePage() {
     status: 'PROCESO1',
     priority: 'MEDIUM',
     assignedTo: '',
+    assignedUsers: [],
     amount: '',
+    currency: 'USD',
     dueDate: new Date().toISOString().split('T')[0],
   })
 
@@ -219,7 +225,9 @@ export default function TicketsSoportePage() {
       status: 'PROCESO1',
       priority: 'MEDIUM',
       assignedTo: '',
+      assignedUsers: [],
       amount: '',
+      currency: 'USD',
       dueDate: new Date().toISOString().split('T')[0],
     })
     setEditingTicketId(null)
@@ -232,6 +240,10 @@ export default function TicketsSoportePage() {
 
   const openEditModal = (ticket: Ticket) => {
     setEditingTicketId(ticket.id)
+    let parsedUsers: string[] = []
+    try {
+      if (ticket.assignedUsers) parsedUsers = JSON.parse(ticket.assignedUsers)
+    } catch { /* ignore */ }
     setFormData({
       title: ticket.title,
       description: ticket.description || '',
@@ -239,7 +251,9 @@ export default function TicketsSoportePage() {
       status: ticket.status,
       priority: (ticket.priority as TicketFormData['priority']) || 'MEDIUM',
       assignedTo: ticket.assignedTo || '',
+      assignedUsers: parsedUsers,
       amount: ticket.amount !== null ? String(ticket.amount) : '',
+      currency: (ticket.currency as 'USD' | 'NIO') || 'USD',
       dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
     })
     setIsModalOpen(true)
@@ -290,7 +304,9 @@ export default function TicketsSoportePage() {
           status: formData.status,
           priority: formData.priority,
           assignedTo: formData.assignedTo || null,
+          assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
+          currency: formData.currency,
           dueDate: formData.dueDate || null,
           ...(editingTicketId ? {} : { companyId: targetCompanyId }),
         }),
@@ -325,15 +341,19 @@ export default function TicketsSoportePage() {
       Cliente: ticket.client?.name || '',
       Estado: ticket.status,
       Prioridad: ticket.priority,
+      Moneda: ticket.currency === 'NIO' ? 'C$' : '$',
       Monto: ticket.amount ?? '',
       FechaVencimiento: ticket.dueDate ? new Date(ticket.dueDate).toLocaleDateString('es-ES') : '',
       Asignado: ticket.assignedTo || '',
     }))
 
-    const workbook = XLSX.utils.book_new()
-    const worksheet = XLSX.utils.json_to_sheet(rows)
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets')
-    XLSX.writeFile(workbook, `tickets_soporte_${Date.now()}.xlsx`)
+    exportWithCompanyHeader(
+      rows,
+      `tickets_soporte_${Date.now()}.xlsx`,
+      'Reporte de Tickets de Soporte',
+      companies,
+      selectedCompany
+    )
   }
 
   const getTicketsByStatus = (status: string) => {
@@ -555,7 +575,7 @@ export default function TicketsSoportePage() {
                 <div className="text-2xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
               </div>
 
-              <div className={`p-4 space-y-3 min-h-[400px] transition-all duration-200 ${
+              <div className={`p-4 space-y-3 min-h-[300px] max-h-[calc(100vh-350px)] overflow-y-auto transition-all duration-200 scrollbar-thin scrollbar-thumb-gray-300 ${
                 isDropTarget ? 'bg-blue-50' : ''
               }`}>
                 {columnTickets.length === 0 && !isDragTarget ? (
@@ -635,7 +655,7 @@ export default function TicketsSoportePage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span>${ticket.amount.toLocaleString()}</span>
+                          <span>{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="flex items-center justify-end">
@@ -736,13 +756,23 @@ export default function TicketsSoportePage() {
             onChange={(value) => setFormData({ ...formData, assignedTo: value })}
             companyId={selectedCompany !== 'all' ? selectedCompany : companies[0]?.id || ''}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Input
               label="Monto"
               type="number"
               step="0.01"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              fullWidth
+            />
+            <Select
+              label="Moneda"
+              options={[
+                { value: 'USD', label: '$ USD' },
+                { value: 'NIO', label: 'C$ NIO' },
+              ]}
+              value={formData.currency}
+              onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
               fullWidth
             />
             <Input

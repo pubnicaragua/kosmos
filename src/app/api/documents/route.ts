@@ -27,18 +27,26 @@ export async function GET(request: NextRequest) {
     // Intentar con campos opcionales primero, si falla por P2022 (columnas faltantes) usar versión básica
     let documents
     try {
-      documents = await prisma.document.findMany({
-        where: {
-          ...where,
-          // Filtrar por visibilidad: PRIVADO solo visible para el dueño
-          OR: [
-            { visibility: { not: 'PRIVADO' } },
-            { visibility: 'PRIVADO', uploadedBy: decoded.userId },
-            { visibility: null }, // Documentos sin visibilidad definida (legacy)
-          ],
-        },
+      const allDocs = await prisma.document.findMany({
+        where,
         include: { company: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
+      })
+      
+      // Filtrar por visibilidad en memoria para soportar sharedWith JSON
+      documents = allDocs.filter((doc: any) => {
+        // Documentos públicos/compartidos
+        if (!doc.visibility || doc.visibility !== 'PRIVADO') return true
+        // Documentos propios
+        if (doc.uploadedBy === decoded.userId) return true
+        // Documentos compartidos específicamente con este usuario
+        if (doc.sharedWith) {
+          try {
+            const sharedUsers = JSON.parse(doc.sharedWith)
+            if (Array.isArray(sharedUsers) && sharedUsers.includes(decoded.userId)) return true
+          } catch { /* ignore parse errors */ }
+        }
+        return false
       })
     } catch (innerErr: any) {
       if (innerErr?.code === 'P2022') {
@@ -81,7 +89,7 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const { area, visibility, category, ...cleanDocData } = docData as any
+    const { area, visibility, category, sharedWith, ...cleanDocData } = docData as any
     let document
     try {
       document = await prisma.document.create({
@@ -92,6 +100,7 @@ export async function POST(request: NextRequest) {
           area: area || 'General',
           visibility: visibility || 'COMPARTIDO',
           category: category || 'General',
+          sharedWith: sharedWith ? JSON.stringify(sharedWith) : null,
         },
       })
     } catch (innerErr: any) {

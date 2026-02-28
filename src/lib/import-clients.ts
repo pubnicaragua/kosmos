@@ -1,30 +1,30 @@
 import * as XLSX from 'xlsx'
 
-// Mapeo flexible de columnas para diferentes empresas
+// Mapeo flexible de columnas para diferentes empresas (español e inglés)
 const COLUMN_MAPPINGS = {
   // Nombres posibles para cada campo
-  name: ['nombre', 'nombres y apellidos', 'nombres', 'cliente', 'nombre de la empresa', 'alumn@', 'alumn@ egresad@'],
-  email: ['email', 'correo', 'e-mail', 'mail'],
-  phone: ['telefono', 'teléfono', 'celular', 'contacto', 'telefono / estudiante', 'phone', 'numero'],
-  phone2: ['telefono / tutor', 'teléfono tutor', 'telefono tutor', 'telefono 2'],
-  cedula: ['cedula', 'cédula', 'ci', 'identificacion', 'item'],
-  ruc: ['ruc', 'contribuyente', 'tax id'],
-  alias: ['alias', 'nombre comercial'],
-  codigo: ['codigo', 'código', 'item', 'nro', 'nro.'],
-  curso: ['curso', 'alumn@', 'alumn@ egresad@'],
-  sucursal: ['sucursal', 'branch', 'sede'],
+  name: ['nombre', 'nombres y apellidos', 'nombres', 'cliente', 'nombre de la empresa', 'alumn@', 'alumn@ egresad@', 'name', 'client', 'razon social', 'razón social', 'empresa'],
+  email: ['email', 'correo', 'e-mail', 'mail', 'correo electronico', 'correo electrónico'],
+  phone: ['telefono', 'teléfono', 'celular', 'contacto', 'telefono / estudiante', 'phone', 'numero', 'móvil', 'movil', 'tel'],
+  phone2: ['telefono / tutor', 'teléfono tutor', 'telefono tutor', 'telefono 2', 'telefono secundario'],
+  cedula: ['cedula', 'cédula', 'ci', 'identificacion', 'identificación', 'item', 'dni', 'documento identidad'],
+  ruc: ['ruc', 'contribuyente', 'tax id', 'nit', 'rfc', 'cuit'],
+  alias: ['alias', 'nombre comercial', 'nombre corto'],
+  codigo: ['codigo', 'código', 'item', 'nro', 'nro.', 'code', 'id'],
+  curso: ['curso', 'alumn@', 'alumn@ egresad@', 'programa'],
+  sucursal: ['sucursal', 'branch', 'sede', 'oficina'],
   interes: ['interes', 'interés', 'interest'],
-  observacion: ['observacion', 'observación', 'notas', 'comentarios'],
+  observacion: ['observacion', 'observación', 'notas', 'comentarios', 'notes', 'comments'],
   
-  // Para ingresos (Hotel Marbella)
-  folio: ['nro. folio', 'folio', 'nro folio', 'numero'],
-  documento: ['documento', 'factura', 'doc'],
-  origen: ['origen', 'source', 'procedencia'],
-  importeMonedaCobro: ['importe moneda de cobro', 'importe cobro', 'monto cobro'],
-  monedaCobro: ['mon.', 'moneda', 'currency'],
-  importeMonedaFactura: ['importe moneda factura', 'importe factura', 'monto factura'],
-  monedaFactura: ['mon.', 'moneda factura'],
-  fechaEmision: ['fecha de emisión', 'fecha de emision', 'fecha emision', 'fecha'],
+  // Para ingresos - columnas en español e inglés
+  folio: ['nro. folio', 'folio', 'nro folio', 'numero', 'número', 'no.', 'num', 'referencia', 'ref', 'reference', 'invoice number', 'numero factura', 'número factura'],
+  documento: ['documento', 'factura', 'doc', 'document', 'invoice', 'tipo documento', 'tipo', 'comprobante'],
+  origen: ['origen', 'source', 'procedencia', 'fuente', 'canal'],
+  importeMonedaCobro: ['importe moneda de cobro', 'importe cobro', 'monto cobro', 'monto', 'amount', 'total', 'valor', 'importe', 'subtotal', 'precio', 'price', 'cobro', 'pago', 'payment'],
+  monedaCobro: ['mon.', 'moneda', 'currency', 'divisa', 'tipo moneda'],
+  importeMonedaFactura: ['importe moneda factura', 'importe factura', 'monto factura', 'total factura', 'invoice amount'],
+  monedaFactura: ['mon.', 'moneda factura', 'currency invoice'],
+  fechaEmision: ['fecha de emisión', 'fecha de emision', 'fecha emision', 'fecha', 'date', 'fecha pago', 'fecha cobro', 'fecha factura', 'invoice date', 'payment date'],
 }
 
 interface ImportedClient {

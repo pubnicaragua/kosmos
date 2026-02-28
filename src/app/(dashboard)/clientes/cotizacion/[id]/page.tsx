@@ -300,10 +300,10 @@ export default function DetalleCotizacionPage() {
           <div className="border border-gray-400">
             <div className="bg-blue-700 text-white text-center font-bold py-1 text-xs tracking-wider">INFORMACION</div>
             <div className="p-2 space-y-0.5 text-xs">
-              <div><span className="font-semibold">Asesor:</span> {companyDetails?.name || quote.company?.name || ''}</div>
-              <div><span className="font-semibold">Email:</span> {companyDetails?.email || ''}</div>
+              <div><span className="font-semibold">Asesor:</span> {(quote as any).createdByUser?.name || 'N/A'}</div>
+              <div><span className="font-semibold">Email:</span> {(quote as any).createdByUser?.email || companyDetails?.email || ''}</div>
               <div><span className="font-semibold">Teléfono:</span> {companyDetails?.phone || ''}</div>
-              <div><span className="font-semibold">Fax:</span> {companyDetails?.fax || ''}</div>
+              <div><span className="font-semibold">Empresa:</span> {companyDetails?.name || quote.company?.name || ''}</div>
               <div><span className="font-semibold">Ruc:</span> {companyDetails?.ruc || ''}</div>
             </div>
           </div>

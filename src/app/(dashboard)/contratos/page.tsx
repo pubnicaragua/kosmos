@@ -47,6 +47,7 @@ export default function ContratosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedType, setSelectedType] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -96,6 +97,7 @@ export default function ContratosPage() {
       const params = new URLSearchParams()
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedStatus !== 'all') params.append('status', selectedStatus)
+      if (selectedType !== 'all') params.append('category', selectedType)
       if (searchTerm.trim()) params.append('search', searchTerm.trim())
       params.append('page', currentPage.toString())
       params.append('limit', '10')
@@ -113,7 +115,7 @@ export default function ContratosPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedStatus, searchTerm, currentPage])
+  }, [selectedCompany, selectedStatus, selectedType, searchTerm, currentPage])
 
   useEffect(() => {
     fetchCompanies()
@@ -409,7 +411,21 @@ export default function ContratosPage() {
           ]}
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
-          className="w-56"
+          className="w-48"
+        />
+        <Select
+          options={[
+            { value: 'all', label: 'TODOS LOS TIPOS' },
+            { value: 'Operativo', label: 'Operativo' },
+            { value: 'Comercial', label: 'Comercial' },
+            { value: 'Laboral', label: 'Laboral' },
+            { value: 'Servicios', label: 'Servicios' },
+            { value: 'Arrendamiento', label: 'Arrendamiento' },
+            { value: 'Confidencialidad', label: 'Confidencialidad' },
+          ]}
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          className="w-48"
         />
       </div>
 

@@ -9,12 +9,19 @@ export const dynamic = 'force-dynamic'
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
-// Use UPLOAD_DIR env var for persistent storage across restarts
-// Set UPLOAD_DIR=/var/www/kosmos/uploads (or any persistent path) in production .env
+// CONFIGURACIÓN DE ALMACENAMIENTO:
+// En VPS: Configurar UPLOAD_DIR=/var/www/kosmos/uploads y UPLOAD_BASE_URL=https://tudominio.com/uploads
+// Esto permite almacenamiento persistente sin límites de Vercel Blob
 const getUploadDir = () => {
   if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR
-  if (IS_PRODUCTION) return '/tmp/uploads'
+  if (IS_PRODUCTION) return '/var/www/kosmos/uploads' // Ruta por defecto en VPS
   return join(process.cwd(), 'public', 'uploads')
+}
+
+// URL base para acceder a los archivos (configurar en .env)
+const getUploadBaseUrl = () => {
+  if (process.env.UPLOAD_BASE_URL) return process.env.UPLOAD_BASE_URL
+  return '/api/files' // Fallback para desarrollo
 }
 
 const MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100MB (supports videos)
@@ -131,13 +138,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
+    // Guardar archivo en el sistema de archivos (VPS o local)
     const uploadDir = getUploadDir()
     const filePath = join(uploadDir, fileName)
     await mkdir(uploadDir, { recursive: true })
     await writeFile(filePath, buffer)
-
-    // Always serve via /api/files/ so the route handles both environments
-    const publicUrl = `/api/files/${fileName}`
+    
+    // Construir URL pública
+    const baseUrl = getUploadBaseUrl()
+    const publicUrl = `${baseUrl}/${fileName}`
 
     return successResponse({
       url: publicUrl,

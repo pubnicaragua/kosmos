@@ -28,6 +28,8 @@ interface Client {
 
 const STATUS_TABS = [
   { id: 'all', label: 'TODAS' },
+  { id: 'ACTIVO', label: 'ACTIVO' },
+  { id: 'INACTIVO', label: 'INACTIVO' },
   { id: 'PROSPECTO', label: 'PROSPECTO' },
   { id: 'PROPUESTA', label: 'PROPUESTA' },
   { id: 'NEGOCIACION', label: 'NEGOCIACIÓN' },
@@ -69,6 +71,8 @@ export default function ClientesPage() {
   })
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [filterCity, setFilterCity] = useState('')
+  const [filterRuc, setFilterRuc] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -477,14 +481,25 @@ export default function ClientesPage() {
     return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
 
-  const totalPages = Math.max(1, Math.ceil(clients.length / itemsPerPage))
+  // Aplicar filtros de columna
+  const filteredClients = clients.filter(client => {
+    if (filterCity && !client.city?.toLowerCase().includes(filterCity.toLowerCase())) return false
+    if (filterRuc) {
+      const rucMatch = client.ruc?.toLowerCase().includes(filterRuc.toLowerCase())
+      const cedulaMatch = client.cedula?.toLowerCase().includes(filterRuc.toLowerCase())
+      if (!rucMatch && !cedulaMatch) return false
+    }
+    return true
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / itemsPerPage))
   const safeCurrentPage = Math.min(currentPage, totalPages)
-  const paginatedClients = clients.slice(
+  const paginatedClients = filteredClients.slice(
     (safeCurrentPage - 1) * itemsPerPage,
     safeCurrentPage * itemsPerPage
   )
-  const showingFrom = clients.length === 0 ? 0 : (safeCurrentPage - 1) * itemsPerPage + 1
-  const showingTo = clients.length === 0 ? 0 : Math.min(safeCurrentPage * itemsPerPage, clients.length)
+  const showingFrom = filteredClients.length === 0 ? 0 : (safeCurrentPage - 1) * itemsPerPage + 1
+  const showingTo = filteredClients.length === 0 ? 0 : Math.min(safeCurrentPage * itemsPerPage, filteredClients.length)
 
   if (isLoading) {
     return (
@@ -600,8 +615,30 @@ export default function ClientesPage() {
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">UBICACIÓN</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">RUC/CÉDULA</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                  <div className="flex flex-col gap-1">
+                    <span>UBICACIÓN</span>
+                    <input
+                      type="text"
+                      placeholder="Filtrar..."
+                      value={filterCity}
+                      onChange={(e) => { setFilterCity(e.target.value); setCurrentPage(1) }}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary font-normal"
+                    />
+                  </div>
+                </th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                  <div className="flex flex-col gap-1">
+                    <span>RUC/CÉDULA</span>
+                    <input
+                      type="text"
+                      placeholder="Filtrar..."
+                      value={filterRuc}
+                      onChange={(e) => { setFilterRuc(e.target.value); setCurrentPage(1) }}
+                      className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary font-normal"
+                    />
+                  </div>
+                </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CONTACTO</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ESTADO</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
