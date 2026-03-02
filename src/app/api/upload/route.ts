@@ -138,9 +138,12 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Guardar archivo en el sistema de archivos (VPS o local)
-    const uploadDir = getUploadDir()
+    // Guardar archivo en el sistema de archivos
+    // Usar /tmp/uploads directamente para evitar problemas de permisos
+    const uploadDir = process.env.UPLOAD_DIR || '/tmp/uploads'
     const filePath = join(uploadDir, fileName)
+    
+    // Crear directorio si no existe
     await mkdir(uploadDir, { recursive: true })
     await writeFile(filePath, buffer)
     
