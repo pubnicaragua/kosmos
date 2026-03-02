@@ -9,20 +9,12 @@ export const dynamic = 'force-dynamic'
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
-// CONFIGURACIÓN DE ALMACENAMIENTO:
-// En VPS: Configurar UPLOAD_DIR en .env para persistencia
-// Ejemplo: UPLOAD_DIR=/home/extel/kosmos/uploads
-const getUploadDir = () => {
-  if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR
-  // Fallback: /tmp tiene permisos de escritura en todos los entornos
-  return '/tmp/uploads'
-}
+// UPLOAD_DIR: Usar /tmp/uploads por defecto (tiene permisos en todos los entornos)
+// Opcional: Configurar UPLOAD_DIR en .env para persistencia
+const UPLOAD_DIR = '/tmp/uploads'
 
-// URL base para acceder a los archivos (configurar en .env)
-const getUploadBaseUrl = () => {
-  if (process.env.UPLOAD_BASE_URL) return process.env.UPLOAD_BASE_URL
-  return '/api/files' // Fallback para desarrollo
-}
+// URL base para acceder a los archivos
+const UPLOAD_BASE_URL = '/api/files'
 
 const MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100MB (supports videos)
 
@@ -138,18 +130,16 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    // Guardar archivo en el sistema de archivos
-    // Usar /tmp/uploads directamente para evitar problemas de permisos
-    const uploadDir = process.env.UPLOAD_DIR || '/tmp/uploads'
-    const filePath = join(uploadDir, fileName)
+    // Guardar archivo en /tmp/uploads (tiene permisos en todos los entornos)
+    const uploadDir = '/tmp/uploads'
+    const filePath = `${uploadDir}/${fileName}`
     
     // Crear directorio si no existe
     await mkdir(uploadDir, { recursive: true })
     await writeFile(filePath, buffer)
     
     // Construir URL pública
-    const baseUrl = getUploadBaseUrl()
-    const publicUrl = `${baseUrl}/${fileName}`
+    const publicUrl = `${UPLOAD_BASE_URL}/${fileName}`
 
     return successResponse({
       url: publicUrl,
