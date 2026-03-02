@@ -198,7 +198,9 @@ export const ticketSchema = z.object({
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   assignedTo: z.string().optional(),
   amount: z.number().min(0).optional(),
+  startDate: z.string().optional(),
   dueDate: z.string().optional(),
+  attachments: z.any().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })
 

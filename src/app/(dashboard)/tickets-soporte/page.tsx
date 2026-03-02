@@ -305,6 +305,26 @@ export default function TicketsSoportePage() {
     try {
       setIsSaving(true)
 
+      // Upload attachments first if any
+      let attachmentUrls: string[] = []
+      if (formData.attachments.length > 0) {
+        for (const file of formData.attachments) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', file)
+          
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: uploadFormData,
+          })
+          
+          const uploadData = await uploadRes.json()
+          if (uploadData.success && uploadData.data?.url) {
+            attachmentUrls.push(uploadData.data.url)
+          }
+        }
+      }
+
       const response = await fetch(editingTicketId ? `/api/tickets/${editingTicketId}` : '/api/tickets', {
         method: editingTicketId ? 'PUT' : 'POST',
         headers: {
@@ -321,7 +341,9 @@ export default function TicketsSoportePage() {
           assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           currency: formData.currency,
+          startDate: formData.startDate || null,
           dueDate: formData.dueDate || null,
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
           ...(editingTicketId ? {} : { companyId: targetCompanyId }),
         }),
       })
@@ -789,6 +811,15 @@ export default function TicketsSoportePage() {
               onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
               fullWidth
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Fecha de inicio"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              fullWidth
+            />
             <Input
               label="Fecha límite"
               type="date"
@@ -796,6 +827,25 @@ export default function TicketsSoportePage() {
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               fullWidth
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Archivos adjuntos
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files || [])
+                setFormData({ ...formData, attachments: files })
+              }}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
+            />
+            {formData.attachments.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">
+                {formData.attachments.length} archivo(s) seleccionado(s)
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => {
