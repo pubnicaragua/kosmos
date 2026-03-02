@@ -44,8 +44,9 @@ export async function GET(
     // Search all candidate directories in priority order
     const candidateDirs: string[] = []
     if (process.env.UPLOAD_DIR) candidateDirs.push(process.env.UPLOAD_DIR)
-    candidateDirs.push('/tmp/uploads')
+    candidateDirs.push(join(process.cwd(), 'uploads'))
     candidateDirs.push(join(process.cwd(), 'public', 'uploads'))
+    candidateDirs.push('/tmp/uploads')
 
     let filePath: string | null = null
     for (const dir of candidateDirs) {

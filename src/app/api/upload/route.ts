@@ -14,8 +14,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 // Esto permite almacenamiento persistente sin límites de Vercel Blob
 const getUploadDir = () => {
   if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR
-  if (IS_PRODUCTION) return '/var/www/kosmos/uploads' // Ruta por defecto en VPS
-  return join(process.cwd(), 'public', 'uploads')
+  return join(process.cwd(), 'uploads') // ~/kosmos/uploads en VPS, ./uploads en dev
 }
 
 // URL base para acceder a los archivos (configurar en .env)

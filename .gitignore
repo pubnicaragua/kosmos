@@ -50,22 +50,3 @@ next-env.d.ts
 
 # OS
 Thumbs.db
-
-# prisma
-/prisma/migrations/**/*.sql
-
-# uploads (archivos locales)
-/public/uploads
-/uploads
-
-# logs
-*.log
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-Thumbs.db
