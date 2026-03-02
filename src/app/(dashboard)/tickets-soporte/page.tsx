@@ -19,7 +19,9 @@ interface Ticket {
   priority: string
   amount: number | null
   currency: string
+  startDate: string | null
   dueDate: string | null
+  attachments: string | null
   company: { name: string }
   client: { id: string; name: string } | null
   assignedTo: string | null
@@ -47,7 +49,9 @@ interface TicketFormData {
   assignedUsers: string[]
   amount: string
   currency: 'USD' | 'NIO'
+  startDate: string
   dueDate: string
+  attachments: File[]
 }
 
 const DEFAULT_COLUMNS = [
@@ -118,7 +122,9 @@ export default function TicketsSoportePage() {
     assignedUsers: [],
     amount: '',
     currency: 'USD',
+    startDate: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
+    attachments: [],
   })
 
   const getPeriodRange = (period: string) => {
@@ -228,7 +234,9 @@ export default function TicketsSoportePage() {
       assignedUsers: [],
       amount: '',
       currency: 'USD',
+      startDate: new Date().toISOString().split('T')[0],
       dueDate: new Date().toISOString().split('T')[0],
+      attachments: [],
     })
     setEditingTicketId(null)
   }
@@ -244,6 +252,10 @@ export default function TicketsSoportePage() {
     try {
       if (ticket.assignedUsers) parsedUsers = JSON.parse(ticket.assignedUsers)
     } catch { /* ignore */ }
+    let parsedAttachments: string[] = []
+    try {
+      if (ticket.attachments) parsedAttachments = JSON.parse(ticket.attachments)
+    } catch { /* ignore */ }
     setFormData({
       title: ticket.title,
       description: ticket.description || '',
@@ -254,7 +266,9 @@ export default function TicketsSoportePage() {
       assignedUsers: parsedUsers,
       amount: ticket.amount !== null ? String(ticket.amount) : '',
       currency: (ticket.currency as 'USD' | 'NIO') || 'USD',
+      startDate: ticket.startDate ? ticket.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
+      attachments: [],
     })
     setIsModalOpen(true)
   }

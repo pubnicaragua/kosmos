@@ -60,7 +60,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : undefined,
         amount: body.amount,
         currency: body.currency,
+        startDate: body.startDate ? new Date(body.startDate) : undefined,
         dueDate: body.dueDate ? new Date(body.dueDate) : null,
+        attachments: body.attachments ? JSON.stringify(body.attachments) : undefined,
       },
       include: { client: { select: { id: true, name: true } } },
     })

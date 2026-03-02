@@ -84,7 +84,9 @@ export async function POST(request: NextRequest) {
       assignedUsers: body.assignedUsers ?? undefined,
       amount: body.amount ?? undefined,
       currency: body.currency ?? 'USD',
+      startDate: body.startDate ?? undefined,
       dueDate: body.dueDate ?? undefined,
+      attachments: body.attachments ?? undefined,
     }
     const parsed = ticketSchema.safeParse(normalizedBody)
     if (!parsed.success) {
@@ -107,8 +109,10 @@ export async function POST(request: NextRequest) {
         assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : null,
         amount: validatedData.amount,
         currency: body.currency || 'USD',
-        createdBy: decoded.userId,
+        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+        attachments: body.attachments ? JSON.stringify(body.attachments) : null,
+        createdBy: decoded.userId,
       },
       include: {
         client: { select: { name: true } },

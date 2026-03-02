@@ -318,8 +318,10 @@ model Ticket {
   assignedUsers String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
   amount        Float?
   currency      String          @default("USD") // USD o NIO (C$)
-  dueDate       DateTime?       @map("due_date")
+  startDate     DateTime?       @map("start_date") // Fecha de inicio del ticket
+  dueDate       DateTime?       @map("due_date") // Fecha de vencimiento
   closedAt      DateTime?       @map("closed_at")
+  attachments   String?         // JSON array de URLs de archivos adjuntos
   createdBy     String          @map("created_by")
   createdAt     DateTime        @default(now()) @map("created_at")
   updatedAt     DateTime        @updatedAt @map("updated_at")
