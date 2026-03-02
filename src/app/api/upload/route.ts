@@ -78,7 +78,9 @@ const ALLOWED_MIME_TYPES = new Set([
 ])
 
 export async function POST(request: NextRequest) {
+  console.log('[UPLOAD DEBUG] POST request received')
   try {
+    console.log('[UPLOAD DEBUG] Starting upload process')
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return errorResponse('Token de autenticación requerido', 401)
