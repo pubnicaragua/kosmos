@@ -10,11 +10,12 @@ export const dynamic = 'force-dynamic'
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
 // CONFIGURACIÓN DE ALMACENAMIENTO:
-// En VPS: Configurar UPLOAD_DIR=/var/www/kosmos/uploads y UPLOAD_BASE_URL=https://tudominio.com/uploads
-// Esto permite almacenamiento persistente sin límites de Vercel Blob
+// En VPS: Configurar UPLOAD_DIR en .env para persistencia
+// Ejemplo: UPLOAD_DIR=/home/extel/kosmos/uploads
 const getUploadDir = () => {
   if (process.env.UPLOAD_DIR) return process.env.UPLOAD_DIR
-  return join(process.cwd(), 'uploads') // ~/kosmos/uploads en VPS, ./uploads en dev
+  // Fallback: /tmp tiene permisos de escritura en todos los entornos
+  return '/tmp/uploads'
 }
 
 // URL base para acceder a los archivos (configurar en .env)
