@@ -134,9 +134,24 @@ export async function POST(request: NextRequest) {
     const uploadDir = '/tmp/uploads'
     const filePath = `${uploadDir}/${fileName}`
     
+    console.log('[UPLOAD] Saving file:', {
+      uploadDir,
+      fileName,
+      filePath,
+      fileSize: buffer.length,
+    })
+    
     // Crear directorio si no existe
     await mkdir(uploadDir, { recursive: true })
+    console.log('[UPLOAD] Directory created/verified:', uploadDir)
+    
     await writeFile(filePath, buffer)
+    console.log('[UPLOAD] File written successfully:', filePath)
+    
+    // Verificar que el archivo existe
+    const { existsSync } = await import('fs')
+    const fileExists = existsSync(filePath)
+    console.log('[UPLOAD] File exists after write:', fileExists)
     
     // Construir URL pública
     const publicUrl = `${UPLOAD_BASE_URL}/${fileName}`
