@@ -50,15 +50,15 @@ export async function GET(request: NextRequest) {
 
     // 1. Productos con stock bajo (stock < minStock)
     const lowStockProducts = products
-      .filter(p => p.stock < p.minStock && p.isActive)
+      .filter(p => p.stock < (p.minStock || 0) && p.isActive)
       .map(p => ({
         id: p.id,
         name: p.name,
         sku: p.sku,
         currentStock: p.stock,
-        minimumStock: p.minStock,
-        difference: p.minStock - p.stock,
-        category: p.category
+        minimumStock: p.minStock || 0,
+        difference: (p.minStock || 0) - p.stock,
+        category: p.categoryId
       }))
       .sort((a, b) => b.difference - a.difference)
 
