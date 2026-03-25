@@ -7,7 +7,7 @@ import { navigationSections } from '@/config/navigation'
 import { 
   LayoutDashboard, DollarSign, TrendingDown, Clipboard, Users, 
   Filter, Package, HelpCircle, FileText, FileSignature, Settings,
-  LogOut, Menu, X, Megaphone, ChevronLeft, ChevronRight, Bell
+  LogOut, Menu, X, Megaphone, ChevronLeft, ChevronRight, Bell, ShoppingCart
 } from 'lucide-react'
 
 const iconMap: Record<string, any> = {
@@ -19,6 +19,7 @@ const iconMap: Record<string, any> = {
   Filter,
   Megaphone,
   Package,
+  ShoppingCart,
   HelpCircle,
   FileText,
   FileSignature,
@@ -34,9 +35,11 @@ const NAV_TO_MODULE: Record<string, string> = {
   expenses: 'gastos',
   activities: 'actividades',
   clients: 'clientes',
+  quotes: 'cotizaciones',
   'sales-pipeline': 'pipeline-ventas',
   marketing: 'marketing',
   inventory: 'inventario',
+  'purchase-requests': 'solicitudes-compra',
   support: 'tickets-soporte',
   rrhh: 'recursos-humanos',
   documents: 'documentos',

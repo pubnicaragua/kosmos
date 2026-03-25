@@ -66,6 +66,12 @@ export const navigationSections: NavSection[] = [
         icon: 'Users',
       },
       {
+        id: 'quotes',
+        label: 'Cotizaciones',
+        href: '/clientes/cotizacion/nueva',
+        icon: 'FileText',
+      },
+      {
         id: 'sales-pipeline',
         label: 'Pipeline',
         href: '/pipeline-ventas',
@@ -82,6 +88,12 @@ export const navigationSections: NavSection[] = [
         label: 'Inventario',
         href: '/inventario',
         icon: 'Package',
+      },
+      {
+        id: 'purchase-requests',
+        label: 'Solicitudes de Compra',
+        href: '/solicitudes-compra',
+        icon: 'ShoppingCart',
       },
       {
         id: 'support',

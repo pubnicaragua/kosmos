@@ -220,32 +220,46 @@ model Client {
 }
 
 model Quote {
-  id            String        @id @default(cuid())
-  quoteNumber   String        @unique @map("quote_number")
-  companyId     String        @map("company_id")
-  clientId      String        @map("client_id")
-  status        QuoteStatus   @default(DRAFT)
-  currency      String        @default("USD")
-  subtotal      Float
-  discount      Float         @default(0)
-  tax           Float         @default(0)
-  total         Float
-  validUntil    DateTime      @map("valid_until")
-  notes         String?
-  internalNotes String?       @map("internal_notes")
-  terms         String?
-  createdBy     String        @map("created_by")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-  paymentMethod PaymentMethod @default(CONTADO) @map("payment_method")
-  taxApplies    Boolean       @default(true) @map("tax_applies")
-  items         QuoteItem[]
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id               String        @id @default(cuid())
+  quoteNumber      String        @unique @map("quote_number")
+  companyId        String        @map("company_id")
+  clientId         String        @map("client_id")
+  contactName      String?       @map("contact_name") // Nombre del contacto
+  contactEmail     String?       @map("contact_email")
+  contactPhone     String?       @map("contact_phone")
+  assignedTo       String?       @map("assigned_to") // Vendedor asignado (ID de usuario)
+  clientType       ClientType    @default(NUEVO) @map("client_type") // Nuevo, Recurrente, Proyecto
+  status           QuoteStatus   @default(DRAFT)
+  closeProbability Int?          @default(50) @map("close_probability") // Probabilidad de cierre (0-100)
+  currency         String        @default("USD")
+  subtotal         Float
+  discount         Float         @default(0)
+  tax              Float         @default(0)
+  total            Float
+  issueDate        DateTime      @default(now()) @map("issue_date") // Fecha de emisión
+  validUntil       DateTime      @map("valid_until") // Fecha de vencimiento
+  sentAt           DateTime?     @map("sent_at") // Fecha de envío
+  approvedAt       DateTime?     @map("approved_at") // Fecha de aprobación
+  rejectedAt       DateTime?     @map("rejected_at") // Fecha de rechazo
+  rejectionReason  String?       @map("rejection_reason") // Motivo de rechazo
+  closedAt         DateTime?     @map("closed_at") // Fecha de cierre
+  notes            String?
+  internalNotes    String?       @map("internal_notes")
+  terms            String?
+  createdBy        String        @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  paymentMethod    PaymentMethod @default(CONTADO) @map("payment_method")
+  taxApplies       Boolean       @default(true) @map("tax_applies")
+  items            QuoteItem[]
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([clientId])
   @@index([status])
+  @@index([assignedTo])
+  @@index([clientType])
   @@map("quotes")
 }
 
@@ -703,4 +717,10 @@ enum PurchaseRequestStatus {
   RECHAZADA
   COMPRADO
   RECIBIDO
+}
+
+enum ClientType {
+  NUEVO
+  RECURRENTE
+  PROYECTO
 }

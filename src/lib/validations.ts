@@ -155,10 +155,18 @@ export const quoteItemSchema = z.object({
 export const quoteSchema = z.object({
   quoteNumber: z.string().min(1, 'Número de cotización requerido'),
   clientId: z.string().min(1, 'Cliente requerido'),
+  contactName: z.string().optional(),
+  contactEmail: z.string().email('Email inválido').optional(),
+  contactPhone: z.string().optional(),
+  assignedTo: z.string().optional(), // Vendedor asignado
+  clientType: z.enum(['NUEVO', 'RECURRENTE', 'PROYECTO']).optional(),
+  closeProbability: z.number().min(0).max(100).optional(), // 0-100%
   currency: z.string().default('USD'),
   paymentMethod: z.enum(['CONTADO', 'CREDITO']).default('CONTADO'),
   taxApplies: z.boolean().default(true),
+  issueDate: z.string().optional(), // Fecha de emisión
   validUntil: z.string().min(1, 'Fecha de validez requerida'),
+  rejectionReason: z.string().optional(),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
   terms: z.string().optional(),
