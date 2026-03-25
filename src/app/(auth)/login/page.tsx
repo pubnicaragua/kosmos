@@ -77,7 +77,7 @@ export default function LoginPage() {
               <p className="text-gray-600 text-sm">Ingresa tus credenciales para continuar</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
               <Input
                 type="email"
                 label="Correo electrónico"
@@ -86,7 +86,9 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 fullWidth
-                autoComplete="email"
+                autoComplete="new-password"
+                name="email-kosmos"
+                id="email-kosmos"
               />
 
               <div className="relative">
@@ -98,7 +100,9 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   fullWidth
-                  autoComplete="current-password"
+                  autoComplete="new-password"
+                  name="password-kosmos"
+                  id="password-kosmos"
                 />
                 <button
                   type="button"
