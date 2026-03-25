@@ -590,12 +590,12 @@ async function main() {
   const clientsForTickets = await prisma.client.findMany({ where: { companyId: extel.id } })
 
   const tickets = [
-    { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'HIGH' as const, status: 'PROCESO1' as const, amount: 500 },
-    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIUM' as const, status: 'PROCESO2' as const, amount: 2500 },
-    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'LOW' as const, status: 'PROCESO3' as const, amount: 150 },
-    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'URGENT' as const, status: 'PROCESO1' as const, amount: 800 },
-    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIUM' as const, status: 'PROCESO4' as const, amount: 1200 },
-    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'HIGH' as const, status: 'PROCESO2' as const, amount: 3500 },
+    { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'ALTA' as const, status: 'NUEVO' as const, amount: 500 },
+    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIA' as const, status: 'EN_PROCESO' as const, amount: 2500 },
+    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'BAJA' as const, status: 'RESUELTO' as const, amount: 150 },
+    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'ALTA' as const, status: 'NUEVO' as const, amount: 800 },
+    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIA' as const, status: 'CERRADO' as const, amount: 1200 },
+    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'ALTA' as const, status: 'EN_PROCESO' as const, amount: 3500 },
   ]
 
   for (const ticket of tickets) {

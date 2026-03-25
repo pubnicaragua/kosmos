@@ -14,7 +14,14 @@ ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "resolution_time" INTEGER;
 ALTER TABLE "tickets" ADD COLUMN IF NOT EXISTS "reopened_count" INTEGER DEFAULT 0;
 
 -- Update existing tickets with ticket numbers
-UPDATE "tickets" SET "ticket_number" = 'TKT-' || LPAD(CAST(ROW_NUMBER() OVER (ORDER BY created_at) AS TEXT), 6, '0') WHERE "ticket_number" IS NULL;
+UPDATE "tickets" 
+SET "ticket_number" = 'TKT-' || LPAD(CAST(row_num AS TEXT), 6, '0')
+FROM (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) as row_num
+  FROM "tickets"
+  WHERE "ticket_number" IS NULL
+) AS numbered
+WHERE "tickets".id = numbered.id;
 
 -- Update existing tickets with default type
 UPDATE "tickets" SET "type" = 'SOPORTE_REMOTO' WHERE "type" IS NULL;
