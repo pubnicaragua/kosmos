@@ -238,6 +238,33 @@ export const contractsFiltersSchema = z.object({
   status: z.enum(['ACTIVE', 'EXPIRING_SOON', 'EXPIRED']).optional(),
 })
 
+// Purchase Requests
+export const purchaseRequestItemSchema = z.object({
+  productId: z.string().optional(),
+  sku: z.string().optional(),
+  productName: z.string().min(1, 'Nombre del producto requerido'),
+  category: z.string().optional(),
+  currentStock: z.number().optional(),
+  minimumStock: z.number().optional(),
+  requestedQuantity: z.number().min(1, 'Cantidad debe ser mayor a 0'),
+  reason: z.string().optional(),
+  lastSaleDate: z.string().optional(),
+  monthlyAverage: z.number().optional(),
+  unitCost: z.number().optional(),
+  totalCost: z.number().optional(),
+})
+
+export const purchaseRequestSchema = z.object({
+  requestingArea: z.string().min(1, 'Área solicitante requerida'),
+  requestedBy: z.string().min(1, 'Solicitante requerido'),
+  requestType: z.enum(['REPOSICION', 'PRODUCTO_NUEVO', 'PEDIDO_ESPECIAL']).optional(),
+  priority: z.enum(['BAJA', 'MEDIA', 'ALTA']).optional(),
+  status: z.enum(['PENDIENTE', 'APROBADA', 'RECHAZADA', 'COMPRADO', 'RECIBIDO']).optional(),
+  notes: z.string().optional(),
+  items: z.array(purchaseRequestItemSchema).min(1, 'Debe incluir al menos un producto'),
+  companyId: z.string().min(1, 'Empresa requerida'),
+})
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>
 export type SelectCompanyInput = z.infer<typeof selectCompanySchema>

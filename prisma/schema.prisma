@@ -44,6 +44,7 @@ model Company {
   pipelineColumns    PipelineColumn[]
   productCategories  ProductCategory[]
   products           Product[]
+  purchaseRequests   PurchaseRequest[]
   quotes             Quote[]
   tickets            Ticket[]
   userCompanies      UserCompany[]
@@ -267,23 +268,24 @@ model QuoteItem {
 }
 
 model Product {
-  id          String           @id @default(cuid())
-  companyId   String           @map("company_id")
-  categoryId  String?          @map("category_id")
-  name        String
-  sku         String
-  description String?
-  unit        String           @default("UNI")
-  stock       Int              @default(0)
-  minStock    Int              @default(0) @map("min_stock")
-  cost        Float            @default(0)
-  price       Float
-  isActive    Boolean          @default(true) @map("is_active")
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  category    ProductCategory? @relation(fields: [categoryId], references: [id])
-  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  quoteItems  QuoteItem[]
+  id                  String                @id @default(cuid())
+  companyId           String                @map("company_id")
+  categoryId          String?               @map("category_id")
+  name                String
+  sku                 String
+  description         String?
+  unit                String                @default("UNI")
+  stock               Int                   @default(0)
+  minStock            Int                   @default(0) @map("min_stock")
+  cost                Float                 @default(0)
+  price               Float
+  isActive            Boolean               @default(true) @map("is_active")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+  category            ProductCategory?      @relation(fields: [categoryId], references: [id])
+  company             Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quoteItems          QuoteItem[]
+  purchaseRequestItems PurchaseRequestItem[]
 
   @@unique([companyId, sku])
   @@index([companyId])
@@ -507,6 +509,60 @@ model payrolls {
   @@index([expenseId])
 }
 
+model PurchaseRequest {
+  id                String                  @id @default(cuid())
+  requestNumber     String                  @unique @map("request_number") // Autogenerado
+  companyId         String                  @map("company_id")
+  requestDate       DateTime                @default(now()) @map("request_date")
+  requestingArea    String                  @map("requesting_area") // Área solicitante
+  requestedBy       String                  @map("requested_by") // ID del usuario solicitante
+  requestType       PurchaseRequestType     @default(REPOSICION) @map("request_type")
+  priority          PurchaseRequestPriority @default(MEDIA)
+  status            PurchaseRequestStatus   @default(PENDIENTE)
+  approvedBy        String?                 @map("approved_by") // ID del usuario que aprobó
+  approvedAt        DateTime?               @map("approved_at")
+  rejectedReason    String?                 @map("rejected_reason")
+  purchasedAt       DateTime?               @map("purchased_at")
+  receivedAt        DateTime?               @map("received_at")
+  notes             String?                 @db.Text
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items             PurchaseRequestItem[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([priority])
+  @@index([requestType])
+  @@index([requestNumber])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestItem {
+  id                String          @id @default(cuid())
+  purchaseRequestId String          @map("purchase_request_id")
+  productId         String?         @map("product_id") // Referencia al producto del inventario
+  sku               String?         // Código SKU
+  productName       String          @map("product_name")
+  category          String?
+  currentStock      Int?            @map("current_stock")
+  minimumStock      Int?            @map("minimum_stock")
+  requestedQuantity Int             @map("requested_quantity")
+  reason            String?         // Motivo: Agotado, Alta demanda, Proyecto
+  lastSaleDate      DateTime?       @map("last_sale_date")
+  monthlyAverage    Float?          @map("monthly_average") // Promedio de ventas mensuales
+  unitCost          Float?          @map("unit_cost")
+  totalCost         Float?          @map("total_cost")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  product           Product?        @relation(fields: [productId], references: [id])
+
+  @@index([purchaseRequestId])
+  @@index([productId])
+  @@map("purchase_request_items")
+}
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
@@ -627,4 +683,24 @@ enum MarketingChannel {
   CONTENIDO
   EVENTOS
   OTRO
+}
+
+enum PurchaseRequestType {
+  REPOSICION
+  PRODUCTO_NUEVO
+  PEDIDO_ESPECIAL
+}
+
+enum PurchaseRequestPriority {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+enum PurchaseRequestStatus {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  COMPRADO
+  RECIBIDO
 }
