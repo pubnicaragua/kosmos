@@ -591,11 +591,11 @@ async function main() {
 
   const tickets = [
     { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_REMOTO' as const, amount: 500 },
-    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIA' as const, status: 'EN_PROCESO' as const, type: 'INSTALACION' as const, amount: 2500 },
-    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'BAJA' as const, status: 'RESUELTO' as const, type: 'CONSULTA' as const, amount: 150 },
-    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_REMOTO' as const, amount: 800 },
-    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIA' as const, status: 'CERRADO' as const, type: 'CAPACITACION' as const, amount: 1200 },
-    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'ALTA' as const, status: 'EN_PROCESO' as const, type: 'INSTALACION' as const, amount: 3500 },
+    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIA' as const, status: 'EN_PROCESO' as const, type: 'INSTALACION_CAMARAS' as const, amount: 2500 },
+    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'BAJA' as const, status: 'RESUELTO' as const, type: 'COTIZACION_TECNICA' as const, amount: 150 },
+    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_SITIO' as const, amount: 800 },
+    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIA' as const, status: 'CERRADO' as const, type: 'MANTENIMIENTO_PREVENTIVO' as const, amount: 1200 },
+    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'ALTA' as const, status: 'EN_PROCESO' as const, type: 'CONFIGURACION_DVR_NVR' as const, amount: 3500 },
   ]
 
   let ticketCounter = 1
