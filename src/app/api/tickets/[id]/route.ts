@@ -48,22 +48,54 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, ticket.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    // Calcular métricas de tiempo
+    const now = new Date()
+    const updateData: any = {
+      title: body.title,
+      description: body.description,
+      clientId: body.clientId,
+      type: body.type,
+      status: body.status,
+      priority: body.priority,
+      assignedTo: body.assignedTo,
+      assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : undefined,
+      branch: body.branch,
+      amount: body.amount,
+      currency: body.currency,
+      startDate: body.startDate ? new Date(body.startDate) : undefined,
+      dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      attachments: body.attachments ? JSON.stringify(body.attachments) : undefined,
+      equipmentType: body.equipmentType,
+      equipmentBrand: body.equipmentBrand,
+      equipmentModel: body.equipmentModel,
+      serialNumber: body.serialNumber,
+      installationDate: body.installationDate ? new Date(body.installationDate) : undefined,
+      installedBy: body.installedBy,
+      evidence: body.evidence ? JSON.stringify(body.evidence) : undefined,
+    }
+
+    // Calcular tiempo de respuesta cuando se asigna por primera vez
+    if (body.assignedTo && !ticket.assignedTo && !ticket.responseTime) {
+      const responseTime = Math.floor((now.getTime() - ticket.createdAt.getTime()) / 60000) // minutos
+      updateData.responseTime = responseTime
+    }
+
+    // Calcular tiempo de resolución cuando se cierra
+    if ((body.status === 'RESUELTO' || body.status === 'CERRADO') && 
+        ticket.status !== 'RESUELTO' && ticket.status !== 'CERRADO') {
+      const resolutionTime = Math.floor((now.getTime() - ticket.createdAt.getTime()) / 60000) // minutos
+      updateData.resolutionTime = resolutionTime
+      updateData.closedAt = now
+    }
+
+    // Incrementar contador de reaperturas
+    if (ticket.status === 'CERRADO' && body.status !== 'CERRADO' && body.status !== 'CANCELADO') {
+      updateData.reopenedCount = (ticket.reopenedCount || 0) + 1
+    }
+
     const updated = await prisma.ticket.update({
       where: { id: params.id },
-      data: {
-        title: body.title,
-        description: body.description,
-        clientId: body.clientId,
-        status: body.status,
-        priority: body.priority,
-        assignedTo: body.assignedTo,
-        assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : undefined,
-        amount: body.amount,
-        currency: body.currency,
-        startDate: body.startDate ? new Date(body.startDate) : undefined,
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
-        attachments: body.attachments ? JSON.stringify(body.attachments) : undefined,
-      },
+      data: updateData,
       include: { client: { select: { id: true, name: true } } },
     })
 

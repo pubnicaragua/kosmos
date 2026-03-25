@@ -80,13 +80,22 @@ export async function POST(request: NextRequest) {
       ...body,
       description: body.description ?? undefined,
       clientId: body.clientId ?? undefined,
+      type: body.type ?? undefined,
       assignedTo: body.assignedTo ?? undefined,
       assignedUsers: body.assignedUsers ?? undefined,
+      branch: body.branch ?? undefined,
       amount: body.amount ?? undefined,
       currency: body.currency ?? 'USD',
       startDate: body.startDate ?? undefined,
       dueDate: body.dueDate ?? undefined,
       attachments: body.attachments ?? undefined,
+      equipmentType: body.equipmentType ?? undefined,
+      equipmentBrand: body.equipmentBrand ?? undefined,
+      equipmentModel: body.equipmentModel ?? undefined,
+      serialNumber: body.serialNumber ?? undefined,
+      installationDate: body.installationDate ?? undefined,
+      installedBy: body.installedBy ?? undefined,
+      evidence: body.evidence ?? undefined,
     }
     const parsed = ticketSchema.safeParse(normalizedBody)
     if (!parsed.success) {
@@ -97,21 +106,44 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    // Generar número de ticket único
+    const lastTicket = await prisma.ticket.findFirst({
+      where: { companyId: validatedData.companyId },
+      orderBy: { createdAt: 'desc' },
+      select: { ticketNumber: true }
+    })
+    
+    let ticketNumber = 'TKT-000001'
+    if (lastTicket?.ticketNumber) {
+      const lastNumber = parseInt(lastTicket.ticketNumber.split('-')[1] || '0')
+      ticketNumber = `TKT-${String(lastNumber + 1).padStart(6, '0')}`
+    }
+
     const ticket = await prisma.ticket.create({
       data: {
+        ticketNumber,
         companyId: validatedData.companyId,
         title: validatedData.title,
         description: validatedData.description,
+        type: validatedData.type,
         status: validatedData.status,
         priority: validatedData.priority,
         clientId: validatedData.clientId,
         assignedTo: validatedData.assignedTo,
         assignedUsers: body.assignedUsers ? JSON.stringify(body.assignedUsers) : null,
+        branch: validatedData.branch,
         amount: validatedData.amount,
-        currency: body.currency || 'USD',
+        currency: validatedData.currency || 'USD',
         startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
         attachments: body.attachments ? JSON.stringify(body.attachments) : null,
+        equipmentType: validatedData.equipmentType,
+        equipmentBrand: validatedData.equipmentBrand,
+        equipmentModel: validatedData.equipmentModel,
+        serialNumber: validatedData.serialNumber,
+        installationDate: validatedData.installationDate ? new Date(validatedData.installationDate) : null,
+        installedBy: validatedData.installedBy,
+        evidence: body.evidence ? JSON.stringify(body.evidence) : null,
         createdBy: decoded.userId,
       },
       include: {
