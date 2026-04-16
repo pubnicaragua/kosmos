@@ -1,166 +1,106 @@
-import { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
-import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return apiError('Token no proporcionado', 401)
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+    if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
-    if (!decoded) return apiError('Token inválido', 401)
+    const decoded = await verifyToken(token)
+    if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
-    const purchaseRequest = await prisma.purchaseRequest.findUnique({
+    const request = await prisma.purchaseRequest.findUnique({
       where: { id: params.id },
       include: {
-        company: { select: { id: true, name: true } },
-        items: {
-          include: {
-            product: { select: { name: true, sku: true, stock: true, minStock: true } }
-          }
-        }
+        items: true,
+        company: true,
       },
     })
 
-    if (!purchaseRequest) return apiError('Solicitud no encontrada', 404)
+    if (!request) return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
 
-    const access = await getCompanyAccess(decoded.userId, purchaseRequest.companyId)
-    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
-
-    return apiSuccess(purchaseRequest)
+    return NextResponse.json({ success: true, data: request })
   } catch (error) {
-    console.error('Error fetching purchase request:', error)
-    return apiError('Error al obtener solicitud', 500)
+    console.error('Error fetching purchase request detail:', error)
+    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return apiError('Token no proporcionado', 401)
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+    if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
-    if (!decoded) return apiError('Token inválido', 401)
+    const decoded = await verifyToken(token)
+    if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
-    const body = await request.json()
-    const purchaseRequest = await prisma.purchaseRequest.findUnique({ 
+    const body = await req.json()
+    const { status, rejectedReason, notes } = body
+
+    const currentRequest = await prisma.purchaseRequest.findUnique({
       where: { id: params.id },
       include: { items: true }
     })
-    if (!purchaseRequest) return apiError('Solicitud no encontrada', 404)
 
-    const access = await getCompanyAccess(decoded.userId, purchaseRequest.companyId)
-    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+    if (!currentRequest) return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
 
-    const updateData: any = {
-      requestingArea: body.requestingArea,
-      requestType: body.requestType,
-      priority: body.priority,
-      status: body.status,
-      notes: body.notes,
-    }
-
-    // Actualizar fechas según el estado
-    if (body.status === 'APROBADA' && purchaseRequest.status !== 'APROBADA') {
-      updateData.approvedBy = decoded.userId
+    const updateData: any = { status }
+    if (status === 'APROBADA') {
+      updateData.approvedBy = (decoded as any).id
       updateData.approvedAt = new Date()
-    }
-
-    if (body.status === 'RECHAZADA') {
-      updateData.rejectedReason = body.rejectedReason
-    }
-
-    if (body.status === 'COMPRADO' && purchaseRequest.status !== 'COMPRADO') {
+    } else if (status === 'RECHAZADA') {
+      updateData.rejectedReason = rejectedReason || 'Rechazado por el administrador'
+    } else if (status === 'COMPRADO' && currentRequest.status !== 'COMPRADO') {
       updateData.purchasedAt = new Date()
-    }
-
-    if (body.status === 'RECIBIDO' && purchaseRequest.status !== 'RECIBIDO') {
-      updateData.receivedAt = new Date()
       
-      // Actualizar inventario automáticamente cuando se recibe
-      if (body.updateInventory && body.items) {
-        for (const item of body.items) {
-          if (item.productId) {
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: {
-                  increment: item.requestedQuantity
-                }
+      // CREATE EXPENSE AUTOMATICALLY
+      const totalAmount = currentRequest.items.reduce((sum, item) => sum + (item.totalCost || 0), 0)
+      const expense = await prisma.expense.create({
+        data: {
+          companyId: currentRequest.companyId,
+          provider: 'Compras Directas',
+          concept: `Compra derivada de Solicitud ${currentRequest.requestNumber}`,
+          category: 'Compras',
+          method: 'Efectivo/Transferencia',
+          amount: totalAmount,
+          status: 'PAID',
+          date: new Date(),
+          refNumber: `REQ-${currentRequest.requestNumber}`,
+        }
+      })
+      updateData.expenseId = expense.id
+    } else if (status === 'RECIBIDO' && currentRequest.status !== 'RECIBIDO') {
+      updateData.receivedAt = new Date()
+
+      // UPDATE INVENTORY AUTOMATICALLY
+      for (const item of currentRequest.items) {
+        if (item.productId) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                increment: item.requestedQuantity
               }
-            })
-          }
+            }
+          })
         }
       }
     }
 
-    // Actualizar items si se proporcionan
-    if (body.items) {
-      // Eliminar items existentes
-      await prisma.purchaseRequestItem.deleteMany({
-        where: { purchaseRequestId: params.id }
-      })
-
-      // Crear nuevos items
-      updateData.items = {
-        create: body.items.map((item: any) => ({
-          productId: item.productId,
-          sku: item.sku,
-          productName: item.productName,
-          category: item.category,
-          currentStock: item.currentStock,
-          minimumStock: item.minimumStock,
-          requestedQuantity: item.requestedQuantity,
-          reason: item.reason,
-          lastSaleDate: item.lastSaleDate ? new Date(item.lastSaleDate) : null,
-          monthlyAverage: item.monthlyAverage,
-          unitCost: item.unitCost,
-          totalCost: item.unitCost && item.requestedQuantity 
-            ? item.unitCost * item.requestedQuantity 
-            : item.totalCost || 0,
-        }))
-      }
-    }
+    if (notes) updateData.notes = notes
 
     const updated = await prisma.purchaseRequest.update({
       where: { id: params.id },
       data: updateData,
-      include: {
-        items: {
-          include: {
-            product: { select: { name: true, sku: true } }
-          }
-        }
-      },
+      include: { items: true }
     })
 
-    return apiSuccess(updated)
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Error updating purchase request:', error)
-    return apiError('Error al actualizar solicitud', 500)
-  }
-}
-
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return apiError('Token no proporcionado', 401)
-
-    const decoded = verifyToken(token)
-    if (!decoded) return apiError('Token inválido', 401)
-
-    const purchaseRequest = await prisma.purchaseRequest.findUnique({ where: { id: params.id } })
-    if (!purchaseRequest) return apiError('Solicitud no encontrada', 404)
-
-    const access = await getCompanyAccess(decoded.userId, purchaseRequest.companyId)
-    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
-
-    await prisma.purchaseRequest.delete({ where: { id: params.id } })
-    return apiSuccess({ message: 'Solicitud eliminada' })
-  } catch (error) {
-    console.error('Error deleting purchase request:', error)
-    return apiError('Error al eliminar solicitud', 500)
+    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
   }
 }

@@ -9,13 +9,14 @@ import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
+import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Ticket {
   id: string
   title: string
   description: string | null
-  status: 'PROCESO1' | 'PROCESO2' | 'PROCESO3' | 'PROCESO4'
+  status: string
   priority: string
   amount: number | null
   currency: string
@@ -52,6 +53,9 @@ interface TicketFormData {
   startDate: string
   dueDate: string
   attachments: File[]
+  evidence: File[]
+  existingAttachments: string[]
+  existingEvidence: string[]
 }
 
 const DEFAULT_COLUMNS = [
@@ -59,6 +63,12 @@ const DEFAULT_COLUMNS = [
   { id: 'PROCESO2', label: 'Proceso 2', color: 'border-blue-400' },
   { id: 'PROCESO3', label: 'Proceso 3', color: 'border-yellow-400' },
   { id: 'PROCESO4', label: 'Proceso 4', color: 'border-green-400' },
+]
+
+const STAGE_COLORS = [
+  'border-red-400', 'border-blue-400', 'border-yellow-400', 
+  'border-green-400', 'border-purple-400', 'border-pink-400', 
+  'border-orange-400', 'border-teal-400', 'border-indigo-400'
 ]
 
 export default function TicketsSoportePage() {
@@ -77,41 +87,94 @@ export default function TicketsSoportePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [columnLabels, setColumnLabels] = useState<Record<string, string>>({})
+  const [columns, setColumns] = useState(DEFAULT_COLUMNS)
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
   const [editingColumnValue, setEditingColumnValue] = useState('')
+  const [isAddingColumn, setIsAddingColumn] = useState(false)
 
-  const getColLabelKey = () => {
+  const fetchStages = useCallback(async () => {
+    if (selectedCompany === 'all') {
+      setColumns(DEFAULT_COLUMNS)
+      return
+    }
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
     try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}')
-      return u?.id ? `ticketColumnLabels_${u.id}` : 'ticketColumnLabels'
-    } catch { return 'ticketColumnLabels' }
-  }
+      const res = await fetch(`/api/companies/${selectedCompany}/ticket-stages`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setColumns(data.data)
+      } else {
+        setColumns(DEFAULT_COLUMNS)
+      }
+    } catch {
+      setColumns(DEFAULT_COLUMNS)
+    }
+  }, [selectedCompany])
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(getColLabelKey()) || '{}')
-      setColumnLabels(saved)
-    } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    fetchStages()
+  }, [fetchStages])
 
-  const getColumnLabel = (col: { id: string; label: string }) =>
-    columnLabels[col.id] || col.label
-
-  const startEditColumn = (colId: string, currentLabel: string) => {
-    setEditingColumnId(colId)
-    setEditingColumnValue(currentLabel)
-  }
-
-  const saveColumnLabel = (colId: string) => {
-    const updated = { ...columnLabels, [colId]: editingColumnValue.trim() || colId }
-    setColumnLabels(updated)
-    localStorage.setItem(getColLabelKey(), JSON.stringify(updated))
+  const saveColumnLabel = async (colId: string) => {
+    const updated = columns.map(c => 
+      c.id === colId ? { ...c, label: editingColumnValue.trim() || c.label } : c
+    )
+    setColumns(updated)
     setEditingColumnId(null)
+    
+    // Persist to DB if company is selected
+    if (selectedCompany !== 'all') {
+      const token = localStorage.getItem('accessToken')
+      await fetch(`/api/companies/${selectedCompany}/ticket-stages`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stages: updated })
+      })
+    }
   }
 
-  const COLUMNS = DEFAULT_COLUMNS
+  const addColumn = async () => {
+    const newId = `PROCESO${columns.length + 1}`
+    const newStage = { 
+      id: newId, 
+      label: `Proceso ${columns.length + 1}`, 
+      color: STAGE_COLORS[columns.length % STAGE_COLORS.length] 
+    }
+    const updated = [...columns, newStage]
+    setColumns(updated)
+    
+    if (selectedCompany !== 'all') {
+      const token = localStorage.getItem('accessToken')
+      await fetch(`/api/companies/${selectedCompany}/ticket-stages`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stages: updated })
+      })
+    }
+  }
+
+  const removeColumn = async (colId: string) => {
+    if (columns.length <= 1) return
+    const confirmed = window.confirm('¿Seguro que deseas eliminar esta etapa? Los tickets en esta etapa podrían quedar huérfanos.')
+    if (!confirmed) return
+
+    const updated = columns.filter(c => c.id !== colId)
+    setColumns(updated)
+    
+    if (selectedCompany !== 'all') {
+      const token = localStorage.getItem('accessToken')
+      await fetch(`/api/companies/${selectedCompany}/ticket-stages`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stages: updated })
+      })
+    }
+  }
+
   const [formData, setFormData] = useState<TicketFormData>({
     title: '',
     description: '',
@@ -125,6 +188,9 @@ export default function TicketsSoportePage() {
     startDate: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
     attachments: [],
+    evidence: [],
+    existingAttachments: [],
+    existingEvidence: [],
   })
 
   const getPeriodRange = (period: string) => {
@@ -237,6 +303,9 @@ export default function TicketsSoportePage() {
       startDate: new Date().toISOString().split('T')[0],
       dueDate: new Date().toISOString().split('T')[0],
       attachments: [],
+      evidence: [],
+      existingAttachments: [],
+      existingEvidence: [],
     })
     setEditingTicketId(null)
   }
@@ -256,6 +325,12 @@ export default function TicketsSoportePage() {
     try {
       if (ticket.attachments) parsedAttachments = JSON.parse(ticket.attachments)
     } catch { /* ignore */ }
+
+    let parsedEvidence: string[] = []
+    try {
+      if (ticket.evidence) parsedEvidence = JSON.parse(ticket.evidence)
+    } catch { /* ignore */ }
+
     setFormData({
       title: ticket.title,
       description: ticket.description || '',
@@ -269,6 +344,9 @@ export default function TicketsSoportePage() {
       startDate: ticket.startDate ? ticket.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
       attachments: [],
+      evidence: [],
+      existingAttachments: parsedAttachments,
+      existingEvidence: parsedEvidence,
     })
     setIsModalOpen(true)
   }
@@ -305,23 +383,35 @@ export default function TicketsSoportePage() {
     try {
       setIsSaving(true)
 
-      // Upload attachments first if any
-      let attachmentUrls: string[] = []
+      // Upload attachments
+      let attachmentUrls: string[] = [...formData.existingAttachments]
       if (formData.attachments.length > 0) {
         for (const file of formData.attachments) {
           const uploadFormData = new FormData()
           uploadFormData.append('file', file)
-          
           const uploadRes = await fetch('/api/upload', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
             body: uploadFormData,
           })
-          
           const uploadData = await uploadRes.json()
-          if (uploadData.success && uploadData.data?.url) {
-            attachmentUrls.push(uploadData.data.url)
-          }
+          if (uploadData.success && uploadData.data?.url) attachmentUrls.push(uploadData.data.url)
+        }
+      }
+
+      // Upload evidence
+      let evidenceUrls: string[] = [...formData.existingEvidence]
+      if (formData.evidence.length > 0) {
+        for (const file of formData.evidence) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', file)
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: uploadFormData,
+          })
+          const uploadData = await uploadRes.json()
+          if (uploadData.success && uploadData.data?.url) evidenceUrls.push(uploadData.data.url)
         }
       }
 
@@ -344,6 +434,7 @@ export default function TicketsSoportePage() {
           startDate: formData.startDate || null,
           dueDate: formData.dueDate || null,
           attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
+          evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
           ...(editingTicketId ? {} : { companyId: targetCompanyId }),
         }),
       })
@@ -503,11 +594,11 @@ export default function TicketsSoportePage() {
           <p className="text-sm text-gray-500 mt-1">Gestión visual de oportunidades activas y priorización de cierre.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} title="Reporte detallado de todas las incidencias">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            EXPORTAR
+            REPORTE INCIDENCIA
           </Button>
           <Button variant="outline" onClick={openSelectedTicketForEdit}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -558,8 +649,8 @@ export default function TicketsSoportePage() {
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        {COLUMNS.map((column) => {
+      <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-gray-200">
+        {columns.map((column) => {
           const columnTickets = getTicketsByStatus(column.id)
           const totalAmount = getTotalAmount(column.id)
           const isDragTarget = draggedTicket && !columnTickets.find(t => t.id === draggedTicket)
@@ -568,16 +659,16 @@ export default function TicketsSoportePage() {
           return (
             <div
               key={column.id}
-              className={`bg-white rounded-lg shadow transition-all duration-200 ${
+              className={`flex-shrink-0 w-80 bg-white rounded-xl border border-gray-100 shadow-sm transition-all duration-300 ${
                 isDropTarget 
-                  ? 'ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' 
+                  ? 'ring-2 ring-primary ring-offset-2 scale-[1.01] bg-slate-50' 
                   : ''
               }`}
               onDragOver={(e) => handleDragOver(e, column.id)}
               onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(column.id)}
             >
-              <div className={`p-4 border-t-4 ${column.color} rounded-t-lg`}>
+              <div className={`p-4 border-t-4 ${column.color} rounded-t-xl bg-white`}>
                 <div className="flex items-center justify-between mb-2">
                   {editingColumnId === column.id ? (
                     <input
@@ -589,37 +680,47 @@ export default function TicketsSoportePage() {
                         if (e.key === 'Enter') saveColumnLabel(column.id)
                         if (e.key === 'Escape') setEditingColumnId(null)
                       }}
-                      className="font-semibold text-gray-900 bg-white border border-blue-400 rounded px-2 py-0.5 text-sm w-full mr-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="font-semibold text-gray-900 bg-white border border-primary rounded px-2 py-0.5 text-sm w-full mr-2 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   ) : (
-                    <div className="flex items-center gap-1">
-                      <h3 className="font-semibold text-gray-900">{getColumnLabel(column)}</h3>
+                    <div className="flex items-center gap-1 group">
+                      <h3 className="font-semibold text-gray-900 truncate max-w-[180px]">{column.label}</h3>
                       <button
                         type="button"
-                        onClick={() => startEditColumn(column.id, getColumnLabel(column))}
-                        className="p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        onClick={() => { setEditingColumnId(column.id); setEditingColumnValue(column.label) }}
+                        className="p-1 rounded text-gray-400 hover:text-primary hover:bg-primary/5 opacity-0 group-hover:opacity-100 transition-all"
                         title="Renombrar columna"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(column.id)}
+                        className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Eliminar columna"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
                   )}
-                  <span className="text-sm text-gray-500 flex-shrink-0">{columnTickets.length}</span>
+                  <span className="text-sm font-medium px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{columnTickets.length}</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
+                <div className="text-xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
               </div>
 
-              <div className={`p-4 space-y-3 min-h-[300px] max-h-[calc(100vh-350px)] overflow-y-auto transition-all duration-200 scrollbar-thin scrollbar-thumb-gray-300 ${
-                isDropTarget ? 'bg-blue-50' : ''
+              <div className={`p-3 space-y-4 min-h-[400px] max-h-[calc(100vh-450px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 transition-colors duration-300 ${
+                isDropTarget ? 'bg-primary/5' : ''
               }`}>
                 {columnTickets.length === 0 && !isDragTarget ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                    <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
+                    <svg className="w-10 h-10 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    <p className="text-sm">Arrastra tickets aquí</p>
+                    <p className="text-xs font-medium uppercase tracking-wider">Sin tickets</p>
                   </div>
                 ) : (
                   columnTickets.map((ticket, index) => {
@@ -633,25 +734,18 @@ export default function TicketsSoportePage() {
                         onDragStart={() => handleDragStart(ticket.id)}
                         onDragOver={(e) => handleDragOverCard(e, ticket.id)}
                         onDragEnd={() => { setDraggedTicket(null); setDragOverStatus(null); setDragOverCardId(null) }}
-                        className={`group bg-white rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 select-none animate-in fade-in slide-in-from-bottom-2 border-l-4 ${column.color} ${
+                        className={`group bg-white rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-lg transition-all duration-300 select-none border-l-4 ${column.color} ${
                           isDragging 
-                            ? 'opacity-50 scale-95 rotate-1 cursor-grabbing border border-gray-200'
+                            ? 'opacity-40 scale-95 rotate-1 grayscale shadow-inner border-primary ring-2 ring-primary/20'
                             : dragOverCardId === ticket.id && draggedTicket !== ticket.id
-                            ? 'ring-2 ring-blue-400 border border-blue-200 scale-[1.02]'
-                            : selectedTicketId === ticket.id 
-                            ? 'border border-primary ring-1 ring-primary/40 scale-100' 
-                            : 'border border-gray-200 scale-100'
+                            ? 'ring-2 ring-primary border border-primary/20 scale-[1.02] -translate-y-1'
+                            : 'border border-gray-100'
                         }`}
-                        style={{ 
-                          animationDelay: `${index * 50}ms`,
-                          animationDuration: '300ms',
-                          animationFillMode: 'both'
-                        }}
                       >
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5">
                           {ticket.priority && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
                               ticket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
                               ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
                               ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
@@ -667,38 +761,61 @@ export default function TicketsSoportePage() {
                             e.stopPropagation()
                             openEditModal(ticket)
                           }}
-                          className="text-gray-500 hover:text-gray-900"
+                          className="text-gray-400 hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
                       </div>
-                      <h4 className="font-medium text-gray-900 mb-2">{ticket.title}</h4>
-                      <div className="text-sm text-gray-600 mb-3">
-                        {ticket.client?.name || 'Sin cliente'}
+                      <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2 leading-tight">{ticket.title}</h4>
+                      <p className="text-[11px] text-gray-500 mb-2 truncate font-medium">{ticket.client?.name || 'Venta General'}</p>
+                      
+                      <div className="flex items-center gap-4 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        {ticket.startDate && (
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">Inicio</span>
+                            <span className="text-[10px] font-black text-slate-700">{new Date(ticket.startDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        {ticket.dueDate && (
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-tighter">Entrega</span>
+                            <span className="text-[10px] font-black text-primary">{new Date(ticket.dueDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
                       </div>
-                      {ticket.dueDate && (
-                        <div className="flex items-center gap-1 text-sm text-gray-500 mb-2">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>Cierre: {new Date(ticket.dueDate).toLocaleDateString()}</span>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-gray-400 font-bold uppercase">Monto</span>
+                          <span className="text-sm font-bold text-gray-900">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount?.toLocaleString() || '0'}</span>
                         </div>
-                      )}
-                      {ticket.amount && (
-                        <div className="flex items-center gap-1 text-sm font-semibold text-gray-900 mb-3">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-end">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-primary font-semibold text-xs">
-                            {ticket.assignedTo?.charAt(0).toUpperCase() || 'U'}
-                          </span>
+                        <div className="flex items-center -space-x-2">
+                           {/* Mostrar avatares de usuarios asignados */}
+                           {(() => {
+                             try {
+                               const userIds = ticket.assignedUsers ? JSON.parse(ticket.assignedUsers) : []
+                               if (Array.isArray(userIds) && userIds.length > 0) {
+                                 return userIds.slice(0, 3).map((id: string, idx: number) => (
+                                   <div 
+                                     key={id} 
+                                     className="w-7 h-7 rounded-full bg-primary text-white border-2 border-white flex items-center justify-center text-[10px] font-bold shadow-sm"
+                                     title={`ID: ${id}`}
+                                   >
+                                     U{idx + 1}
+                                   </div>
+                                 ))
+                               }
+                             } catch { /* ignore */ }
+                             
+                             if (ticket.assignedTo) {
+                               return (
+                                 <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary ring-1 ring-primary/5" title={ticket.assignedTo}>
+                                   {ticket.assignedTo.charAt(0).toUpperCase()}
+                                 </div>
+                               )
+                             }
+                             return null
+                           })()}
                         </div>
                       </div>
                     </div>
@@ -706,23 +823,18 @@ export default function TicketsSoportePage() {
                   })
                 )}
 
-                {/* Drop zone hint */}
                 {isDragTarget && (
-                  <div className={`border-2 border-dashed rounded-lg flex items-center justify-center transition-all duration-200 ${
+                  <div className={`border-2 border-dashed rounded-xl flex items-center justify-center transition-all duration-300 ${
                     isDropTarget 
-                      ? 'border-blue-500 bg-blue-100/50 h-32 scale-105' 
-                      : 'border-blue-300 bg-blue-50/30 h-24'
+                      ? 'border-primary bg-primary/10 h-32 scale-100' 
+                      : 'border-primary/30 bg-primary/5 h-24 scale-95'
                   } ${columnTickets.length === 0 ? '' : 'mt-3'}`}>
                     <div className="text-center">
-                      <svg className={`w-8 h-8 mx-auto mb-1 transition-all ${
-                        isDropTarget ? 'text-blue-600 scale-110' : 'text-blue-400'
-                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-8 h-8 mx-auto mb-1 transition-all ${isDropTarget ? 'text-primary animate-bounce' : 'text-primary/40'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                       </svg>
-                      <span className={`text-sm font-medium ${
-                        isDropTarget ? 'text-blue-700' : 'text-blue-500'
-                      }`}>
-                        {isDropTarget ? 'Soltar ahora' : 'Soltar aquí'}
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${isDropTarget ? 'text-primary' : 'text-primary/50'}`}>
+                        {isDropTarget ? 'Liberar' : 'Mover'}
                       </span>
                     </div>
                   </div>
@@ -731,7 +843,21 @@ export default function TicketsSoportePage() {
             </div>
           )
         })}
+        
+        {/* Add Column Button */}
+        <div className="flex-shrink-0 w-12 flex items-start pt-14">
+           <button 
+             onClick={addColumn}
+             className="w-10 h-10 rounded-full bg-white border border-dashed border-gray-300 text-gray-400 hover:text-primary hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-center shadow-sm"
+             title="Añadir etapa"
+           >
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+             </svg>
+           </button>
+        </div>
       </div>
+    </div>
 
       <Modal
         isOpen={isModalOpen}
@@ -768,9 +894,9 @@ export default function TicketsSoportePage() {
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Estado"
-              options={COLUMNS.map((column) => ({ value: column.id, label: column.label }))}
+              options={columns.map((column) => ({ value: column.id, label: column.label }))}
               value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as Ticket['status'] })}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
               fullWidth
             />
             <Select
@@ -786,11 +912,11 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
-          <UserAutocomplete
-            label="Asignado a"
-            value={formData.assignedTo}
-            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
-            companyId={selectedCompany !== 'all' ? selectedCompany : companies[0]?.id || ''}
+          <MultiUserSelector
+            label="Usuarios Asignados"
+            companyId={selectedCompany !== 'all' ? selectedCompany : (companies[0]?.id || '')}
+            selectedUserIds={formData.assignedUsers}
+            onChange={(ids) => setFormData({ ...formData, assignedUsers: ids })}
           />
           <div className="grid grid-cols-3 gap-4">
             <Input
@@ -828,34 +954,102 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Archivos adjuntos
-            </label>
-            <input
-              type="file"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files || [])
-                setFormData({ ...formData, attachments: files })
-              }}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90"
-            />
-            {formData.attachments.length > 0 && (
-              <div className="mt-2 text-sm text-gray-600">
-                {formData.attachments.length} archivo(s) seleccionado(s)
-              </div>
-            )}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                📁 Documentación y Adjuntos
+              </label>
+              
+              {formData.existingAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {formData.existingAttachments.map((url, i) => (
+                    <div key={i} className="group relative">
+                      <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/5 transition-all">
+                        DOC {i + 1}
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => setFormData({ ...formData, existingAttachments: formData.existingAttachments.filter((_, idx) => idx !== i) })}
+                        className="absolute -top-1 -right-1 bg-error text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <input
+                type="file"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  setFormData({ ...formData, attachments: [...formData.attachments, ...files] })
+                }}
+                className="block w-full text-[11px] text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              {formData.attachments.length > 0 && (
+                <div className="mt-2 text-[10px] text-primary font-bold">
+                  +{formData.attachments.length} archivo(s) nuevo(s) por subir
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">
+                📸 Evidencia de Proceso (Fotos/Videos)
+              </label>
+
+              {formData.existingEvidence.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {formData.existingEvidence.map((url, i) => (
+                    <div key={i} className="group relative">
+                      <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/5 transition-all">
+                        EVID {i + 1}
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => setFormData({ ...formData, existingEvidence: formData.existingEvidence.filter((_, idx) => idx !== i) })}
+                        className="absolute -top-1 -right-1 bg-error text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  setFormData({ ...formData, evidence: [...formData.evidence, ...files] })
+                }}
+                className="block w-full text-[11px] text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
+              />
+              {formData.evidence.length > 0 && (
+                <div className="mt-2 text-[10px] text-primary font-bold">
+                  +{formData.evidence.length} evidencia(s) nueva(s) por subir
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex justify-end gap-3 pt-4">
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
             <Button type="button" variant="outline" onClick={() => {
               setIsModalOpen(false)
               resetForm()
             }}>
-              Cancelar
+              CANCELAR
             </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Guardando...' : editingTicketId ? 'Guardar Cambios' : 'Crear Ticket'}
+            <Button type="submit" disabled={isSaving} className="font-bold">
+              {isSaving ? 'GUARDANDO...' : editingTicketId ? 'ACTUALIZAR TICKET' : 'CREAR TICKET'}
             </Button>
           </div>
         </form>

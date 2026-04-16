@@ -8,6 +8,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 import { Input } from '@/components/ui-kit/Input'
+import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Product {
   id: string
@@ -65,6 +66,7 @@ export default function InventarioPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [editingRows, setEditingRows] = useState<Record<string, EditingProduct>>({})
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
 
   const startEditing = (product: Product) => {
     setEditingRows(prev => ({
@@ -148,6 +150,20 @@ export default function InventarioPage() {
     }
   }, [])
 
+  const fetchCategories = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch('/api/product-categories', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) setCategories(data.data)
+    } catch (e) {
+      console.error('Error fetching categories:', e)
+    }
+  }, [])
+
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
@@ -179,7 +195,8 @@ export default function InventarioPage() {
 
   useEffect(() => {
     fetchCompanies()
-  }, [fetchCompanies])
+    fetchCategories()
+  }, [fetchCompanies, fetchCategories])
 
   useEffect(() => {
     fetchData()
@@ -205,10 +222,62 @@ export default function InventarioPage() {
 
   const handleMermas = () => {
     setSelectedTab('low')
+    setShowFilters(true) // Open filters to show selectable stock range
   }
 
   const handleImportOrUpdate = () => {
     router.push('/inventario/edicion')
+  }
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'PRODUCTO': 'Ejemplo Producto',
+        'STOCK': 10,
+        'CATEGORÍA': 'General',
+        'DESC.': 'Descripción del producto',
+        'SKU': 'SKU-001',
+        'COSTO': 50.00,
+        'PRECIO': 100.00,
+        'MARGEN %': 50,
+        'PROMO': ''
+      }
+    ]
+    
+    exportWithCompanyHeader(
+      templateData,
+      'plantilla_inventario.xlsx',
+      'Plantilla de Importación de Inventario',
+      companies,
+      selectedCompany
+    )
+  }
+
+  const handleExport = () => {
+    if (!products.length) {
+      alert('No hay productos para exportar')
+      return
+    }
+
+    const dataToExport = products.map(p => ({
+      'PRODUCTO': p.name,
+      'STOCK': p.stock,
+      'CATEGORÍA': p.category?.name || 'Sin categoría',
+      'DESC.': p.description || '',
+      'SKU': p.sku,
+      'COSTO': p.cost,
+      'PRECIO': p.price,
+      'MARGEN %': p.netMargin != null ? `${p.netMargin.toFixed(2)}%` : '-',
+      'PROMO': p.promotion || ''
+    }))
+
+    exportWithCompanyHeader(
+      dataToExport,
+      `inventario_${new Date().toISOString().split('T')[0]}.xlsx`,
+      'Reporte de Inventario',
+      companies,
+      selectedCompany
+    )
   }
 
   if (isLoading) {
@@ -242,23 +311,29 @@ export default function InventarioPage() {
           <p className="text-sm text-gray-500 mt-1">Administra tu inventario de productos, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleMermas} className="h-10">
+          <Button variant="outline" onClick={handleMermas} className="h-10 text-orange-600 border-orange-200 hover:bg-orange-50">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            Mermas
+            Re-stock
           </Button>
-          <Button variant="outline" onClick={handleImportOrUpdate} className="h-10">
+          <Button variant="outline" onClick={handleDownloadTemplate} className="h-10">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            Importar/Actualizar
+            Plantilla
           </Button>
-          <Button onClick={() => router.push('/inventario/edicion')} className="h-10">
+          <Button variant="outline" onClick={handleExport} className="h-10">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar
+          </Button>
+          <Button onClick={() => router.push('/inventario/edicion')} className="h-10 bg-blue-600 hover:bg-blue-700">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Agregar
+            Agregar Producto
           </Button>
         </div>
       </div>
@@ -331,38 +406,38 @@ export default function InventarioPage() {
         {showFilters && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Stock mínimo</label>
-                <input
-                  type="number"
-                  placeholder="Ej: 10"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Stock máximo</label>
-                <input
-                  type="number"
-                  placeholder="Ej: 100"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Precio mínimo</label>
-                <input
-                  type="number"
-                  placeholder="Ej: $50"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Precio máximo</label>
-                <input
-                  type="number"
-                  placeholder="Ej: $500"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
+              <Select
+                label="Rango de Stock"
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'low', label: 'Bajo Stock (<= 10)' },
+                  { value: 'medium', label: 'Stock Medio (11-50)' },
+                  { value: 'high', label: 'Stock Alto (> 50)' },
+                ]}
+                value={selectedTab === 'low' ? 'low' : 'all'} // Simple sync for low stock filter
+                onChange={(e) => setSelectedTab(e.target.value)}
+                fullWidth
+              />
+              <Select
+                label="Categoría"
+                options={[
+                  { value: 'all', label: 'Todas' },
+                  ...categories.map(c => ({ value: c.id, label: c.name }))
+                ]}
+                onChange={() => {}} // Integration with filter can be added here
+                fullWidth
+              />
+              <Select
+                label="Rango de Precio"
+                options={[
+                  { value: '0-50', label: '0$ - 50$' },
+                  { value: '50-200', label: '50$ - 200$' },
+                  { value: '200-500', label: '200$ - 500$' },
+                  { value: '500+', label: '500$+' },
+                ]}
+                onChange={() => {}} // Placeholder for now
+                fullWidth
+              />
             </div>
             <div className="flex justify-end mt-3">
               <Button size="sm" onClick={() => setShowFilters(false)}>Aplicar Filtros</Button>

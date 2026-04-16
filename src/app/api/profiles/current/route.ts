@@ -50,6 +50,13 @@ export async function GET(request: NextRequest) {
           industry: company.industry,
           isActive: company.isActive,
           role: userCompany?.role || 'SUPER_ADMIN',
+          quotePrimaryColor: company.quotePrimaryColor,
+          quoteHeaderHtml: company.quoteHeaderHtml,
+          quoteFooterHtml: company.quoteFooterHtml,
+          quoteTerms: company.quoteTerms,
+          invoicePrimaryColor: company.invoicePrimaryColor,
+          invoiceHeaderHtml: company.invoiceHeaderHtml,
+          invoiceFooterHtml: company.invoiceFooterHtml,
         }
       })
     } else {
@@ -61,6 +68,13 @@ export async function GET(request: NextRequest) {
         industry: uc.company.industry,
         isActive: uc.company.isActive,
         role: uc.role,
+        quotePrimaryColor: uc.company.quotePrimaryColor,
+        quoteHeaderHtml: uc.company.quoteHeaderHtml,
+        quoteFooterHtml: uc.company.quoteFooterHtml,
+        quoteTerms: uc.company.quoteTerms,
+        invoicePrimaryColor: uc.company.invoicePrimaryColor,
+        invoiceHeaderHtml: uc.company.invoiceHeaderHtml,
+        invoiceFooterHtml: uc.company.invoiceFooterHtml,
       }))
     }
 

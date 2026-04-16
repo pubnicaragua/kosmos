@@ -15,8 +15,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const body = await request.json()
     const { status } = body
 
-    if (!['PROCESO1', 'PROCESO2', 'PROCESO3', 'PROCESO4'].includes(status)) {
-      return apiError('Estado inválido', 400)
+    if (!status) {
+      return apiError('Estado no proporcionado', 400)
     }
 
     const ticket = await prisma.ticket.findUnique({ where: { id: params.id } })

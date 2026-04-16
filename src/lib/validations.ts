@@ -211,17 +211,7 @@ export const ticketSchema = z.object({
     'CONFIGURACION_DVR_NVR',
     'COTIZACION_TECNICA'
   ]).optional(),
-  status: z.enum([
-    'NUEVO',
-    'ASIGNADO',
-    'EN_PROCESO',
-    'ESPERA_CLIENTE',
-    'ESPERA_REPUESTO',
-    'ESCALADO',
-    'RESUELTO',
-    'CERRADO',
-    'CANCELADO'
-  ]).optional(),
+  status: z.string().optional(),
   priority: z.enum(['BAJA', 'MEDIA', 'ALTA']).optional(),
   assignedTo: z.string().optional(),
   branch: z.string().optional(),

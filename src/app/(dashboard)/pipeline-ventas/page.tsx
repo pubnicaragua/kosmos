@@ -6,7 +6,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonCard } from '@/components/ui-kit/Skeleton'
-import { MultiUserAutocomplete } from '@/components/ui-kit/MultiUserAutocomplete'
+import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 
 interface Opportunity {
@@ -18,6 +18,8 @@ interface Opportunity {
   stage: 'PROSPECTO' | 'PROPUESTA' | 'NEGOCIACION' | 'CALIFICADO'
   status: string
   assignedTo: string | null
+  assignedUsers: string // JSON array
+  currency: 'USD' | 'NIO'
   closeDate: string | null
   priority?: 'ALTA' | 'MEDIA' | 'BAJA'
   description?: string | null
@@ -35,7 +37,7 @@ interface OpportunityFormData {
   value: string
   currency: 'USD' | 'NIO'
   stage: Opportunity['stage']
-  assignedTo: string
+  assignedUsers: string
   closeDate: string
   priority: 'ALTA' | 'MEDIA' | 'BAJA'
   description: string
@@ -111,7 +113,7 @@ export default function PipelineVentasPage() {
     value: '',
     currency: 'USD',
     stage: 'PROSPECTO',
-    assignedTo: '',
+    assignedUsers: '[]',
     closeDate: new Date().toISOString().split('T')[0],
     priority: 'MEDIA',
     description: '',
@@ -183,7 +185,7 @@ export default function PipelineVentasPage() {
       value: '',
       currency: 'USD',
       stage: 'PROSPECTO',
-      assignedTo: '',
+      assignedUsers: '[]',
       closeDate: new Date().toISOString().split('T')[0],
       priority: 'MEDIA',
       description: '',
@@ -203,9 +205,9 @@ export default function PipelineVentasPage() {
       title: opportunity.title,
       client: opportunity.client,
       value: opportunity.value.toString(),
-      currency: 'USD',
+      currency: opportunity.currency || 'USD',
       stage: opportunity.stage,
-      assignedTo: opportunity.assignedTo || '',
+      assignedUsers: opportunity.assignedUsers || '[]',
       closeDate: opportunity.closeDate
         ? new Date(opportunity.closeDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0],
@@ -239,7 +241,8 @@ export default function PipelineVentasPage() {
           client: formData.client,
           value: parseFloat(formData.value),
           stage: formData.stage,
-          assignedTo: formData.assignedTo || null,
+          currency: formData.currency,
+          assignedUsers: formData.assignedUsers || '[]',
           closeDate: formData.closeDate,
           priority: formData.priority,
           description: formData.description || null,
@@ -287,57 +290,30 @@ export default function PipelineVentasPage() {
     }
   }
 
-  const handleExport = async () => {
-    const token = localStorage.getItem('accessToken')
-    if (!token) return
-
-    try {
-      const params = new URLSearchParams()
-      if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
-
-      const response = await fetch(`/api/opportunities/export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const result = await response.json()
-      if (!result.success) {
-        alert(result.error || 'No se pudo exportar')
-        return
-      }
-
-      const rows = result.data.data as Array<Record<string, string | number | null>>
-      if (!rows.length) {
-        alert('No hay datos para exportar')
-        return
-      }
-
-      const headers = Object.keys(rows[0])
-      const csvLines = [
-        headers.join(','),
-        ...rows.map((row) =>
-          headers
-            .map((header) => {
-              const value = row[header] ?? ''
-              const text = String(value).replace(/"/g, '""')
-              return `"${text}"`
-            })
-            .join(',')
-        ),
-      ]
-
-      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', result.data.filename || `pipeline_ventas_${Date.now()}.csv`)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Error exporting opportunities:', error)
-      alert('Error al exportar oportunidades')
+  const handleExport = () => {
+    if (!opportunities.length) {
+      alert('No hay datos para exportar')
+      return
     }
+
+    const rows = opportunities.map((opp) => ({
+      Titulo: opp.title,
+      Cliente: opp.client,
+      Valor: opp.value,
+      Etapa: STAGES.find(s => s.id === opp.stage)?.label || opp.stage,
+      Prioridad: opp.priority || 'MEDIA',
+      CierreEstimado: opp.closeDate ? new Date(opp.closeDate).toLocaleDateString('es-ES') : '',
+      AsignadoA: opp.assignedTo || '',
+      Estado: opp.status || 'Activo'
+    }))
+
+    exportWithCompanyHeader(
+      rows,
+      `pipeline_ventas_${Date.now()}.xlsx`,
+      'Reporte de Pipeline de Ventas',
+      companies,
+      selectedCompany
+    )
   }
 
   const handleDragStart = (opportunity: Opportunity) => {
@@ -467,13 +443,13 @@ export default function PipelineVentasPage() {
     return getOpportunitiesByStage(stage).reduce((sum, opp) => sum + opp.value, 0)
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('es-ES', {
+  const formatCurrencyValue = (value: number, currency: string = 'USD') => {
+    return new Intl.NumberFormat('es-NI', {
       style: 'currency',
-      currency: 'USD',
+      currency: currency === 'NIO' ? 'NIO' : 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value)
+    }).format(value).replace('NIO', 'C$')
   }
 
   if (isLoading) {
@@ -569,16 +545,16 @@ export default function PipelineVentasPage() {
           const count = getOpportunitiesByStage(stage.id).length
           const total = getTotalByStage(stage.id)
           return (
-            <div key={stage.id} className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`w-3 h-3 rounded-full ${stage.dot}`} />
-                <span className={`text-xs font-semibold uppercase ${stage.headerText}`}>
+            <div key={stage.id} className="flex flex-col items-center justify-center py-4 px-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${stage.dot} shadow-sm`} />
+                <span className={`text-xs font-bold uppercase tracking-wider ${stage.headerText}`}>
                   {stage.label}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-gray-700">{count}</span>
-                <span className="text-sm font-bold text-gray-900">{formatCurrency(total)}</span>
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-black text-slate-800 leading-none">{count}</span>
+                <span className="text-sm font-bold text-slate-500 mt-1">{formatCurrencyValue(total)}</span>
               </div>
             </div>
           )
@@ -626,12 +602,12 @@ export default function PipelineVentasPage() {
                       onDragStart={() => handleDragStart(opportunity)}
                       onDragOver={(e) => handleDragOverCard(e, opportunity.id)}
                       onDragEnd={() => { setDraggedItem(null); setDragOverStage(null); setDragOverCardId(null) }}
-                      className={`group rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-4 ${clientColor.border} ${clientColor.bg} select-none animate-in fade-in slide-in-from-bottom-2 ${
+                      className={`group rounded-xl transition-all duration-200 cursor-grab active:cursor-grabbing border border-gray-100 border-l-[6px] ${stage.border} bg-white select-none animate-in fade-in slide-in-from-bottom-2 ${
                         isDragging 
                           ? 'opacity-30 scale-90'
                           : dragOverCardId === opportunity.id && draggedItem?.stage === stage.id
                           ? 'ring-2 ring-blue-400 scale-[1.02]'
-                          : 'opacity-100 scale-100 shadow-sm hover:shadow-lg hover:-translate-y-1'
+                          : 'opacity-100 scale-100 shadow-sm hover:shadow-xl hover:-translate-y-1'
                       }`}
                       style={{ 
                         animationDuration: '300ms', 
@@ -710,13 +686,27 @@ export default function PipelineVentasPage() {
                           </div>
                         )}
 
-                        {/* Value + Avatar */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-base font-bold text-gray-900">
-                            {formatCurrency(opportunity.value)}
+                        {/* Value + Avatars */}
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-50">
+                          <span className="text-lg font-black text-slate-800">
+                            {formatCurrencyValue(opportunity.value, opportunity.currency)}
                           </span>
-                          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${clientColor.avatar} flex items-center justify-center flex-shrink-0`}>
-                            <span className="text-white text-xs font-bold">{initials}</span>
+                          <div className="flex -space-x-2 overflow-hidden">
+                            {(() => {
+                              try {
+                                const userIds = JSON.parse(opportunity.assignedUsers || '[]') as string[]
+                                if (userIds.length === 0) return (
+                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white">
+                                    <span className="text-[10px] font-bold text-slate-400">?</span>
+                                  </div>
+                                )
+                                return userIds.map((uid, idx) => (
+                                  <div key={uid} className={`w-8 h-8 rounded-full bg-gradient-to-br ${CLIENT_COLORS[idx % CLIENT_COLORS.length].avatar} flex items-center justify-center border-2 border-white shadow-sm ring-1 ring-black/5`} title="Usuario asignado">
+                                    <span className="text-white text-[10px] font-bold">U{idx+1}</span>
+                                  </div>
+                                ))
+                              } catch { return null }
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -872,6 +862,18 @@ export default function PipelineVentasPage() {
             onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
             fullWidth
           />
+          <div className="space-y-1.5">
+            <MultiUserSelector
+              label="Asignar Equipo (Multi-usuario)"
+              companyId={formData.companyId || (selectedCompany !== 'all' ? selectedCompany : '')}
+              selectedUserIds={(() => {
+                try {
+                  return JSON.parse(formData.assignedUsers || '[]')
+                } catch { return [] }
+              })()}
+              onChange={(ids) => setFormData({ ...formData, assignedUsers: JSON.stringify(ids) })}
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
             <textarea
@@ -880,14 +882,6 @@ export default function PipelineVentasPage() {
               placeholder="Detalles de la oportunidad..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
               rows={2}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Asignado a</label>
-            <MultiUserAutocomplete
-              companyId={formData.companyId || (selectedCompany !== 'all' ? selectedCompany : '')}
-              value={formData.assignedTo}
-              onChange={(value) => setFormData({ ...formData, assignedTo: value })}
             />
           </div>
           <Input

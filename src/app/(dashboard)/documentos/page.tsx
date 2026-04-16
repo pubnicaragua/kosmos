@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import React from 'react'
 import { Upload } from 'lucide-react'
+import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 
 interface Document {
   id: string
@@ -19,6 +20,7 @@ interface Document {
   category: string
   area: string
   visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
+  sharedWith: string // JSON string
   fileUrl: string
   fileSize: number
   uploadedBy: string
@@ -74,6 +76,7 @@ export default function DocumentosPage() {
     category: string
     area: string
     visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
+    sharedWith: string
     fileUrl: string
   }
 
@@ -94,6 +97,7 @@ export default function DocumentosPage() {
     category: 'General',
     area: 'General',
     visibility: 'COMPARTIDO',
+    sharedWith: '[]',
     fileUrl: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -171,6 +175,7 @@ export default function DocumentosPage() {
       category: selectedArea !== 'all' ? selectedArea : 'General',
       area: selectedArea !== 'all' ? selectedArea : 'General',
       visibility: 'COMPARTIDO',
+      sharedWith: '[]',
       fileUrl: '',
     })
     setIsModalOpen(true)
@@ -185,6 +190,7 @@ export default function DocumentosPage() {
       category: document.category || 'General',
       area: document.area || document.category || 'General',
       visibility: document.visibility || 'COMPARTIDO',
+      sharedWith: document.sharedWith || '[]',
       fileUrl: document.fileUrl || '',
     })
     setIsModalOpen(true)
@@ -664,6 +670,19 @@ export default function DocumentosPage() {
               fullWidth
             />
           </div>
+
+          {formData.visibility === 'COMPARTIDO' && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+              <label className="block text-sm font-medium text-gray-700">Compartir con Usuarios</label>
+              <MultiUserSelector
+                companyId={selectedCompany !== 'all' ? selectedCompany : undefined}
+                value={formData.sharedWith}
+                onChange={(val) => setFormData({ ...formData, sharedWith: val })}
+              />
+              <p className="text-xs text-gray-400 italic">Si no seleccionas usuarios, el documento será visible para toda la empresa dentro del área seleccionada.</p>
+            </div>
+          )}
+
           <Select
             label="Área"
             options={AREAS.map(a => ({ value: a, label: a }))}

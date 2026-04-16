@@ -66,8 +66,10 @@ export default function NuevoClientePage() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       errs.email = 'Correo electrónico inválido'
     }
-    if (formData.phone.trim() && !/^[+]?[\d\s\-()]{7,20}$/.test(formData.phone.trim())) {
-      errs.phone = 'Teléfono inválido'
+    if (!formData.phone.trim()) {
+      errs.phone = 'El teléfono es obligatorio'
+    } else if (!/^[+]?[\d\s\-()]{7,20}$/.test(formData.phone.trim())) {
+      errs.phone = 'Teléfono inválido (mínimo 7 dígitos)'
     }
     if (formData.ruc.trim()) {
       const rucVal = validateRuc(formData.ruc)
@@ -174,14 +176,14 @@ export default function NuevoClientePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono *</label>
               <Input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => { setFormData({ ...formData, phone: e.target.value }); setErrors(prev => ({ ...prev, phone: '' })) }}
                 placeholder="+505 8888-8888"
                 fullWidth
-                className={errors.phone ? 'border-red-400' : ''}
+                className={errors.phone ? 'border-red-400 focus:ring-red-200' : ''}
               />
               {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
             </div>

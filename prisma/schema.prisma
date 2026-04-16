@@ -40,7 +40,7 @@ model Company {
   incomes            Income[]
   marketingCampaigns MarketingCampaign[]
   opportunities      Opportunity[]
-  payrolls           payrolls[]          @relation("CompanyPayrolls")
+  payrolls           Payroll[]           @relation("CompanyPayrolls")
   pipelineColumns    PipelineColumn[]
   productCategories  ProductCategory[]
   products           Product[]
@@ -48,6 +48,16 @@ model Company {
   quotes             Quote[]
   tickets            Ticket[]
   userCompanies      UserCompany[]
+
+  // Configuración de Plantillas (Proformas y Facturas)
+  quotePrimaryColor   String?   @map("quote_primary_color")
+  quoteHeaderHtml     String?   @db.Text @map("quote_header_html")
+  quoteFooterHtml     String?   @db.Text @map("quote_footer_html")
+  quoteTerms          String?   @db.Text @map("quote_terms")
+  invoicePrimaryColor String?   @map("invoice_primary_color")
+  invoiceHeaderHtml   String?   @db.Text @map("invoice_header_html")
+  invoiceFooterHtml   String?   @db.Text @map("invoice_footer_html")
+  ticketStages        Json?     @map("ticket_stages")
 
   @@map("companies")
 }
@@ -101,6 +111,8 @@ model Income {
   exchangeRate      Float?       @map("exchange_rate")
   folio             String?
   origen            String?
+  clientId          String?      @map("client_id")
+  clientRelation    Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("incomes")
@@ -120,7 +132,8 @@ model Expense {
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
   company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  payrolls  payrolls[]    @relation("ExpensePayrolls")
+  payrolls         Payroll[]         @relation("ExpensePayrolls")
+  purchaseRequests PurchaseRequest[] @relation("ExpensePurchaseRequests")
 
   @@map("expenses")
 }
@@ -133,7 +146,10 @@ model Opportunity {
   value       Float
   stage       OpportunityStage @default(PROSPECTO)
   status      String           @default("Pendiente")
+  order       Int              @default(0)
   assignedTo  String?          @map("assigned_to")
+  assignedUsers String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
+  currency    String           @default("USD") // USD o NIO (C$)
   closeDate   DateTime?        @map("close_date")
   priority    String?          @default("MEDIA")
   description String?
@@ -175,6 +191,9 @@ model Contract {
   startDate  DateTime       @map("start_date")
   endDate    DateTime       @map("end_date")
   status     ContractStatus @default(ACTIVE)
+  area       String?        @default("General")
+  visibility String?        @default("COMPARTIDO")
+  sharedWith String?        @map("shared_with") // JSON array de IDs de usuarios/áreas con acceso
   fileUrl    String?        @map("file_url")
   uploadedBy String         @map("uploaded_by")
   createdAt  DateTime       @default(now()) @map("created_at")
@@ -213,6 +232,7 @@ model Client {
   company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   quotes        Quote[]
   tickets       Ticket[]
+  incomes       Income[]
 
   @@index([companyId])
   @@index([status])
@@ -330,7 +350,7 @@ model Ticket {
   title            String
   description      String?         @db.Text
   type             TicketType      @default(SOPORTE_REMOTO) // Tipo de solicitud
-  status           TicketStatus    @default(NUEVO)
+  status           String          @default("PROCESO1")
   priority         TicketPriority  @default(MEDIA)
   assignedTo       String?         @map("assigned_to")
   assignedUsers    String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
@@ -503,9 +523,10 @@ model MarketingCampaign {
   @@map("marketing_campaigns")
 }
 
-model payrolls {
-  id          String   @id
+model Payroll {
+  id          String   @id @default(cuid())
   companyId   String
+  name        String?
   period      String
   fileName    String
   fileUrl     String
@@ -521,6 +542,7 @@ model payrolls {
 
   @@index([companyId])
   @@index([expenseId])
+  @@map("payrolls")
 }
 
 model PurchaseRequest {
@@ -538,10 +560,12 @@ model PurchaseRequest {
   rejectedReason    String?                 @map("rejected_reason")
   purchasedAt       DateTime?               @map("purchased_at")
   receivedAt        DateTime?               @map("received_at")
+  expenseId         String?                 @map("expense_id")
   notes             String?                 @db.Text
   createdAt         DateTime                @default(now()) @map("created_at")
   updatedAt         DateTime                @updatedAt @map("updated_at")
   company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expense           Expense?                @relation("ExpensePurchaseRequests", fields: [expenseId], references: [id], onUpdate: NoAction)
   items             PurchaseRequestItem[]
 
   @@index([companyId])

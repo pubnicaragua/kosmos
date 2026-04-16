@@ -10,6 +10,8 @@ import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import * as XLSX from 'xlsx'
 import { MarketingChart } from '@/components/ui-kit/MarketingChart'
+import { Upload, X, FileText, ExternalLink, Image as ImageIcon, Film } from 'lucide-react'
+import { useRef } from 'react'
 
 interface Campaign {
   id: string
@@ -68,6 +70,8 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
     adType: '',
     evidenceUrl: '',
   })
+  const evidenceFileRef = useRef<HTMLInputElement>(null)
+  const [uploadingEvidence, setUploadingEvidence] = useState(false)
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -168,6 +172,30 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
       alert('Error al actualizar campaña')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleEvidenceUpload = async (file: File) => {
+    setUploadingEvidence(true)
+    try {
+      const token = localStorage.getItem('accessToken')
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setFormData(prev => ({ ...prev, evidenceUrl: data.data.url }))
+      } else {
+        alert('Error al subir evidencia: ' + (data.error || 'Error desconocido'))
+      }
+    } catch {
+      alert('Error al subir evidencia')
+    } finally {
+      setUploadingEvidence(false)
     }
   }
 
@@ -435,17 +463,39 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Evidencia</h3>
-                {campaign.evidenceUrl ? (
-                  <a
-                    href={campaign.evidenceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary hover:underline break-all"
-                  >
-                    {campaign.evidenceUrl}
-                  </a>
+                  <div className="space-y-3">
+                    <a
+                      href={campaign.evidenceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-primary hover:underline font-medium text-sm p-2 bg-primary/5 rounded-lg border border-primary/10 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Ver archivo de evidencia
+                    </a>
+                    
+                    {/* Previsualización inteligente */}
+                    {(() => {
+                      const url = campaign.evidenceUrl?.toLowerCase() || ''
+                      if (url.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+                        return (
+                          <div className="mt-2 relative group overflow-hidden rounded-xl border border-gray-200">
+                            <img src={campaign.evidenceUrl!} alt="Evidencia" className="max-w-full h-auto max-h-[300px] object-contain bg-gray-50" />
+                          </div>
+                        )
+                      }
+                      if (url.match(/\.(mp4|webm|ogg)$/)) {
+                        return (
+                          <div className="mt-2 rounded-xl border border-gray-200 overflow-hidden bg-black">
+                            <video src={campaign.evidenceUrl!} controls className="max-w-full h-auto max-h-[300px]" />
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
+                  </div>
                 ) : (
-                  <p className="text-gray-600">No registrada</p>
+                  <p className="text-gray-500 italic text-sm">No hay evidencia registrada para esta campaña.</p>
                 )}
               </div>
             </div>
@@ -704,20 +754,41 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
             />
             <p className="text-xs text-gray-400 mt-1">Cada línea: <code>Nombre de métrica: valor numérico</code> — aparecerá en la gráfica de barras.</p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <Input
               label="Tipo de anuncio"
               value={formData.adType}
               onChange={(e) => setFormData({ ...formData, adType: e.target.value })}
               fullWidth
             />
-            <Input
-              label="URL de evidencia"
-              value={formData.evidenceUrl}
-              onChange={(e) => setFormData({ ...formData, evidenceUrl: e.target.value })}
-              placeholder="https://..."
-              fullWidth
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Evidencia de la Campaña</label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.evidenceUrl}
+                  onChange={(e) => setFormData({ ...formData, evidenceUrl: e.target.value })}
+                  placeholder="URL o sube un archivo..."
+                  fullWidth
+                  className="flex-1"
+                />
+                <input
+                  ref={evidenceFileRef}
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleEvidenceUpload(f) }}
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => evidenceFileRef.current?.click()}
+                  disabled={uploadingEvidence}
+                  className="flex-shrink-0"
+                >
+                  <Upload className="w-4 h-4" />
+                </Button>
+              </div>
+              {uploadingEvidence && <p className="text-[10px] text-blue-600 animate-pulse font-bold">Subiendo a Supabase...</p>}
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>

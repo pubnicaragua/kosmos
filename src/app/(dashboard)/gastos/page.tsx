@@ -10,6 +10,7 @@ import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import * as XLSX from 'xlsx'
+import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Expense {
   id: string
@@ -177,23 +178,28 @@ export default function GastosPage() {
 
   const handleExport = () => {
     if (!expenses.length) {
-      alert('No hay gastos para exportar')
+      alert('No hay datos para exportar')
       return
     }
     const rows = expenses.map((e) => ({
       Empresa: e.company,
       Fecha: new Date(e.date).toLocaleDateString('es-ES'),
-      'N° Ref': e.refNumber,
+      Referencia: e.refNumber,
       Proveedor: e.provider,
       Concepto: e.concept,
       Categoría: e.category,
       Método: e.method,
       Monto: e.amount,
-      Estado: e.status,
+      Estado: e.status === 'PAID' ? 'Pagado' : e.status === 'PENDING' ? 'Pendiente' : 'Anulado',
     }))
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Gastos')
-    XLSX.writeFile(workbook, `gastos_${Date.now()}.xlsx`)
+
+    exportWithCompanyHeader(
+      rows,
+      `gastos_${Date.now()}.xlsx`,
+      'Reporte de Gastos Operativos',
+      companies,
+      selectedCompany
+    )
   }
 
   const handleSubmit = async (e: FormEvent) => {

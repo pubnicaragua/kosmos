@@ -8,6 +8,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
+import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 const FILTERS_STORAGE_KEY = 'ingresosFilters'
 
@@ -28,6 +29,16 @@ interface Income {
   margin: number
   status: 'PAID' | 'PENDING' | 'CANCELLED' | 'ERROR'
   date: string
+  companyLogo?: string | null
+  companyAddress?: string | null
+  companyPhone?: string | null
+  companyRuc?: string | null
+  companyIndustry?: string | null
+  companyQuoteHeader?: string | null
+  companyQuoteFooter?: string | null
+  companyInvoiceHeader?: string | null
+  companyInvoiceFooter?: string | null
+  companyInvoiceColor?: string | null
 }
 
 interface IncomeRowDraft {
@@ -78,6 +89,7 @@ export default function IngresosPage() {
   const [editingRows, setEditingRows] = useState<Record<string, IncomeRowDraft>>({})
   const [showImportModal, setShowImportModal] = useState(false)
   const [clientsList, setClientsList] = useState<string[]>([])
+  const [selectedPrintIncome, setSelectedPrintIncome] = useState<Income | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getDateRangeByPeriod = (period: string) => {
@@ -207,6 +219,25 @@ export default function IngresosPage() {
       if (summaryData.success) {
         setSummary(summaryData.data)
       }
+
+      // Pre-cargar datos de la empresa para impresión
+      const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+      if (activeCompany.id) {
+        const res = await fetch(`/api/companies/${activeCompany.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success) {
+          setIncomes(prev => prev.map(inc => ({
+            ...inc,
+            companyLogo: data.data.logo,
+            companyInvoiceHeader: data.data.invoiceHeaderHtml,
+            companyInvoiceFooter: data.data.invoiceFooterHtml,
+            companyInvoiceColor: data.data.invoicePrimaryColor,
+            companyIndustry: data.data.industry
+          })))
+        }
+      }
     } catch (error) {
       console.error('Error fetching incomes:', error)
     } finally {
@@ -215,37 +246,32 @@ export default function IngresosPage() {
   }
 
   const handleExport = async () => {
-    const token = localStorage.getItem('accessToken')
-    if (!token) return
+    if (!incomes.length) {
+      alert('No hay datos para exportar')
+      return
+    }
 
     setIsExporting(true)
     try {
-      const params = new URLSearchParams()
-      const { startDate, endDate } = getDateRangeByPeriod(selectedPeriod)
+      const rows = incomes.map(i => ({
+        Empresa: i.company,
+        Fecha: new Date(i.date).toLocaleDateString('es-ES'),
+        Referencia: i.refNumber,
+        Cliente: i.client,
+        Concepto: i.concept,
+        Metodo: i.method,
+        Monto: i.amount,
+        Margen: i.margin,
+        Estado: i.status === 'PAID' ? 'Pagado' : i.status === 'PENDING' ? 'Pendiente' : i.status === 'CANCELLED' ? 'Anulado' : 'Error'
+      }))
 
-      if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
-      if (selectedStatus !== 'all') params.append('status', selectedStatus)
-      params.append('startDate', startDate)
-      params.append('endDate', endDate)
-
-      const response = await fetch(`/api/incomes/export?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
-
-      const data = await response.json()
-      if (!data.success) return
-
-      const rows = data.data.data as Array<Record<string, unknown>>
-      if (!rows || rows.length === 0) {
-        alert('No hay ingresos para exportar con los filtros actuales')
-        return
-      }
-
-      const workbook = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Ingresos')
-      XLSX.writeFile(workbook, `ingresos_${new Date().toISOString().split('T')[0]}.xlsx`)
-    } catch (error) {
-      console.error('Error exporting incomes:', error)
+      exportWithCompanyHeader(
+        rows,
+        `ingresos_${new Date().toISOString().split('T')[0]}.xlsx`,
+        'Reporte de Ingresos',
+        companies,
+        selectedCompany
+      )
     } finally {
       setIsExporting(false)
     }
@@ -545,6 +571,14 @@ export default function IngresosPage() {
     return <Badge variant={variants[status]}>{labels[status]}</Badge>
   }
 
+  const handlePrint = (income: Income) => {
+    setSelectedPrintIncome(income)
+    setTimeout(() => {
+      window.print()
+      setSelectedPrintIncome(null)
+    }, 300)
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -735,6 +769,7 @@ export default function IngresosPage() {
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MONTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ESTADO</th>
+                <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">FACTURA</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
               </tr>
             </thead>
@@ -986,6 +1021,17 @@ export default function IngresosPage() {
                     <td className="py-4 px-4 text-center">
                       {getStatusBadge(income.status)}
                     </td>
+                    <td className="py-4 px-4 text-center">
+                      <button 
+                        onClick={() => handlePrint(income)}
+                        className="text-primary hover:text-primary/70 transition-colors"
+                        title="Imprimir Factura"
+                      >
+                        <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                      </button>
+                    </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-2">
                         <Button size="sm" variant="outline" onClick={() => startEditingRow(income)}>
@@ -1141,6 +1187,124 @@ export default function IngresosPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== PRINT LAYOUT (Factura) ===== */}
+      {selectedPrintIncome && (
+        <div id="invoice-print" className="fixed inset-0 bg-white z-[9999] p-8 font-sans text-sm text-gray-900 overflow-y-auto">
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #invoice-print, #invoice-print * { visibility: visible !important; }
+              #invoice-print { position: absolute !important; top: 0; left: 0; width: 100%; margin: 0; padding: 20px; }
+            }
+          `}</style>
+          
+          <div className="flex items-start justify-between mb-8">
+            <div>
+              {selectedPrintIncome.companyLogo ? (
+                <img src={selectedPrintIncome.companyLogo} alt="Logo" className="h-16 object-contain mb-2" />
+              ) : (
+                <div 
+                  className="text-2xl font-bold mb-1"
+                  style={{ color: selectedPrintIncome.companyInvoiceColor || '#1d4ed8' }}
+                >
+                  {selectedPrintIncome.company}
+                </div>
+              )}
+              {selectedPrintIncome.companyIndustry && (
+                <div className="text-xs text-gray-500 italic mb-2">{selectedPrintIncome.companyIndustry}</div>
+              )}
+              {selectedPrintIncome.companyInvoiceHeader && (
+                <div 
+                  className="text-[10px] text-gray-600 mt-2 max-w-sm whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: selectedPrintIncome.companyInvoiceHeader }}
+                />
+              )}
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-extrabold text-gray-800 tracking-wider">FACTURA</div>
+              <div className="text-lg font-bold text-gray-600 mt-1">N° {selectedPrintIncome.refNumber}</div>
+              <div className="mt-4 text-xs">
+                <div className="flex justify-end gap-4">
+                  <span className="font-semibold text-gray-500 uppercase">FECHA DE EMISIÓN</span>
+                  <span>{new Date(selectedPrintIncome.date).toLocaleDateString('es-NI')}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="border border-gray-200 rounded-lg p-4">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">FACTURAR A</div>
+              <div className="font-bold text-base text-gray-900 border-b border-gray-100 pb-2 mb-2">
+                {selectedPrintIncome.client.toUpperCase()}
+              </div>
+              <div className="space-y-1 text-xs text-gray-600">
+                <p><span className="font-semibold">Estado:</span> {selectedPrintIncome.status === 'PAID' ? 'PAGADO' : 'PENDIENTE'}</p>
+                <p><span className="font-semibold">Método de Pago:</span> {selectedPrintIncome.method}</p>
+              </div>
+            </div>
+            <div className="border border-gray-200 rounded-lg p-4 flex flex-col justify-center">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">RESUMEN DE PAGO</div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center text-gray-600">
+                  <span>Monto Total:</span>
+                  <span className="font-bold text-gray-900 text-lg">
+                    {formatCurrency(selectedPrintIncome.amount)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <table className="w-full border-collapse mb-8">
+            <thead>
+              <tr 
+                className="text-white text-[10px] uppercase tracking-wider"
+                style={{ backgroundColor: selectedPrintIncome.companyInvoiceColor || '#1d4ed8' }}
+              >
+                <th className="px-4 py-3 text-left font-bold rounded-tl-lg">DESCRIPCIÓN / CONCEPTO</th>
+                <th className="px-4 py-3 text-right font-bold rounded-tr-lg">TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-gray-100">
+                <td className="px-4 py-6 text-sm text-gray-800">
+                  {selectedPrintIncome.concept}
+                </td>
+                <td className="px-4 py-6 text-right text-base font-bold text-gray-900">
+                  {formatCurrency(selectedPrintIncome.amount)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="grid grid-cols-2 gap-12 pt-8">
+            <div>
+              {selectedPrintIncome.companyInvoiceFooter && (
+                <>
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">NOTAS ADICIONALES</div>
+                  <div 
+                    className="text-[10px] text-gray-500 whitespace-pre-wrap pb-4 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: selectedPrintIncome.companyInvoiceFooter }}
+                  />
+                </>
+              )}
+            </div>
+            <div className="flex flex-col items-center justify-end">
+              <div className="w-48 border-t border-gray-300 pt-2 text-center">
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">FIRMA AUTORIZADA</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-12 text-center border-t border-gray-100 pt-4">
+            <p className="text-[9px] text-gray-400 italic">
+              Este documento es una representación impresa de un ingreso registrado en Kosmos CRM.
+            </p>
           </div>
         </div>
       )}

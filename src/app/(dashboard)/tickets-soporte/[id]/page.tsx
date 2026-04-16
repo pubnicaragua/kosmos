@@ -18,6 +18,7 @@ interface Ticket {
   assignedTo: string | null
   createdAt: string
   updatedAt: string
+  evidence: string | null
   company: { name: string }
   client: { name: string } | null
 }
@@ -56,15 +57,18 @@ export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const evidenceInputRef = useRef<HTMLInputElement>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [comments, setComments] = useState<TicketComment[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [uploadingEvidence, setUploadingEvidence] = useState(false)
   const [commentError, setCommentError] = useState('')
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string } | null>(null)
   const [viewingFile, setViewingFile] = useState<{ url: string; name: string } | null>(null)
+  const [evidences, setEvidences] = useState<string[]>([])
 
   useEffect(() => {
     if (!params.id) return
@@ -81,7 +85,14 @@ export default function TicketDetailPage() {
         if (ticketRes.status === 401) { router.push('/login'); return }
 
         const ticketData = await ticketRes.json()
-        if (ticketData.success) setTicket(ticketData.data)
+        if (ticketData.success) {
+          setTicket(ticketData.data)
+          try {
+            if (ticketData.data.evidence) {
+              setEvidences(JSON.parse(ticketData.data.evidence))
+            }
+          } catch { /* ignore */ }
+        }
 
         if (commentsRes.ok) {
           const commentsData = await commentsRes.json()
@@ -151,6 +162,66 @@ export default function TicketDetailPage() {
       alert('Error al subir archivo')
     } finally {
       setUploadingFile(false)
+    }
+  }
+
+  const handleEvidenceSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    
+    setUploadingEvidence(true)
+    const token = localStorage.getItem('accessToken')
+    const newUrls: string[] = []
+
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        })
+        const data = await res.json()
+        if (data.success) {
+          newUrls.push(data.data.url)
+        }
+      }
+
+      if (newUrls.length > 0) {
+        const updatedEvidences = [...evidences, ...newUrls]
+        const updateRes = await fetch(`/api/tickets/${params.id}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ evidence: updatedEvidences }),
+        })
+        const updateData = await updateRes.json()
+        if (updateData.success) {
+          setEvidences(updatedEvidences)
+        }
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error al subir evidencias')
+    } finally {
+      setUploadingEvidence(false)
+      if (evidenceInputRef.current) evidenceInputRef.current.value = ''
+    }
+  }
+
+  const removeEvidence = async (url: string) => {
+    if (!window.confirm('¿Eliminar esta evidencia?')) return
+    const updated = evidences.filter(u => u !== url)
+    const token = localStorage.getItem('accessToken')
+    try {
+      const res = await fetch(`/api/tickets/${params.id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ evidence: updated }),
+      })
+      if (res.ok) setEvidences(updated)
+    } catch {
+      alert('Error al eliminar evidencia')
     }
   }
 
@@ -406,6 +477,75 @@ export default function TicketDetailPage() {
                 </button>
               </div>
             </div>
+          </Card>
+
+          {/* Evidencias */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Evidencias de Trabajo
+              </h2>
+              <button
+                onClick={() => evidenceInputRef.current?.click()}
+                disabled={uploadingEvidence}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 uppercase tracking-wider"
+              >
+                {uploadingEvidence ? 'Subiendo...' : 'Añadir Fotos/Videos'}
+              </button>
+              <input 
+                ref={evidenceInputRef} 
+                type="file" 
+                multiple 
+                accept="image/*,video/*" 
+                className="hidden" 
+                onChange={handleEvidenceSelect} 
+              />
+            </div>
+
+            {evidences.length === 0 ? (
+              <div 
+                className="border-2 border-dashed border-gray-100 rounded-xl py-10 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => evidenceInputRef.current?.click()}
+              >
+                <Upload className="w-8 h-8 text-gray-300 mb-2" />
+                <p className="text-xs text-gray-500 font-medium">Sube aquí las pruebas del trabajo realizado</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {evidences.map((url, i) => {
+                  const isVid = /\.(mp4|webm|ogg|mov)$/i.test(url)
+                  return (
+                    <div key={i} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                      {isVid ? (
+                        <video src={url} className="w-full h-full object-cover" />
+                      ) : (
+                        <img src={url} alt="evidencia" className="w-full h-full object-cover" />
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => setViewingFile({ url, name: `Evidencia ${i + 1}` })}
+                          className="p-1.5 bg-white rounded-full text-gray-900 hover:bg-primary hover:text-white transition-colors"
+                        >
+                          <ZoomIn className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => removeEvidence(url)}
+                          className="p-1.5 bg-white rounded-full text-gray-900 hover:bg-red-500 hover:text-white transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {isVid && (
+                        <div className="absolute bottom-1 right-1 p-1 bg-black/50 rounded text-[10px] text-white">
+                          VIDEO
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </Card>
         </div>
 

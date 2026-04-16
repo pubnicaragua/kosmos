@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui-kit/Button'
-import { Select } from '@/components/ui-kit/Select'
-import { Input } from '@/components/ui-kit/Input'
+import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 
 interface QuoteItem {
   tempId: number
@@ -187,15 +185,10 @@ export default function NuevaCotizacionPage() {
     const updated = [...items]
     updated[index] = { ...updated[index], [field]: value }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
-    
     setItems(updated)
   }
 
-  // Seleccionar producto del inventario
-  const selectProduct = (index: number, productId: string) => {
-    const product = products.find(p => p.id === productId)
-    if (!product) return
-
+  const selectProduct = (index: number, product: InventoryProduct) => {
     const updated = [...items]
     updated[index] = {
       ...updated[index],
@@ -339,13 +332,13 @@ export default function NuevaCotizacionPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase w-12">#</th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">PRODUCTO/SERVICIO</th>
-                    <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-20">CANT.</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-28">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-20">DESC. %</th>
-                    <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-24">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-28">TOTAL</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">PRODUCTO/SERVICIO</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">CANT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">PRECIO UNIT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">DESC. %</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">IMPUESTO</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-36">TOTAL</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
@@ -353,28 +346,14 @@ export default function NuevaCotizacionPage() {
                   {items.map((item, index) => (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
-                      <td className="py-2 px-2">
-                        <div className="space-y-1">
-                          {products.length > 0 && (
-                            <select
-                              value={item.productId}
-                              onChange={(e) => selectProduct(index, e.target.value)}
-                              className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-primary focus:border-primary bg-gray-50"
-                            >
-                              <option value="">📦 Seleccionar del inventario...</option>
-                              {products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name} - ${product.price} ({product.stock} disp.)
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          <Input
-                            type="text"
+                      <td className="py-3 px-2">
+                        <div className="space-y-2">
+                          <ProductAutocomplete
+                            companyId={selectedCompany}
                             value={item.description}
-                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                            placeholder={index === items.length - 1 ? 'Producto o servicio...' : 'Descripción'}
-                            fullWidth
+                            onChange={(val) => updateItem(index, 'description', val)}
+                            onSelect={(prod) => selectProduct(index, prod as any)}
+                            className="mb-1"
                           />
                         </div>
                       </td>
@@ -474,15 +453,12 @@ export default function NuevaCotizacionPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-                <Select
-                  options={[
-                    { value: '', label: clients.length ? 'Seleccionar cliente' : 'Sin clientes disponibles' },
-                    ...clients.map((client) => ({ value: client.id, label: client.name })),
-                  ]}
+                <label className="block text-xs font-black text-slate-500 mb-2 uppercase tracking-widest">Cliente</label>
+                <ClientAutocomplete
+                  companyId={selectedCompany}
                   value={selectedClient}
-                  onChange={(e) => setSelectedClient(e.target.value)}
-                  fullWidth
+                  onChange={(id) => setSelectedClient(id)}
+                  className="w-full"
                 />
               </div>
               <div>
@@ -550,14 +526,11 @@ export default function NuevaCotizacionPage() {
                 <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} fullWidth />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
-                <Select
-                  options={[
-                    { value: '', label: 'Seleccionar vendedor' },
-                    { value: 'seller1', label: 'CARLOS MÉNDEZ' },
-                  ]}
+                <UserAutocomplete
+                  label="Vendedor"
+                  companyId={selectedCompany}
                   value={seller}
-                  onChange={(e) => setSeller(e.target.value)}
+                  onChange={(val) => setSeller(val)}
                   fullWidth
                 />
               </div>

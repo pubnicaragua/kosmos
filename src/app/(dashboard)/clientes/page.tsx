@@ -315,8 +315,8 @@ export default function ClientesPage() {
       return
     }
 
-    if (!row.email || !row.contactName) {
-      alert('Email y nombre de contacto son obligatorios')
+    if (!row.email || !row.contactName || !row.phone) {
+      alert('Email, nombre de contacto y teléfono son obligatorios')
       return
     }
 
@@ -748,9 +748,12 @@ export default function ClientesPage() {
                         value={row.phone}
                         onChange={(e) => updateDraftRow(row.tempId, 'phone', e.target.value)}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-                        placeholder="Teléfono"
+                        className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                          !row.phone ? 'border-orange-300 bg-orange-50' : 'border-gray-300'
+                        }`}
+                        placeholder="Teléfono *"
                       />
+                      {!row.phone && <p className="text-xs text-orange-500">Requerido</p>}
                     </div>
                   </td>
                   <td className="py-2 px-2">

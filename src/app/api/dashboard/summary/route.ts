@@ -75,6 +75,12 @@ export async function GET(request: NextRequest) {
       currentNewClients,
       companyMeta,
       companySalesCurrent,
+      resolvedTickets,
+      totalTickets,
+      marketingMetrics,
+      activeContracts,
+      wonOpportunities,
+      lostOpportunities,
     ] = await Promise.all([
       prisma.income.aggregate({
         where: { ...incomeWhereClause, status: 'PAID' },
@@ -132,6 +138,46 @@ export async function GET(request: NextRequest) {
           ...(incomeWhereClause.date ? { date: incomeWhereClause.date } : {}),
         },
         _sum: { amount: true },
+      }),
+      prisma.ticket.count({
+        where: {
+          companyId: { in: scopedCompanyIds },
+          status: { in: ['RESUELTO', 'CERRADO'] },
+          ...(dateWhere.gte || dateWhere.lte ? { createdAt: dateWhere } : {}),
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          companyId: { in: scopedCompanyIds },
+          ...(dateWhere.gte || dateWhere.lte ? { createdAt: dateWhere } : {}),
+        },
+      }),
+      prisma.marketingCampaign.aggregate({
+        where: {
+          companyId: { in: scopedCompanyIds },
+          ...(dateWhere.gte || dateWhere.lte ? { createdAt: dateWhere } : {}),
+        },
+        _sum: { budget: true, spent: true },
+      }),
+      prisma.contract.count({
+        where: {
+          companyId: { in: scopedCompanyIds },
+          status: 'ACTIVE',
+        },
+      }),
+      prisma.opportunity.aggregate({
+        where: {
+          ...opportunityWhereClause,
+          stage: 'GANADA',
+        },
+        _sum: { value: true },
+        _count: { id: true },
+      }),
+      prisma.opportunity.count({
+        where: {
+          ...opportunityWhereClause,
+          stage: 'PERDIDA',
+        },
       }),
     ])
 
@@ -263,6 +309,11 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    const ticketResolutionRate = totalTickets > 0 ? (resolvedTickets / totalTickets) * 100 : 0
+    const mktBudget = marketingMetrics._sum.budget || 0
+    const mktSpent = marketingMetrics._sum.spent || 0
+    const mktRoi = mktSpent > 0 ? ((totalSales._sum.amount || 0) / mktSpent) : 0
+
     return successResponse({
       kpis: {
         totalSales: totalSales._sum.amount || 0,
@@ -274,6 +325,14 @@ export async function GET(request: NextRequest) {
         activeClients,
         clientsGrowth,
         newClientsThisPeriod: currentNewClients,
+        ticketResolutionRate,
+        activeContracts,
+        marketingBudget: mktBudget,
+        marketingSpent: mktSpent,
+        marketingRoi: mktRoi,
+        wonValue: wonOpportunities._sum.value || 0,
+        wonCount: wonOpportunities._count.id || 0,
+        lostCount: lostOpportunities,
       },
       monthlyData,
       performanceByCompany,

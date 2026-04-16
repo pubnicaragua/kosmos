@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
       closeDate: opp.closeDate?.toISOString(),
       priority: opp.priority || 'MEDIA',
       description: opp.description || null,
+      assignedUsers: opp.assignedUsers || '[]',
+      currency: opp.currency || 'USD',
       createdAt: opp.createdAt.toISOString(),
     })))
   } catch (error) {
@@ -101,6 +103,8 @@ export async function POST(request: NextRequest) {
           ...baseOppData,
           companyId,
           closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
+          currency: oppData.currency || 'USD',
+          assignedUsers: oppData.assignedUsers || '[]',
           ...(priority !== undefined ? { priority } : {}),
           ...(description !== undefined ? { description } : {}),
         },
@@ -118,20 +122,23 @@ export async function POST(request: NextRequest) {
       } else throw e
     }
 
-    // Notificar al usuario asignado
-    if (oppData.assignedTo) {
-      const userRecord = await prisma.user.findFirst({ 
-        where: { name: oppData.assignedTo }, 
-        select: { id: true } 
-      })
-      if (userRecord && userRecord.id !== decoded.userId) {
-        await notifyAssignment({
-          assignedUserId: userRecord.id,
-          assignedByUserId: decoded.userId,
-          itemType: 'opportunity',
-          itemTitle: oppData.title,
-          itemId: opportunity.id,
-        })
+    // Notificar a los usuarios asignados (vía assignedUsers JSON)
+    if (oppData.assignedUsers) {
+      try {
+        const userIds = JSON.parse(oppData.assignedUsers) as string[]
+        for (const targetUserId of userIds) {
+          if (targetUserId !== decoded.userId) {
+            await notifyAssignment({
+              assignedUserId: targetUserId,
+              assignedByUserId: decoded.userId,
+              itemType: 'opportunity',
+              itemTitle: oppData.title,
+              itemId: opportunity.id,
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing assignedUsers for notification:', err)
       }
     }
 

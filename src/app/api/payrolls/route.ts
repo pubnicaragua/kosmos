@@ -5,11 +5,8 @@ import { successResponse, errorResponse } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
 function getPayrollModel() {
-  const payrollModel = (prisma as any).payroll
-  if (!payrollModel) {
-    return null
-  }
-  return payrollModel
+  // Try both common pluralizations just in case
+  return (prisma as any).payroll || (prisma as any).payrolls
 }
 
 export async function GET(request: NextRequest) {
@@ -78,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { companyId, period, fileName, fileUrl, totalAmount, notes, createExpense } = body
+    const { companyId, name, period, fileName, fileUrl, totalAmount, notes, createExpense } = body
 
     if (!companyId || !period || !fileName || !fileUrl || totalAmount === undefined) {
       return errorResponse('Faltan campos requeridos', 400)
@@ -122,6 +119,7 @@ export async function POST(request: NextRequest) {
     const payroll = await payrollModel.create({
       data: {
         companyId,
+        name,
         period,
         fileName,
         fileUrl,

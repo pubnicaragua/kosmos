@@ -151,8 +151,20 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Notify ALL assigned users (supports comma-separated names)
-    if (validatedData.assignedTo) {
+    // Notify ALL assigned users (preferring assignedUsers IDs)
+    const assignedUserIds = body.assignedUsers || []
+    if (Array.isArray(assignedUserIds) && assignedUserIds.length > 0) {
+      for (const assignedUserId of assignedUserIds) {
+        await notifyAssignment({
+          assignedUserId,
+          assignedByUserId: decoded.userId,
+          itemType: 'ticket',
+          itemTitle: validatedData.title,
+          itemId: ticket.id,
+        })
+      }
+    } else if (validatedData.assignedTo) {
+      // Fallback for names
       const assignees = validatedData.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
       for (const name of assignees) {
         const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })

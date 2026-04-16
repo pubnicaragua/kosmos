@@ -274,10 +274,21 @@ export default function DetalleCotizacionPage() {
             {companyDetails?.logo ? (
               <img src={companyDetails.logo} alt={companyDetails.name} className="h-16 object-contain mb-1" />
             ) : (
-              <div className="text-2xl font-extrabold text-blue-700 tracking-wider mb-1">{companyDetails?.name || quote.company?.name || 'EMPRESA'}</div>
+              <div 
+                className="text-2xl font-extrabold tracking-wider mb-1"
+                style={{ color: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
+              >
+                {companyDetails?.name || quote.company?.name || 'EMPRESA'}
+              </div>
             )}
             {companyDetails?.industry && (
               <div className="text-xs text-gray-500 italic">{companyDetails.industry}</div>
+            )}
+            {companyDetails?.quoteHeaderHtml && (
+              <div 
+                className="text-[10px] text-gray-600 mt-2 max-w-sm whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ __html: companyDetails.quoteHeaderHtml }}
+              />
             )}
           </div>
           <div className="text-right">
@@ -287,7 +298,10 @@ export default function DetalleCotizacionPage() {
                 <span className="font-semibold">FECHA</span>
                 <span>{new Date(quote.createdAt).toLocaleDateString('es-NI')}</span>
               </div>
-              <div className="flex justify-end gap-4 mt-1 border border-green-600 px-2 py-0.5 rounded">
+              <div 
+                className="flex justify-end gap-4 mt-1 border px-2 py-0.5 rounded"
+                style={{ borderColor: companyDetails?.quotePrimaryColor || '#16a34a' }}
+              >
                 <span className="font-semibold">VALIDO HASTA</span>
                 <span>{new Date(quote.validUntil).toLocaleDateString('es-NI')}</span>
               </div>
@@ -298,7 +312,12 @@ export default function DetalleCotizacionPage() {
         {/* Info table: Company info left, Client info right */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="border border-gray-400">
-            <div className="bg-blue-700 text-white text-center font-bold py-1 text-xs tracking-wider">INFORMACION</div>
+            <div 
+              className="text-white text-center font-bold py-1 text-xs tracking-wider"
+              style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
+            >
+              INFORMACION
+            </div>
             <div className="p-2 space-y-0.5 text-xs">
               <div><span className="font-semibold">Asesor:</span> {(quote as any).createdByUser?.name || 'N/A'}</div>
               <div><span className="font-semibold">Email:</span> {(quote as any).createdByUser?.email || companyDetails?.email || ''}</div>
@@ -308,7 +327,10 @@ export default function DetalleCotizacionPage() {
             </div>
           </div>
           <div className="border border-gray-400">
-            <div className="bg-blue-700 text-white text-center font-bold py-1 text-xs tracking-wider flex justify-between px-3">
+            <div 
+              className="text-white text-center font-bold py-1 text-xs tracking-wider flex justify-between px-3"
+              style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
+            >
               <span>CLIENTE:</span>
               <span className="font-extrabold">{quote.client.name.toUpperCase()}</span>
             </div>
@@ -325,7 +347,7 @@ export default function DetalleCotizacionPage() {
         {/* Items table */}
         <table className="w-full border-collapse text-xs mb-4">
           <thead>
-            <tr className="bg-blue-700 text-white">
+            <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
               <th className="border border-gray-400 px-2 py-1 text-left font-bold">CODIGO</th>
               <th className="border border-gray-400 px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
               <th className="border border-gray-400 px-2 py-1 text-center font-bold">CANT.</th>
@@ -361,21 +383,38 @@ export default function DetalleCotizacionPage() {
                 <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             )}
-            <tr className="bg-blue-700 text-white">
-              <td className="border border-blue-800 px-3 py-1.5 font-extrabold text-sm">TOTAL</td>
-              <td className="border border-blue-800 px-3 py-1.5 text-right font-extrabold text-sm">{currencySymbol} {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
+              <td className="border px-3 py-1.5 font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>TOTAL</td>
+              <td className="border px-3 py-1.5 text-right font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>{currencySymbol} {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
           </table>
         </div>
 
-        {/* Notes and payment */}
-        {quote.notes && (
-          <div className="text-xs mb-2 border-t pt-2">
-            <span className="font-semibold">Notas: </span>{quote.notes}
+        {/* Notes, terms and footer */}
+        <div className="space-y-4">
+          {quote.notes && (
+            <div className="text-xs border-t pt-2">
+              <span className="font-semibold">Notas: </span>{quote.notes}
+            </div>
+          )}
+          
+          {(companyDetails?.quoteTerms || quote.terms) && (
+            <div className="text-[10px] text-gray-700">
+              <div className="font-bold mb-1 uppercase">Términos y Condiciones:</div>
+              <div className="whitespace-pre-wrap">{companyDetails?.quoteTerms || quote.terms}</div>
+            </div>
+          )}
+
+          <div className="text-xs text-gray-600">
+            <span className="font-semibold">Forma de pago: </span>{quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}
           </div>
-        )}
-        <div className="text-xs text-gray-600">
-          <span className="font-semibold">Forma de pago: </span>{quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}
+
+          {companyDetails?.quoteFooterHtml && (
+            <div 
+              className="text-[10px] text-center text-gray-500 border-t pt-2"
+              dangerouslySetInnerHTML={{ __html: companyDetails.quoteFooterHtml }}
+            />
+          )}
         </div>
       </div>
       {/* ===== END PRINT SECTION ===== */}

@@ -13,6 +13,7 @@ interface ClientAutocompleteProps {
   companyId: string
   value: string
   onChange: (value: string) => void
+  onSelect?: (client: ClientOption) => void
   placeholder?: string
   className?: string
 }
@@ -70,9 +71,10 @@ export function ClientAutocomplete({
     (c.contactName || '').toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleSelect = (name: string) => {
-    setSearch(name)
-    onChange(name)
+  const handleSelect = (client: ClientOption) => {
+    setSearch(client.name)
+    onChange(client.id)
+    if (onSelect) onSelect(client)
     setIsOpen(false)
   }
 
@@ -96,7 +98,7 @@ export function ClientAutocomplete({
             <button
               key={c.id}
               type="button"
-              onClick={() => handleSelect(c.name)}
+              onClick={() => handleSelect(c)}
               className="w-full px-3 py-2 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0"
             >
               <span className="text-sm font-medium text-gray-900">{c.name}</span>

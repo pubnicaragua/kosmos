@@ -41,6 +41,13 @@ export async function GET(request: NextRequest) {
             isActive: company.isActive,
             role: userCompany?.role || 'SUPER_ADMIN',
             createdAt: company.createdAt,
+            quotePrimaryColor: company.quotePrimaryColor,
+            quoteHeaderHtml: company.quoteHeaderHtml,
+            quoteFooterHtml: company.quoteFooterHtml,
+            quoteTerms: company.quoteTerms,
+            invoicePrimaryColor: company.invoicePrimaryColor,
+            invoiceHeaderHtml: company.invoiceHeaderHtml,
+            invoiceFooterHtml: company.invoiceFooterHtml,
           }
         })
       )
@@ -54,6 +61,13 @@ export async function GET(request: NextRequest) {
       isActive: uc.company.isActive,
       role: uc.role,
       createdAt: uc.company.createdAt,
+      quotePrimaryColor: uc.company.quotePrimaryColor,
+      quoteHeaderHtml: uc.company.quoteHeaderHtml,
+      quoteFooterHtml: uc.company.quoteFooterHtml,
+      quoteTerms: uc.company.quoteTerms,
+      invoicePrimaryColor: uc.company.invoicePrimaryColor,
+      invoiceHeaderHtml: uc.company.invoiceHeaderHtml,
+      invoiceFooterHtml: uc.company.invoiceFooterHtml,
     }))
 
     return successResponse(companies)

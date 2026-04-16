@@ -1,49 +1,65 @@
-import { PrismaClient } from '@prisma/client'
+﻿import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Iniciando seed de la base de datos...')
+  console.log('ðŸŒ± Iniciando seed de la base de datos...')
 
-  const hashedPassword = await bcrypt.hash('admin123', 10)
-  const managerPassword = await bcrypt.hash('manager123', 10)
-  const userPassword = await bcrypt.hash('user123', 10)
+  const superAdminSeedPassword = process.env.SEED_SUPERADMIN_PASSWORD || 'Kosmos!Admin2026#'
+  const managerSeedPassword = process.env.SEED_MANAGER_PASSWORD || 'Kosmos!Manager2026#'
+  const userSeedPassword = process.env.SEED_USER_PASSWORD || 'Kosmos!User2026#'
+
+  const hashedPassword = await bcrypt.hash(superAdminSeedPassword, 10)
+  const managerPassword = await bcrypt.hash(managerSeedPassword, 10)
+  const userPassword = await bcrypt.hash(userSeedPassword, 10)
 
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@kosmoscrm.com' },
-    update: {},
+    update: {
+      password: hashedPassword,
+      name: 'Carlos Méndez',
+      avatar: null,
+    },
     create: {
       email: 'admin@kosmoscrm.com',
       password: hashedPassword,
-      name: 'Carlos Méndez',
+      name: 'Carlos MÃ©ndez',
       avatar: null,
     },
   })
 
   const manager = await prisma.user.upsert({
     where: { email: 'manager@kosmoscrm.com' },
-    update: {},
+    update: {
+      password: managerPassword,
+      name: 'Ana García',
+      avatar: null,
+    },
     create: {
       email: 'manager@kosmoscrm.com',
       password: managerPassword,
-      name: 'Ana García',
+      name: 'Ana GarcÃ­a',
       avatar: null,
     },
   })
 
   const regularUser = await prisma.user.upsert({
     where: { email: 'user@kosmoscrm.com' },
-    update: {},
-    create: {
-      email: 'user@kosmoscrm.com',
+    update: {
       password: userPassword,
       name: 'Juan Pérez',
       avatar: null,
     },
+    create: {
+      email: 'user@kosmoscrm.com',
+      password: userPassword,
+      name: 'Juan PÃ©rez',
+      avatar: null,
+    },
   })
 
-  console.log('✅ Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
+  console.log('âœ… Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
 
   if (process.env.PRUNE_LEGACY_COMPANIES === 'true') {
     const removed = await prisma.company.deleteMany({
@@ -58,7 +74,7 @@ async function main() {
     })
 
     if (removed.count > 0) {
-      console.log(`🧹 Legacy companies removed: ${removed.count}`)
+      console.log(`ðŸ§¹ Legacy companies removed: ${removed.count}`)
     }
   }
 
@@ -85,14 +101,14 @@ async function main() {
     update: {
       name: 'Rapidus',
       logo: '/assets/logos/rapidus.png',
-      industry: 'Logística y Transporte',
+      industry: 'LogÃ­stica y Transporte',
       isActive: true,
     },
     create: {
       id: 'company-rapidus',
       name: 'Rapidus',
       logo: '/assets/logos/rapidus.png',
-      industry: 'Logística y Transporte',
+      industry: 'LogÃ­stica y Transporte',
       isActive: true,
     },
   })
@@ -102,14 +118,14 @@ async function main() {
     update: {
       name: 'Unitec',
       logo: '/assets/logos/unitec.png',
-      industry: 'Educación',
+      industry: 'EducaciÃ³n',
       isActive: true,
     },
     create: {
       id: 'company-unitec',
       name: 'Unitec',
       logo: '/assets/logos/unitec.png',
-      industry: 'Educación',
+      industry: 'EducaciÃ³n',
       isActive: true,
     },
   })
@@ -119,14 +135,14 @@ async function main() {
     update: {
       name: 'ITSI',
       logo: '/assets/logos/itsi.png',
-      industry: 'Tecnología',
+      industry: 'TecnologÃ­a',
       isActive: true,
     },
     create: {
       id: 'company-itsi',
       name: 'ITSI',
       logo: '/assets/logos/itsi.png',
-      industry: 'Tecnología',
+      industry: 'TecnologÃ­a',
       isActive: true,
     },
   })
@@ -136,20 +152,20 @@ async function main() {
     update: {
       name: 'Hotel Marbella',
       logo: '/assets/logos/hotel-marbella.png',
-      industry: 'Hotelería y Turismo',
+      industry: 'HotelerÃ­a y Turismo',
       isActive: true,
     },
     create: {
       id: 'company-hotel-marbella',
       name: 'Hotel Marbella',
       logo: '/assets/logos/hotel-marbella.png',
-      industry: 'Hotelería y Turismo',
+      industry: 'HotelerÃ­a y Turismo',
       isActive: true,
     },
   })
 
   const companies = [extel, rapidus, unitec, itsi, hotelMarbella]
-  console.log('✅ 5 Empresas reales creadas:', companies.map(c => c.name).join(', '))
+  console.log('âœ… 5 Empresas reales creadas:', companies.map(c => c.name).join(', '))
 
   await prisma.userCompany.upsert({
     where: {
@@ -211,7 +227,7 @@ async function main() {
     },
   })
 
-  console.log('✅ Relaciones usuario-empresa creadas (3 usuarios con roles diferentes)')
+  console.log('âœ… Relaciones usuario-empresa creadas (3 usuarios con roles diferentes)')
 
   // Crear 5 usuarios por cada empresa (25 usuarios totales)
   const usersByCompany = [
@@ -255,18 +271,18 @@ async function main() {
     }
   }
 
-  console.log('✅ 25 usuarios adicionales creados (5 por empresa)')
+  console.log('âœ… 25 usuarios adicionales creados (5 por empresa)')
 
   const incomes = [
     { client: 'Cliente A', concept: 'Desarrollo Web', amount: 15000, margin: 35, method: 'Transferencia', status: 'PAID' as const },
-    { client: 'Cliente B', concept: 'Consultoría IT', amount: 8500, margin: 40, method: 'Cheque', status: 'PAID' as const },
-    { client: 'Cliente C', concept: 'Soporte Técnico', amount: 3200, margin: 50, method: 'Efectivo', status: 'PENDING' as const },
+    { client: 'Cliente B', concept: 'ConsultorÃ­a IT', amount: 8500, margin: 40, method: 'Cheque', status: 'PAID' as const },
+    { client: 'Cliente C', concept: 'Soporte TÃ©cnico', amount: 3200, margin: 50, method: 'Efectivo', status: 'PENDING' as const },
     { client: 'Cliente D', concept: 'Licencias Software', amount: 12000, margin: 30, method: 'Transferencia', status: 'PAID' as const },
     { client: 'Cliente E', concept: 'Hosting Anual', amount: 2400, margin: 60, method: 'Tarjeta', status: 'PENDING' as const },
     { client: 'Cliente F', concept: 'Mantenimiento', amount: 5500, margin: 45, method: 'Transferencia', status: 'PAID' as const },
-    { client: 'Cliente G', concept: 'Capacitación', amount: 4800, margin: 55, method: 'Cheque', status: 'PAID' as const },
+    { client: 'Cliente G', concept: 'CapacitaciÃ³n', amount: 4800, margin: 55, method: 'Cheque', status: 'PAID' as const },
     { client: 'Cliente H', concept: 'Desarrollo App', amount: 22000, margin: 38, method: 'Transferencia', status: 'PENDING' as const },
-    { client: 'Cliente I', concept: 'Diseño UX/UI', amount: 6700, margin: 42, method: 'Transferencia', status: 'PAID' as const },
+    { client: 'Cliente I', concept: 'DiseÃ±o UX/UI', amount: 6700, margin: 42, method: 'Transferencia', status: 'PAID' as const },
     { client: 'Cliente J', concept: 'SEO Mensual', amount: 1800, margin: 65, method: 'Tarjeta', status: 'PAID' as const },
   ]
 
@@ -286,19 +302,19 @@ async function main() {
     })
   }
 
-  console.log('✅ 10 ingresos creados')
+  console.log('âœ… 10 ingresos creados')
 
   const expenses = [
     { provider: 'AWS', concept: 'Hosting Cloud', amount: 850, category: 'Infraestructura', method: 'Tarjeta', status: 'PAID' as const },
     { provider: 'Office Depot', concept: 'Material Oficina', amount: 320, category: 'Suministros', method: 'Efectivo', status: 'PAID' as const },
-    { provider: 'Telefónica', concept: 'Internet Empresarial', amount: 180, category: 'Servicios', method: 'Transferencia', status: 'PENDING' as const },
+    { provider: 'TelefÃ³nica', concept: 'Internet Empresarial', amount: 180, category: 'Servicios', method: 'Transferencia', status: 'PENDING' as const },
     { provider: 'Adobe', concept: 'Licencias Creative Cloud', amount: 450, category: 'Software', method: 'Tarjeta', status: 'PAID' as const },
-    { provider: 'Uber Eats', concept: 'Almuerzos Equipo', amount: 275, category: 'Alimentación', method: 'Tarjeta', status: 'PAID' as const },
+    { provider: 'Uber Eats', concept: 'Almuerzos Equipo', amount: 275, category: 'AlimentaciÃ³n', method: 'Tarjeta', status: 'PAID' as const },
     { provider: 'Microsoft', concept: 'Office 365', amount: 380, category: 'Software', method: 'Transferencia', status: 'PAID' as const },
-    { provider: 'Freelancer', concept: 'Diseño Gráfico', amount: 1200, category: 'Servicios', method: 'Transferencia', status: 'PENDING' as const },
+    { provider: 'Freelancer', concept: 'DiseÃ±o GrÃ¡fico', amount: 1200, category: 'Servicios', method: 'Transferencia', status: 'PENDING' as const },
     { provider: 'Google Ads', concept: 'Publicidad Digital', amount: 950, category: 'Marketing', method: 'Tarjeta', status: 'PAID' as const },
     { provider: 'Zoom', concept: 'Plan Empresarial', amount: 150, category: 'Software', method: 'Tarjeta', status: 'PAID' as const },
-    { provider: 'Courier', concept: 'Envíos Documentos', amount: 85, category: 'Logística', method: 'Efectivo', status: 'PENDING' as const },
+    { provider: 'Courier', concept: 'EnvÃ­os Documentos', amount: 85, category: 'LogÃ­stica', method: 'Efectivo', status: 'PENDING' as const },
   ]
 
   for (const expense of expenses) {
@@ -317,19 +333,19 @@ async function main() {
     })
   }
 
-  console.log('✅ 10 gastos creados')
+  console.log('âœ… 10 gastos creados')
 
   const activities = [
     { type: 'CALL' as const, title: 'Llamada seguimiento Cliente A', client: 'Cliente A', status: 'COMPLETED' as const, priority: 'Alta' },
-    { type: 'MEETING' as const, title: 'Reunión presentación proyecto', client: 'Cliente B', status: 'PENDING' as const, priority: 'Alta' },
-    { type: 'QUOTE' as const, title: 'Cotización desarrollo web', client: 'Cliente C', status: 'IN_PROGRESS' as const, priority: 'Media' },
-    { type: 'CALL' as const, title: 'Llamada soporte técnico', client: 'Cliente D', status: 'COMPLETED' as const, priority: 'Baja' },
-    { type: 'MEETING' as const, title: 'Reunión cierre contrato', client: 'Cliente E', status: 'PENDING' as const, priority: 'Alta' },
-    { type: 'OTHER' as const, title: 'Envío propuesta comercial', client: 'Cliente F', status: 'COMPLETED' as const, priority: 'Media' },
-    { type: 'CALL' as const, title: 'Llamada renovación servicio', client: 'Cliente G', status: 'PENDING' as const, priority: 'Media' },
-    { type: 'QUOTE' as const, title: 'Cotización mantenimiento', client: 'Cliente H', status: 'IN_PROGRESS' as const, priority: 'Baja' },
-    { type: 'MEETING' as const, title: 'Reunión kickoff proyecto', client: 'Cliente I', status: 'PENDING' as const, priority: 'Alta' },
-    { type: 'CALL' as const, title: 'Llamada resolución incidencia', client: 'Cliente J', status: 'COMPLETED' as const, priority: 'Alta' },
+    { type: 'MEETING' as const, title: 'ReuniÃ³n presentaciÃ³n proyecto', client: 'Cliente B', status: 'PENDING' as const, priority: 'Alta' },
+    { type: 'QUOTE' as const, title: 'CotizaciÃ³n desarrollo web', client: 'Cliente C', status: 'IN_PROGRESS' as const, priority: 'Media' },
+    { type: 'CALL' as const, title: 'Llamada soporte tÃ©cnico', client: 'Cliente D', status: 'COMPLETED' as const, priority: 'Baja' },
+    { type: 'MEETING' as const, title: 'ReuniÃ³n cierre contrato', client: 'Cliente E', status: 'PENDING' as const, priority: 'Alta' },
+    { type: 'OTHER' as const, title: 'EnvÃ­o propuesta comercial', client: 'Cliente F', status: 'COMPLETED' as const, priority: 'Media' },
+    { type: 'CALL' as const, title: 'Llamada renovaciÃ³n servicio', client: 'Cliente G', status: 'PENDING' as const, priority: 'Media' },
+    { type: 'QUOTE' as const, title: 'CotizaciÃ³n mantenimiento', client: 'Cliente H', status: 'IN_PROGRESS' as const, priority: 'Baja' },
+    { type: 'MEETING' as const, title: 'ReuniÃ³n kickoff proyecto', client: 'Cliente I', status: 'PENDING' as const, priority: 'Alta' },
+    { type: 'CALL' as const, title: 'Llamada resoluciÃ³n incidencia', client: 'Cliente J', status: 'COMPLETED' as const, priority: 'Alta' },
   ]
 
   for (const activity of activities) {
@@ -338,7 +354,7 @@ async function main() {
         companyId: extel.id,
         type: activity.type,
         title: activity.title,
-        description: `Descripción de ${activity.title}`,
+        description: `DescripciÃ³n de ${activity.title}`,
         client: activity.client,
         status: activity.status,
         priority: activity.priority,
@@ -349,19 +365,19 @@ async function main() {
     })
   }
 
-  console.log('✅ 10 actividades creadas')
+  console.log('âœ… 10 actividades creadas')
 
   const opportunities = [
     { title: 'Desarrollo ERP Personalizado', client: 'Empresa X', value: 45000, stage: 'PROSPECTO' as const },
-    { title: 'Migración Cloud AWS', client: 'Empresa Y', value: 28000, stage: 'PROPUESTA' as const },
-    { title: 'App Móvil iOS/Android', client: 'Empresa Z', value: 35000, stage: 'NEGOCIACION' as const },
-    { title: 'Consultoría Transformación Digital', client: 'Empresa W', value: 52000, stage: 'CALIFICADO' as const },
+    { title: 'MigraciÃ³n Cloud AWS', client: 'Empresa Y', value: 28000, stage: 'PROPUESTA' as const },
+    { title: 'App MÃ³vil iOS/Android', client: 'Empresa Z', value: 35000, stage: 'NEGOCIACION' as const },
+    { title: 'ConsultorÃ­a TransformaciÃ³n Digital', client: 'Empresa W', value: 52000, stage: 'CALIFICADO' as const },
     { title: 'Sistema CRM Customizado', client: 'Empresa V', value: 38000, stage: 'PROPUESTA' as const },
     { title: 'Plataforma E-commerce', client: 'Empresa U', value: 42000, stage: 'PROSPECTO' as const },
-    { title: 'Integración API Pagos', client: 'Empresa T', value: 15000, stage: 'NEGOCIACION' as const },
+    { title: 'IntegraciÃ³n API Pagos', client: 'Empresa T', value: 15000, stage: 'NEGOCIACION' as const },
     { title: 'Dashboard Analytics BI', client: 'Empresa S', value: 22000, stage: 'PROPUESTA' as const },
-    { title: 'Automatización Procesos RPA', client: 'Empresa R', value: 31000, stage: 'CALIFICADO' as const },
-    { title: 'Auditoría Seguridad IT', client: 'Empresa Q', value: 18000, stage: 'PROSPECTO' as const },
+    { title: 'AutomatizaciÃ³n Procesos RPA', client: 'Empresa R', value: 31000, stage: 'CALIFICADO' as const },
+    { title: 'AuditorÃ­a Seguridad IT', client: 'Empresa Q', value: 18000, stage: 'PROSPECTO' as const },
   ]
 
   for (const opp of opportunities) {
@@ -379,14 +395,14 @@ async function main() {
     })
   }
 
-  console.log('✅ 10 oportunidades creadas')
+  console.log('âœ… 10 oportunidades creadas')
 
   const documents = [
     { name: 'Contrato Cliente A.pdf', type: 'PDF' as const, concept: 'Contrato Servicios', size: 245000 },
     { name: 'Propuesta Comercial B.docx', type: 'DOC' as const, concept: 'Propuesta', size: 128000 },
     { name: 'Reporte Financiero Q4.xlsx', type: 'XLSX' as const, concept: 'Finanzas', size: 512000 },
     { name: 'Logo Empresa.png', type: 'PNG' as const, concept: 'Branding', size: 89000 },
-    { name: 'Manual Usuario.pdf', type: 'PDF' as const, concept: 'Documentación', size: 1024000 },
+    { name: 'Manual Usuario.pdf', type: 'PDF' as const, concept: 'DocumentaciÃ³n', size: 1024000 },
   ]
 
   for (const doc of documents) {
@@ -404,7 +420,7 @@ async function main() {
     })
   }
 
-  console.log('✅ 5 documentos creados')
+  console.log('âœ… 5 documentos creados')
 
   const contracts = [
     { contractId: 'CTR-2024-001', name: 'Contrato Hosting AWS', party: 'Amazon Web Services', startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), status: 'ACTIVE' as const },
@@ -432,15 +448,15 @@ async function main() {
     })
   }
 
-  console.log('✅ 5 contratos creados')
+  console.log('âœ… 5 contratos creados')
 
   const clients = [
-    { name: 'Acme Corporation', contactName: 'Roberto Martínez', email: 'roberto@acme.com', phone: '+505 8888-1111', status: 'ACTIVO' as const },
-    { name: 'Global Tech SA', contactName: 'María López', email: 'maria@globaltech.com', phone: '+505 8888-2222', status: 'PROSPECTO' as const },
-    { name: 'Innovate Solutions', contactName: 'Pedro Sánchez', email: 'pedro@innovate.com', phone: '+505 8888-3333', status: 'PROPUESTA' as const },
-    { name: 'Digital Marketing Pro', contactName: 'Laura Fernández', email: 'laura@dmpro.com', phone: '+505 8888-4444', status: 'NEGOCIACION' as const },
-    { name: 'Enterprise Systems', contactName: 'José Ramírez', email: 'jose@enterprise.com', phone: '+505 8888-5555', status: 'CALIFICADO' as const },
-    { name: 'Cloud Services Inc', contactName: 'Carmen Díaz', email: 'carmen@cloudservices.com', phone: '+505 8888-6666', status: 'ACTIVO' as const },
+    { name: 'Acme Corporation', contactName: 'Roberto MartÃ­nez', email: 'roberto@acme.com', phone: '+505 8888-1111', status: 'ACTIVO' as const },
+    { name: 'Global Tech SA', contactName: 'MarÃ­a LÃ³pez', email: 'maria@globaltech.com', phone: '+505 8888-2222', status: 'PROSPECTO' as const },
+    { name: 'Innovate Solutions', contactName: 'Pedro SÃ¡nchez', email: 'pedro@innovate.com', phone: '+505 8888-3333', status: 'PROPUESTA' as const },
+    { name: 'Digital Marketing Pro', contactName: 'Laura FernÃ¡ndez', email: 'laura@dmpro.com', phone: '+505 8888-4444', status: 'NEGOCIACION' as const },
+    { name: 'Enterprise Systems', contactName: 'JosÃ© RamÃ­rez', email: 'jose@enterprise.com', phone: '+505 8888-5555', status: 'CALIFICADO' as const },
+    { name: 'Cloud Services Inc', contactName: 'Carmen DÃ­az', email: 'carmen@cloudservices.com', phone: '+505 8888-6666', status: 'ACTIVO' as const },
     { name: 'Tech Startup', contactName: 'Miguel Torres', email: 'miguel@techstartup.com', phone: '+505 8888-7777', status: 'PROSPECTO' as const },
   ]
 
@@ -457,10 +473,10 @@ async function main() {
     })
   }
 
-  console.log('✅ 7 clientes creados')
+  console.log('âœ… 7 clientes creados')
 
   const categories = [
-    { name: 'Hardware', description: 'Equipos y componentes físicos' },
+    { name: 'Hardware', description: 'Equipos y componentes fÃ­sicos' },
     { name: 'Software', description: 'Licencias y aplicaciones' },
     { name: 'Servicios', description: 'Servicios profesionales' },
     { name: 'Consumibles', description: 'Material de oficina y consumibles' },
@@ -485,7 +501,7 @@ async function main() {
     })
   }
 
-  console.log('✅ 4 categorías de productos creadas')
+  console.log('âœ… 4 categorÃ­as de productos creadas')
 
   const hardwareCat = await prisma.productCategory.findFirst({ where: { name: 'Hardware', companyId: extel.id } })
   const softwareCat = await prisma.productCategory.findFirst({ where: { name: 'Software', companyId: extel.id } })
@@ -495,11 +511,11 @@ async function main() {
     { sku: 'HW-001', name: 'Laptop Dell XPS 15', categoryId: hardwareCat!.id, stock: 15, cost: 1200, price: 1800, description: 'Laptop profesional' },
     { sku: 'HW-002', name: 'Monitor LG 27"', categoryId: hardwareCat!.id, stock: 8, cost: 250, price: 400, description: 'Monitor 4K' },
     { sku: 'SW-001', name: 'Licencia Office 365', categoryId: softwareCat!.id, stock: 50, cost: 80, price: 150, description: 'Licencia anual' },
-    { sku: 'SW-002', name: 'Antivirus Kaspersky', categoryId: softwareCat!.id, stock: 30, cost: 40, price: 80, description: 'Protección empresarial' },
-    { sku: 'SV-001', name: 'Consultoría IT', categoryId: servicesCat!.id, stock: 100, cost: 50, price: 120, description: 'Hora de consultoría' },
-    { sku: 'SV-002', name: 'Soporte Técnico', categoryId: servicesCat!.id, stock: 100, cost: 30, price: 75, description: 'Hora de soporte' },
-    { sku: 'HW-003', name: 'Teclado Mecánico', categoryId: hardwareCat!.id, stock: 25, cost: 60, price: 120, description: 'Teclado gaming' },
-    { sku: 'HW-004', name: 'Mouse Inalámbrico', categoryId: hardwareCat!.id, stock: 40, cost: 15, price: 35, description: 'Mouse ergonómico' },
+    { sku: 'SW-002', name: 'Antivirus Kaspersky', categoryId: softwareCat!.id, stock: 30, cost: 40, price: 80, description: 'ProtecciÃ³n empresarial' },
+    { sku: 'SV-001', name: 'ConsultorÃ­a IT', categoryId: servicesCat!.id, stock: 100, cost: 50, price: 120, description: 'Hora de consultorÃ­a' },
+    { sku: 'SV-002', name: 'Soporte TÃ©cnico', categoryId: servicesCat!.id, stock: 100, cost: 30, price: 75, description: 'Hora de soporte' },
+    { sku: 'HW-003', name: 'Teclado MecÃ¡nico', categoryId: hardwareCat!.id, stock: 25, cost: 60, price: 120, description: 'Teclado gaming' },
+    { sku: 'HW-004', name: 'Mouse InalÃ¡mbrico', categoryId: hardwareCat!.id, stock: 40, cost: 15, price: 35, description: 'Mouse ergonÃ³mico' },
   ]
 
   for (const product of products) {
@@ -531,7 +547,7 @@ async function main() {
     })
   }
 
-  console.log('✅ 8 productos creados')
+  console.log('âœ… 8 productos creados')
 
   const clientsForQuotes = await prisma.client.findMany({ where: { companyId: extel.id }, take: 3 })
   const productsForQuotes = await prisma.product.findMany({ where: { companyId: extel.id }, take: 4 })
@@ -552,7 +568,7 @@ async function main() {
         total: 3933,
         status: 'DRAFT',
         validUntil: new Date(2024, 11, 31),
-        notes: 'Cotización para equipos de oficina',
+        notes: 'CotizaciÃ³n para equipos de oficina',
         createdBy: superAdmin.id,
         items: {
           create: [
@@ -574,7 +590,7 @@ async function main() {
         total: 1311,
         status: 'SENT',
         validUntil: new Date(2025, 0, 15),
-        notes: 'Cotización servicios de consultoría',
+        notes: 'CotizaciÃ³n servicios de consultorÃ­a',
         createdBy: superAdmin.id,
         items: {
           create: [
@@ -585,17 +601,17 @@ async function main() {
     })
   }
 
-  console.log('✅ 2 cotizaciones creadas')
+  console.log('âœ… 2 cotizaciones creadas')
 
   const clientsForTickets = await prisma.client.findMany({ where: { companyId: extel.id } })
 
   const tickets = [
-    { title: 'Error en módulo de facturación', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_REMOTO' as const, amount: 500 },
-    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integración con API de pagos', priority: 'MEDIA' as const, status: 'EN_PROCESO' as const, type: 'INSTALACION_CAMARAS' as const, amount: 2500 },
-    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovación de licencias', priority: 'BAJA' as const, status: 'RESUELTO' as const, type: 'COTIZACION_TECNICA' as const, amount: 150 },
-    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicación está lenta en horas pico', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_SITIO' as const, amount: 800 },
-    { title: 'Capacitación usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitación para nuevo personal', priority: 'MEDIA' as const, status: 'CERRADO' as const, type: 'MANTENIMIENTO_PREVENTIVO' as const, amount: 1200 },
-    { title: 'Migración de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'ALTA' as const, status: 'EN_PROCESO' as const, type: 'CONFIGURACION_DVR_NVR' as const, amount: 3500 },
+    { title: 'Error en mÃ³dulo de facturaciÃ³n', clientId: clientsForTickets[0]?.id, description: 'El sistema no genera facturas correctamente', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_REMOTO' as const, amount: 500 },
+    { title: 'Solicitud nueva funcionalidad', clientId: clientsForTickets[1]?.id, description: 'Requieren integraciÃ³n con API de pagos', priority: 'MEDIA' as const, status: 'EN_PROCESO' as const, type: 'INSTALACION_CAMARAS' as const, amount: 2500 },
+    { title: 'Consulta sobre licencias', clientId: clientsForTickets[2]?.id, description: 'Dudas sobre renovaciÃ³n de licencias', priority: 'BAJA' as const, status: 'RESUELTO' as const, type: 'COTIZACION_TECNICA' as const, amount: 150 },
+    { title: 'Problema de rendimiento', clientId: clientsForTickets[3]?.id, description: 'La aplicaciÃ³n estÃ¡ lenta en horas pico', priority: 'ALTA' as const, status: 'NUEVO' as const, type: 'SOPORTE_SITIO' as const, amount: 800 },
+    { title: 'CapacitaciÃ³n usuarios', clientId: clientsForTickets[4]?.id, description: 'Solicitan capacitaciÃ³n para nuevo personal', priority: 'MEDIA' as const, status: 'CERRADO' as const, type: 'MANTENIMIENTO_PREVENTIVO' as const, amount: 1200 },
+    { title: 'MigraciÃ³n de datos', clientId: clientsForTickets[5]?.id, description: 'Necesitan migrar datos del sistema antiguo', priority: 'ALTA' as const, status: 'EN_PROCESO' as const, type: 'CONFIGURACION_DVR_NVR' as const, amount: 3500 },
   ]
 
   let ticketCounter = 1
@@ -619,33 +635,33 @@ async function main() {
     }
   }
 
-  console.log('✅ 6 tickets creados')
+  console.log('âœ… 6 tickets creados')
 
-  // Crear campañas de marketing para cada empresa
+  // Crear campaÃ±as de marketing para cada empresa
   const marketingCampaigns = [
     // Extel - Telecomunicaciones
     { companyId: extel.id, name: 'Lanzamiento 5G Nicaragua', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 50000, spent: 32000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas y consumidores urbanos', metrics: 'Alcance: 500K, CTR: 3.2%, Conversiones: 1200' },
-    { companyId: extel.id, name: 'Campaña Fibra Óptica', channel: 'REDES_SOCIALES', status: 'COMPLETADA', budget: 25000, spent: 24500, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 5, 30), targetAudience: 'Hogares y oficinas', metrics: 'Engagement: 15%, Leads: 850' },
+    { companyId: extel.id, name: 'CampaÃ±a Fibra Ã“ptica', channel: 'REDES_SOCIALES', status: 'COMPLETADA', budget: 25000, spent: 24500, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 5, 30), targetAudience: 'Hogares y oficinas', metrics: 'Engagement: 15%, Leads: 850' },
     { companyId: extel.id, name: 'Email Marketing Corporativo', channel: 'EMAIL', status: 'EN_CURSO', budget: 8000, spent: 3200, startDate: new Date(2024, 6, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas B2B', metrics: 'Open Rate: 28%, Click Rate: 12%' },
     
-    // Rapidus - Logística
+    // Rapidus - LogÃ­stica
     { companyId: rapidus.id, name: 'Rapidus Express 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 35000, spent: 18000, startDate: new Date(2024, 1, 1), endDate: new Date(2024, 10, 30), targetAudience: 'E-commerce y retailers', metrics: 'Impresiones: 2M, CTR: 2.8%' },
-    { companyId: rapidus.id, name: 'Campaña Envíos Gratis', channel: 'REDES_SOCIALES', status: 'PAUSADA', budget: 15000, spent: 8500, startDate: new Date(2024, 3, 1), endDate: new Date(2024, 8, 30), targetAudience: 'Consumidores finales', metrics: 'Alcance: 300K, Engagement: 8%' },
-    { companyId: rapidus.id, name: 'Contenido Blog Logística', channel: 'CONTENIDO', status: 'EN_CURSO', budget: 12000, spent: 7200, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas logística', metrics: 'Visitas: 45K, Tiempo: 3.5min' },
+    { companyId: rapidus.id, name: 'CampaÃ±a EnvÃ­os Gratis', channel: 'REDES_SOCIALES', status: 'PAUSADA', budget: 15000, spent: 8500, startDate: new Date(2024, 3, 1), endDate: new Date(2024, 8, 30), targetAudience: 'Consumidores finales', metrics: 'Alcance: 300K, Engagement: 8%' },
+    { companyId: rapidus.id, name: 'Contenido Blog LogÃ­stica', channel: 'CONTENIDO', status: 'EN_CURSO', budget: 12000, spent: 7200, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas logÃ­stica', metrics: 'Visitas: 45K, Tiempo: 3.5min' },
     
-    // Unitec - Educación
-    { companyId: unitec.id, name: 'Matrícula 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'COMPLETADA', budget: 45000, spent: 43000, startDate: new Date(2023, 10, 1), endDate: new Date(2024, 1, 28), targetAudience: 'Estudiantes bachillerato', metrics: 'Leads: 2500, Matrículas: 850' },
-    { companyId: unitec.id, name: 'Campaña Redes Sociales', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 20000, spent: 12000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Jóvenes 17-25 años', metrics: 'Seguidores: +15K, Engagement: 12%' },
+    // Unitec - EducaciÃ³n
+    { companyId: unitec.id, name: 'MatrÃ­cula 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'COMPLETADA', budget: 45000, spent: 43000, startDate: new Date(2023, 10, 1), endDate: new Date(2024, 1, 28), targetAudience: 'Estudiantes bachillerato', metrics: 'Leads: 2500, MatrÃ­culas: 850' },
+    { companyId: unitec.id, name: 'CampaÃ±a Redes Sociales', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 20000, spent: 12000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'JÃ³venes 17-25 aÃ±os', metrics: 'Seguidores: +15K, Engagement: 12%' },
     { companyId: unitec.id, name: 'Open House Virtual', channel: 'EVENTOS', status: 'PLANIFICACION', budget: 18000, spent: 0, startDate: new Date(2024, 9, 1), endDate: new Date(2024, 10, 30), targetAudience: 'Prospectos y padres', metrics: 'Pendiente' },
     
-    // itsi - Tecnología
+    // itsi - TecnologÃ­a
     { companyId: itsi.id, name: 'Soluciones Cloud 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 40000, spent: 25000, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Empresas medianas y grandes', metrics: 'Leads: 180, Demos: 45' },
-    { companyId: itsi.id, name: 'Webinars Tecnología', channel: 'EVENTOS', status: 'EN_CURSO', budget: 15000, spent: 9000, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 11, 31), targetAudience: 'CTOs y gerentes IT', metrics: 'Asistentes: 320, Leads: 85' },
-    { companyId: itsi.id, name: 'Email Drip Campaign', channel: 'EMAIL', status: 'EN_CURSO', budget: 10000, spent: 4500, startDate: new Date(2024, 4, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Base de datos clientes', metrics: 'Open: 32%, Conversión: 8%' },
+    { companyId: itsi.id, name: 'Webinars TecnologÃ­a', channel: 'EVENTOS', status: 'EN_CURSO', budget: 15000, spent: 9000, startDate: new Date(2024, 2, 1), endDate: new Date(2024, 11, 31), targetAudience: 'CTOs y gerentes IT', metrics: 'Asistentes: 320, Leads: 85' },
+    { companyId: itsi.id, name: 'Email Drip Campaign', channel: 'EMAIL', status: 'EN_CURSO', budget: 10000, spent: 4500, startDate: new Date(2024, 4, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Base de datos clientes', metrics: 'Open: 32%, ConversiÃ³n: 8%' },
     
-    // Hotel Marbella - Hotelería
+    // Hotel Marbella - HotelerÃ­a
     { companyId: hotelMarbella.id, name: 'Temporada Alta 2024', channel: 'PUBLICIDAD_DIGITAL', status: 'EN_CURSO', budget: 30000, spent: 18000, startDate: new Date(2024, 5, 1), endDate: new Date(2024, 8, 30), targetAudience: 'Turistas nacionales e internacionales', metrics: 'Reservas: 450, ROI: 280%' },
-    { companyId: hotelMarbella.id, name: 'Redes Sociales Turismo', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 12000, spent: 7500, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Viajeros 25-55 años', metrics: 'Alcance: 250K, Engagement: 10%' },
+    { companyId: hotelMarbella.id, name: 'Redes Sociales Turismo', channel: 'REDES_SOCIALES', status: 'EN_CURSO', budget: 12000, spent: 7500, startDate: new Date(2024, 0, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Viajeros 25-55 aÃ±os', metrics: 'Alcance: 250K, Engagement: 10%' },
     { companyId: hotelMarbella.id, name: 'Alianzas Agencias Viaje', channel: 'OTRO', status: 'PLANIFICACION', budget: 20000, spent: 0, startDate: new Date(2024, 8, 1), endDate: new Date(2024, 11, 31), targetAudience: 'Agencias de viaje', metrics: 'Pendiente' },
   ]
 
@@ -667,10 +683,10 @@ async function main() {
     })
   }
 
-  console.log('✅ 15 campañas de marketing creadas (3 por empresa)')
+  console.log('âœ… 15 campaÃ±as de marketing creadas (3 por empresa)')
 
-  console.log('\n🎉 Seed completado exitosamente!')
-  console.log('\n📊 Resumen:')
+  console.log('\nðŸŽ‰ Seed completado exitosamente!')
+  console.log('\nðŸ“Š Resumen:')
   console.log('   - 28 usuarios (3 base + 25 distribuidos en empresas)')
   console.log('   - 5 empresas reales (Extel, Rapidus, Unitec, itsi, Hotel Marbella)')
   console.log('   - 10 ingresos')
@@ -680,28 +696,30 @@ async function main() {
   console.log('   - 5 documentos')
   console.log('   - 5 contratos')
   console.log('   - 7 clientes')
-  console.log('   - 4 categorías de productos')
+  console.log('   - 4 categorÃ­as de productos')
   console.log('   - 8 productos')
   console.log('   - 2 cotizaciones')
   console.log('   - 6 tickets')
-  console.log('   - 15 campañas de marketing')
-  console.log('\n🔐 Credenciales de acceso:')
-  console.log('\n   👑 SUPER ADMIN (acceso total):')
+  console.log('   - 15 campaÃ±as de marketing')
+  console.log('\nðŸ” Credenciales de acceso:')
+  console.log('\n   ðŸ‘‘ SUPER ADMIN (acceso total):')
   console.log('      Email: admin@kosmoscrm.com')
-  console.log('      Password: admin123')
-  console.log('\n   👔 MANAGER (gestión y reportes):')
+  console.log(`      Password: ${superAdminSeedPassword}`)
+  console.log('\n   ðŸ‘” MANAGER (gestiÃ³n y reportes):')
   console.log('      Email: manager@kosmoscrm.com')
-  console.log('      Password: manager123')
-  console.log('\n   👤 USER (operaciones básicas):')
+  console.log(`      Password: ${managerSeedPassword}`)
+  console.log('\n   ðŸ‘¤ USER (operaciones bÃ¡sicas):')
   console.log('      Email: user@kosmoscrm.com')
-  console.log('      Password: user123')
+  console.log(`      Password: ${userSeedPassword}`)
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error durante el seed:', e)
+    console.error('âŒ Error durante el seed:', e)
     process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
   })
+
+

@@ -19,7 +19,8 @@ interface MarketingCampaign {
   targetAudience: string | null
   adType?: string | null
   evidenceUrl?: string | null
-  approvalStatus?: string | null
+  assignedTo: string | null
+  assignedUsers: string // JSON array
   company: { name: string }
 }
 
@@ -298,26 +299,24 @@ export default function MarketingPage() {
           return (
             <div 
               key={column.id} 
-              className={`flex flex-col transition-all duration-200 rounded-lg ${
+              className={`flex flex-col transition-all duration-300 rounded-xl bg-white border border-gray-200 shadow-sm ${
                 isDropTarget 
-                  ? 'ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' 
+                  ? 'ring-2 ring-primary ring-offset-2 scale-[1.01] bg-slate-50' 
                   : ''
               }`}
               onDragOver={(e) => handleDragOver(e, column.id)}
               onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(column.id)}
             >
-              <div className={`${column.color} rounded-t-lg px-4 py-3 border-b-2 border-gray-300`}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">{column.label}</h3>
-                  <span className="bg-white px-2 py-1 rounded-full text-xs font-medium">
-                    {columnCampaigns.length}
-                  </span>
-                </div>
+              <div className={`${column.color.replace('from-', 'border-t-4 border-')} rounded-t-xl px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between`}>
+                <h3 className="font-bold text-gray-800 text-sm tracking-tight uppercase">{column.label}</h3>
+                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                  {columnCampaigns.length}
+                </span>
               </div>
               
-              <div className={`flex-1 bg-gray-50 rounded-b-lg p-3 space-y-3 min-h-[300px] max-h-[calc(100vh-300px)] overflow-y-auto transition-all duration-200 scrollbar-thin scrollbar-thumb-gray-300 ${
-                isDropTarget ? 'bg-blue-50' : ''
+              <div className={`flex-1 p-3 space-y-4 min-h-[400px] max-h-[calc(100vh-350px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 transition-colors duration-300 ${
+                isDropTarget ? 'bg-primary/5' : ''
               }`}>
                 {columnCampaigns.map((campaign, index) => {
                   const isDragging = draggedCampaign?.id === campaign.id
@@ -329,98 +328,91 @@ export default function MarketingPage() {
                       onDragStart={() => handleDragStart(campaign)}
                       onDragOver={(e) => handleDragOverCard(e, campaign.id)}
                       onDragEnd={() => { setDraggedCampaign(null); setDragOverStatus(null); setDragOverCardId(null) }}
-                      className={`group bg-white rounded-lg p-4 shadow-sm hover:shadow-lg transition-all duration-200 cursor-grab active:cursor-grabbing border-l-4 select-none animate-in fade-in slide-in-from-bottom-2 ${
+                      className={`group bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing border-l-4 select-none ${
                         isDragging
-                          ? 'opacity-50 scale-95 rotate-1'
+                          ? 'opacity-40 scale-95 rotate-1 grayscale shadow-inner border-gray-400'
                           : dragOverCardId === campaign.id && draggedCampaign?.id !== campaign.id
-                          ? 'ring-2 ring-blue-400 scale-[1.02]'
-                          : 'opacity-100 scale-100 hover:scale-[1.02] hover:-translate-y-1'
+                          ? 'ring-2 ring-primary scale-[1.02] border border-primary/20'
+                          : 'border border-gray-100'
                       }`}
                       style={{ 
-                        borderLeftColor: STATUS_COLUMNS.find(c => c.id === column.id)?.badgeColor.replace('bg-', ''),
-                        animationDelay: `${index * 50}ms`,
-                        animationDuration: '300ms',
-                        animationFillMode: 'both'
+                        borderLeftColor: column.badgeColor.replace('bg-', ''),
                       }}
                       onClick={(e) => {
                         if (!isDragging) router.push(`/marketing/${campaign.id}`)
                       }}
                     >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-gray-900 text-sm line-clamp-1">{campaign.name}</h4>
-                      <div className={`p-2 rounded-lg ${STATUS_COLUMNS.find(c => c.id === column.id)?.color} transition-transform hover:rotate-12`}>
-                        {getChannelIcon(campaign.channel)}
+                      {/* Drag Handle Highlight */}
+                      <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
                       </div>
-                    </div>
-                    
-                    {campaign.description && (
-                      <p className="text-xs text-gray-600 mb-3 line-clamp-2">
-                        {campaign.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span
-                        className={`px-2 py-1 rounded-full text-[11px] font-medium ${getApprovalStatusStyle(campaign.approvalStatus)}`}
-                      >
-                        {getApprovalStatusLabel(campaign.approvalStatus)}
-                      </span>
-                      {campaign.adType && (
-                        <span className="px-2 py-1 rounded-full text-[11px] font-medium bg-indigo-100 text-indigo-700">
-                          {campaign.adType}
-                        </span>
-                      )}
-                    </div>
-
-                    {campaign.evidenceUrl && (
-                      <a
-                        href={campaign.evidenceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block text-[11px] text-primary hover:underline mb-2 truncate"
-                        title={campaign.evidenceUrl}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Evidencia: {campaign.evidenceUrl}
-                      </a>
-                    )}
-                    
-                    {campaign.budget && (
-                      <div className="flex items-center justify-between text-xs mb-2 p-2 bg-gray-50 rounded">
-                        <span className="text-gray-500 flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" />
-                          Presupuesto:
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          ${campaign.budget.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    {campaign.spent > 0 && campaign.budget && (
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">Gastado:</span>
-                          <span className="font-semibold text-primary">
-                            ${campaign.spent.toLocaleString()}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex flex-col gap-1">
+                          <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getApprovalStatusStyle(campaign.approvalStatus)}`}>
+                            {getApprovalStatusLabel(campaign.approvalStatus)}
                           </span>
+                          <h4 className="font-bold text-gray-900 text-sm line-clamp-2 leading-tight">{campaign.name}</h4>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min((campaign.spent / campaign.budget) * 100, 100)}%` }}
-                          />
+                        <div className={`p-2 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-300`}>
+                          {getChannelIcon(campaign.channel)}
                         </div>
                       </div>
-                    )}
-                    
-                    {campaign.startDate && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
-                        <Calendar className="w-3 h-3" />
-                        <span>{new Date(campaign.startDate).toLocaleDateString()}</span>
+                      
+                      {campaign.description && (
+                        <p className="text-[11px] text-gray-500 mb-4 line-clamp-2 italic leading-relaxed">
+                          "{campaign.description}"
+                        </p>
+                      )}
+
+                      <div className="space-y-3">
+                        {campaign.budget && (
+                          <div>
+                            <div className="flex items-center justify-between text-[10px] mb-1.5">
+                              <span className="text-gray-400 font-medium flex items-center gap-1">
+                                <DollarSign className="w-3 h-3" /> PRESUPUESTO
+                              </span>
+                              <span className="font-bold text-gray-700">${campaign.budget.toLocaleString()}</span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-[10px] mb-1">
+                              <span className="text-gray-400 font-medium">GASTADO</span>
+                              <span className="font-bold text-primary">${campaign.spent.toLocaleString()}</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                              <div 
+                                className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
+                                style={{ width: `${Math.min((campaign.spent / (campaign.budget || 1)) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-2">
+                          {campaign.startDate && (
+                            <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(campaign.startDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          <div className="flex -space-x-2 overflow-hidden">
+                             {JSON.parse(campaign.assignedUsers || '[]').length > 0 ? (
+                               JSON.parse(campaign.assignedUsers || '[]').slice(0, 3).map((userId: string, i: number) => (
+                                 <div key={userId} className="w-6 h-6 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[8px] font-black text-white hover:z-10 transition-transform hover:scale-110">
+                                   U{i+1}
+                                 </div>
+                               ))
+                             ) : (
+                               <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-slate-400">?</div>
+                             )}
+                             {JSON.parse(campaign.assignedUsers || '[]').length > 3 && (
+                               <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[7px] font-black text-slate-600">
+                                 +{JSON.parse(campaign.assignedUsers || '[]').length - 3}
+                               </div>
+                             )}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
                   )
                 })}
 

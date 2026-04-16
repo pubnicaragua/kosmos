@@ -27,6 +27,13 @@ interface CompanyProfile {
   logo: string | null
   isActive: boolean
   role: string
+  quotePrimaryColor: string | null
+  quoteHeaderHtml: string | null
+  quoteFooterHtml: string | null
+  quoteTerms: string | null
+  invoicePrimaryColor: string | null
+  invoiceHeaderHtml: string | null
+  invoiceFooterHtml: string | null
 }
 
 interface RolePermission {
@@ -77,6 +84,7 @@ const MODULE_LABELS: Record<string, { label: string; icon: any }> = {
   'tickets-soporte': { label: 'Tickets de Soporte', icon: Ticket },
   marketing: { label: 'Marketing', icon: Megaphone },
   entregables: { label: 'Entregables', icon: FolderOpen },
+  'solicitudes-compra': { label: 'Solicitudes de Compra', icon: ShoppingCart },
   sistema: { label: 'Sistema', icon: Settings },
 }
 
@@ -87,7 +95,7 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   USER: 'bg-gray-100 text-gray-600',
 }
 
-const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
+const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','solicitudes-compra','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
 
 const FALLBACK_PREDEFINED_ROLES: PredefinedRole[] = [
   { name: 'Vendedor', description: 'Acceso a clientes, pipeline y cotizaciones', color: '#10b981', modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
@@ -98,7 +106,31 @@ const FALLBACK_PREDEFINED_ROLES: PredefinedRole[] = [
   { name: 'Soporte', description: 'Gestión de tickets de soporte', color: '#ef4444', modules: { 'tickets-soporte': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
 ]
 
-type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles'
+const QUOTE_TEMPLATE_BASE = `
+<div style="font-family: sans-serif; line-height: 1.4;">
+  <p><strong>Nuestros Servicios Incluyen:</strong></p>
+  <ul style="margin: 5px 0; padding-left: 20px; color: #4b5563; font-size: 11px;">
+    <li>Asesoría técnica personalizada 24/7.</li>
+    <li>Garantía extendida por 12 meses en equipos.</li>
+    <li>Instalación profesional certificada.</li>
+    <li>Mantenimiento preventivo programado.</li>
+  </ul>
+  <p style="margin-top: 10px; font-size: 10px; border-top: 1px dotted #ccc; pt-2;">
+    <i>"Seguridad y confianza en cada paso tecnológico"</i>
+  </p>
+</div>
+`
+
+const INVOICE_TEMPLATE_BASE = `
+<div style="font-family: sans-serif; background: #f8fafc; padding: 10px; border-radius: 5px;">
+  <p style="font-weight: bold; margin-bottom: 5px;">Datos de Pago Bancario:</p>
+  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>BAC Credomatic:</strong> 123-45678-9 (Dólares)</p>
+  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>BANPRO:</strong> 987-65432-1 (Córdobas)</p>
+  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>A nombre de:</strong> Kosmos Solutions S.A.</p>
+</div>
+`
+
+type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles' | 'plantillas'
 
 export default function AjustesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
@@ -113,7 +145,16 @@ export default function AjustesPage() {
   const [companyMsg, setCompanyMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [profileForm, setProfileForm] = useState({ name: '', avatar: '' })
-  const [companyForm, setCompanyForm] = useState({ name: '', industry: '', logo: '', isActive: true })
+  const [companyForm, setCompanyForm] = useState({ 
+    name: '', industry: '', logo: '', isActive: true,
+    quotePrimaryColor: '#3b82f6',
+    quoteHeaderHtml: '',
+    quoteFooterHtml: '',
+    quoteTerms: '',
+    invoicePrimaryColor: '#3b82f6',
+    invoiceHeaderHtml: '',
+    invoiceFooterHtml: ''
+  })
 
   // Roles state
   const [roles, setRoles] = useState<CustomRole[]>([])
@@ -142,6 +183,7 @@ export default function AjustesPage() {
   const [newPassword, setNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
+  const [showPreview, setShowPreview] = useState<'quote' | 'invoice' | null>(null)
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
@@ -251,6 +293,13 @@ export default function AjustesPage() {
         industry: company.industry || '',
         logo: company.logo || '',
         isActive: company.isActive,
+        quotePrimaryColor: company.quotePrimaryColor || '#3b82f6',
+        quoteHeaderHtml: company.quoteHeaderHtml || '',
+        quoteFooterHtml: company.quoteFooterHtml || '',
+        quoteTerms: company.quoteTerms || '',
+        invoicePrimaryColor: company.invoicePrimaryColor || '#3b82f6',
+        invoiceHeaderHtml: company.invoiceHeaderHtml || '',
+        invoiceFooterHtml: company.invoiceFooterHtml || ''
       })
     }
   }, [selectedCompanyId, companies])
@@ -301,6 +350,13 @@ export default function AjustesPage() {
           industry: companyForm.industry || null,
           logo: companyForm.logo || null,
           isActive: companyForm.isActive,
+          quotePrimaryColor: companyForm.quotePrimaryColor,
+          quoteHeaderHtml: companyForm.quoteHeaderHtml,
+          quoteFooterHtml: companyForm.quoteFooterHtml,
+          quoteTerms: companyForm.quoteTerms,
+          invoicePrimaryColor: companyForm.invoicePrimaryColor,
+          invoiceHeaderHtml: companyForm.invoiceHeaderHtml,
+          invoiceFooterHtml: companyForm.invoiceFooterHtml
         }),
       })
       const data = await res.json()
@@ -596,6 +652,7 @@ export default function AjustesPage() {
           { key: 'empresa', label: 'Empresa' },
           { key: 'usuarios', label: 'Mis Empresas' },
           { key: 'roles', label: 'Roles & Permisos', icon: Shield },
+          { key: 'plantillas', label: 'Plantillas', icon: FileText },
         ] as { key: Tab; label: string; icon?: any }[]).map(({ key, label, icon }) => (
           <button
             key={key}
@@ -1229,6 +1286,294 @@ export default function AjustesPage() {
           </div>
         </div>
       )}
+      {/* TAB: Plantillas */}
+      {activeTab === 'plantillas' && (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex items-center gap-4 mb-6">
+              <Select
+                label="Empresa"
+                options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                className="w-72"
+              />
+              <Badge variant="success">Configurando Plantillas</Badge>
+            </div>
+
+            {!canEditCompany && (
+              <div className="p-3 bg-yellow-50 text-yellow-700 rounded-lg text-sm mb-4">
+                Solo los administradores pueden configurar las plantillas.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Proformas */}
+              <div className="space-y-6">
+                <div className="border-b pb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Plantilla de Cotizaciones (Proformas)
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" size="sm" 
+                      onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
+                    >
+                      Cargar Diseño Base
+                    </Button>
+                    <Button 
+                      variant="outline" size="sm" 
+                      onClick={() => setShowPreview('quote')}
+                      className="bg-blue-50 border-blue-200 text-blue-600"
+                    >
+                      Previsualizar
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario (Tablas y Títulos)</label>
+                    <div className="flex gap-3 items-center">
+                      <input 
+                        type="color" 
+                        value={companyForm.quotePrimaryColor}
+                        onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
+                        className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
+                        disabled={!canEditCompany}
+                      />
+                      <Input 
+                        value={companyForm.quotePrimaryColor}
+                        onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
+                        className="flex-1"
+                        placeholder="#000000"
+                        disabled={!canEditCompany}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado Personalizado (HTML/Texto)</label>
+                    <textarea
+                      value={companyForm.quoteHeaderHtml}
+                      onChange={(e) => setCompanyForm({...companyForm, quoteHeaderHtml: e.target.value})}
+                      placeholder="Agrega textos adicionales o códigos HTML para el encabezado..."
+                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
+                      disabled={!canEditCompany}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Términos y Condiciones por Defecto</label>
+                    <textarea
+                      value={companyForm.quoteTerms}
+                      onChange={(e) => setCompanyForm({...companyForm, quoteTerms: e.target.value})}
+                      placeholder="Ej: • Validez: 30 días..."
+                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary focus:border-primary"
+                      disabled={!canEditCompany}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página</label>
+                    <Input
+                      value={companyForm.quoteFooterHtml}
+                      onChange={(e) => setCompanyForm({...companyForm, quoteFooterHtml: e.target.value})}
+                      placeholder="Texto legal o agradecimiento..."
+                      fullWidth
+                      disabled={!canEditCompany}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Facturas */}
+              <div className="space-y-6">
+                <div className="border-b pb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-green-600" />
+                    Plantilla de Facturas (Ingresos)
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" size="sm" 
+                      onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
+                    >
+                      Cargar Diseño Base
+                    </Button>
+                    <Button 
+                      variant="outline" size="sm" 
+                      onClick={() => setShowPreview('invoice')}
+                      className="bg-green-50 border-green-200 text-green-600"
+                    >
+                      Previsualizar
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario</label>
+                    <div className="flex gap-3 items-center">
+                      <input 
+                        type="color" 
+                        value={companyForm.invoicePrimaryColor}
+                        onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
+                        className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
+                        disabled={!canEditCompany}
+                      />
+                      <Input 
+                        value={companyForm.invoicePrimaryColor}
+                        onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
+                        className="flex-1"
+                        placeholder="#000000"
+                        disabled={!canEditCompany}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado de Factura</label>
+                    <textarea
+                      value={companyForm.invoiceHeaderHtml}
+                      onChange={(e) => setCompanyForm({...companyForm, invoiceHeaderHtml: e.target.value})}
+                      placeholder="Datos fiscales adicionales..."
+                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
+                      disabled={!canEditCompany}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página de Factura</label>
+                    <textarea
+                      value={companyForm.invoiceFooterHtml}
+                      onChange={(e) => setCompanyForm({...companyForm, invoiceFooterHtml: e.target.value})}
+                      placeholder="Términos de crédito, cuentas bancarias, etc."
+                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary focus:border-primary"
+                      disabled={!canEditCompany}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end items-center gap-4">
+              {companyMsg && (
+                <div className={`text-sm ${companyMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {companyMsg.text}
+                </div>
+              )}
+              <Button onClick={handleSaveCompany} disabled={isSavingCompany || !canEditCompany}>
+                {isSavingCompany ? 'Guardando...' : 'Guardar Configuraciones'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL: Previsualización de Plantilla */}
+      {showPreview && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
+            <div className="sticky top-0 bg-gray-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-2">
+                <FileText className={`w-5 h-5 ${showPreview === 'quote' ? 'text-blue-600' : 'text-green-600'}`} />
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Previsualización de {showPreview === 'quote' ? 'Cotización' : 'Factura'}
+                </h2>
+              </div>
+              <button 
+                onClick={() => setShowPreview(null)} 
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
+            
+            <div className="p-8 bg-gray-100 min-h-[600px] flex justify-center">
+              <div className="bg-white w-full max-w-[800px] shadow-lg p-8 pointer-events-none select-none">
+                {/* Header Simulado */}
+                <div className="flex justify-between mb-8">
+                  <div>
+                    {companyForm.logo ? (
+                      <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
+                    ) : (
+                      <div className="text-2xl font-bold" style={{ color: (showPreview === 'quote' ? companyForm.quotePrimaryColor : companyForm.invoicePrimaryColor) || '#1d4ed8' }}>
+                        {companyForm.name}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
+                    <div 
+                      className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ __html: showPreview === 'quote' ? companyForm.quoteHeaderHtml : companyForm.invoiceHeaderHtml }}
+                    />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
+                      {showPreview === 'quote' ? 'PROFORMA' : 'FACTURA'}
+                    </div>
+                    <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
+                    <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
+                  </div>
+                </div>
+
+                {/* Tabla Simulada */}
+                <div 
+                  className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
+                  style={{ backgroundColor: (showPreview === 'quote' ? companyForm.quotePrimaryColor : companyForm.invoicePrimaryColor) || '#1d4ed8' }}
+                >
+                  DETALLE DE CONCEPTOS
+                </div>
+                <table className="w-full text-xs mb-8">
+                  <thead className="border-b-2 border-gray-100">
+                    <tr className="text-gray-400 font-semibold">
+                      <th className="text-left py-2">PRODUCTO / SERVICIO</th>
+                      <th className="text-center py-2">CANT.</th>
+                      <th className="text-right py-2">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-gray-50">
+                      <td className="py-3">Ejemplo de concepto Premium</td>
+                      <td className="py-3 text-center">1</td>
+                      <td className="py-3 text-right">$ 1,000.00</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
+                      <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {/* Footer Simulado */}
+                <div className="mt-12 space-y-4">
+                  {showPreview === 'quote' && companyForm.quoteTerms && (
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
+                      <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
+                    </div>
+                  )}
+                  
+                  <div className="border-t pt-4">
+                    <div 
+                      className="text-[10px] text-center text-gray-500"
+                      dangerouslySetInnerHTML={{ __html: showPreview === 'quote' ? companyForm.quoteFooterHtml : companyForm.invoiceFooterHtml }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end">
+              <Button onClick={() => setShowPreview(null)}>Cerrar Previsualización</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

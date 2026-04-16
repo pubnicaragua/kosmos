@@ -1,144 +1,102 @@
-import { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
-import { apiSuccess, apiError } from '@/lib/api-response'
-import { purchaseRequestSchema } from '@/lib/validations'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return apiError('Token no proporcionado', 401)
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+    if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
-    if (!decoded) return apiError('Token inválido', 401)
+    const decoded = await verifyToken(token)
+    if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
-    const status = searchParams.get('status')
-    const priority = searchParams.get('priority')
-    const requestType = searchParams.get('requestType')
-    const search = searchParams.get('search')
 
-    const { companyIds } = await getAccessibleCompanies(decoded.userId)
-    if (companyId && !companyIds.includes(companyId)) {
-      return apiError('No tienes acceso a esta empresa', 403)
-    }
+    if (!companyId) return NextResponse.json({ success: false, error: 'companyId es requerido' }, { status: 400 })
 
-    const where: any = {
-      companyId: companyId || { in: companyIds }
-    }
-
-    if (status) where.status = status
-    if (priority) where.priority = priority
-    if (requestType) where.requestType = requestType
-    
-    if (search) {
-      where.OR = [
-        { requestNumber: { contains: search, mode: 'insensitive' } },
-        { requestingArea: { contains: search, mode: 'insensitive' } },
-        { notes: { contains: search, mode: 'insensitive' } },
-      ]
-    }
-
-    const purchaseRequests = await prisma.purchaseRequest.findMany({
-      where,
+    const requests = await prisma.purchaseRequest.findMany({
+      where: { companyId },
       include: {
-        company: { select: { name: true } },
-        items: {
-          include: {
-            product: { select: { name: true, sku: true } }
-          }
-        }
+        items: true,
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    return apiSuccess(purchaseRequests)
+    return NextResponse.json({ success: true, data: requests })
   } catch (error) {
     console.error('Error fetching purchase requests:', error)
-    return apiError('Error al obtener solicitudes de compra', 500)
+    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return apiError('Token no proporcionado', 401)
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.split(' ')[1]
+    if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
-    if (!decoded) return apiError('Token inválido', 401)
+    const decoded = await verifyToken(token)
+    if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
-    const body = await request.json()
-    const parsed = purchaseRequestSchema.safeParse(body)
-    if (!parsed.success) {
-      return apiError(parsed.error.errors[0]?.message || 'Datos inválidos', 400)
+    const body = await req.json()
+    const { 
+      companyId, 
+      requestingArea, 
+      requestType, 
+      priority, 
+      notes, 
+      items 
+    } = body
+
+    if (!companyId || !items || items.length === 0) {
+      return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 })
     }
-    const validatedData = parsed.data
 
-    const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
-    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
-
-    // Generar número de solicitud único
-    const lastRequest = await prisma.purchaseRequest.findFirst({
-      where: { companyId: validatedData.companyId },
-      orderBy: { createdAt: 'desc' },
-      select: { requestNumber: true }
-    })
+    // Generate Request Number: SC-{Alias}-{Sequence}
+    const company = await prisma.company.findUnique({ where: { id: companyId } })
+    const alias = company?.name.substring(0, 3).toUpperCase() || 'GEN'
     
-    let requestNumber = 'SC-000001'
-    if (lastRequest?.requestNumber) {
-      const lastNumber = parseInt(lastRequest.requestNumber.split('-')[1] || '0')
-      requestNumber = `SC-${String(lastNumber + 1).padStart(6, '0')}`
-    }
+    // Get next sequence
+    const count = await prisma.purchaseRequest.count({ where: { companyId } })
+    const sequence = (count + 1).toString().padStart(4, '0')
+    const requestNumber = `SC-${alias}-${sequence}`
 
-    // Calcular totales de los items
-    const itemsWithTotals = validatedData.items.map(item => ({
-      ...item,
-      totalCost: item.unitCost && item.requestedQuantity 
-        ? item.unitCost * item.requestedQuantity 
-        : item.totalCost || 0
-    }))
-
-    const purchaseRequest = await prisma.purchaseRequest.create({
+    const request = await prisma.purchaseRequest.create({
       data: {
         requestNumber,
-        companyId: validatedData.companyId,
-        requestingArea: validatedData.requestingArea,
-        requestedBy: validatedData.requestedBy,
-        requestType: validatedData.requestType,
-        priority: validatedData.priority,
-        status: validatedData.status,
-        notes: validatedData.notes,
+        companyId,
+        requestingArea,
+        requestedBy: (decoded as any).id,
+        requestType,
+        priority,
+        notes,
+        status: 'PENDIENTE',
         items: {
-          create: itemsWithTotals.map(item => ({
-            productId: item.productId,
-            sku: item.sku,
+          create: items.map((item: any) => ({
+            productId: item.productId || null,
+            sku: item.sku || null,
             productName: item.productName,
-            category: item.category,
-            currentStock: item.currentStock,
-            minimumStock: item.minimumStock,
+            category: item.category || null,
+            currentStock: item.currentStock || 0,
+            minimumStock: item.minimumStock || 0,
             requestedQuantity: item.requestedQuantity,
-            reason: item.reason,
-            lastSaleDate: item.lastSaleDate ? new Date(item.lastSaleDate) : null,
-            monthlyAverage: item.monthlyAverage,
-            unitCost: item.unitCost,
-            totalCost: item.totalCost,
+            reason: item.reason || null,
+            monthlyAverage: item.monthlyAverage || 0,
+            unitCost: item.unitCost || 0,
+            totalCost: item.unitCost * item.requestedQuantity,
           }))
         }
       },
       include: {
-        items: {
-          include: {
-            product: { select: { name: true, sku: true } }
-          }
-        }
+        items: true
       }
     })
 
-    return apiSuccess(purchaseRequest, undefined, 201)
-  } catch (error: any) {
+    return NextResponse.json({ success: true, data: request })
+  } catch (error) {
     console.error('Error creating purchase request:', error)
-    return apiError('Error al crear solicitud de compra', 500)
+    return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
   }
 }

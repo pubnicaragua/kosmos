@@ -38,6 +38,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       stage: body.stage,
       status: body.status,
       assignedTo: body.assignedTo,
+      assignedUsers: body.assignedUsers,
+      currency: body.currency,
       closeDate: body.closeDate ? new Date(body.closeDate) : undefined,
     }
 
@@ -58,20 +60,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       } else throw e
     }
 
-    // Notificar si se cambió el asignado
-    if (body.assignedTo && body.assignedTo !== opportunity.assignedTo) {
-      const userRecord = await prisma.user.findFirst({ 
-        where: { name: body.assignedTo }, 
-        select: { id: true } 
-      })
-      if (userRecord && userRecord.id !== decoded.userId) {
-        await notifyAssignment({
-          assignedUserId: userRecord.id,
-          assignedByUserId: decoded.userId,
-          itemType: 'opportunity',
-          itemTitle: body.title || opportunity.title,
-          itemId: params.id,
-        })
+    // Notificar si se cambiaron los asignados (solo a los nuevos)
+    if (body.assignedUsers) {
+      try {
+        const prevUsers = new Set(JSON.parse(opportunity.assignedUsers || '[]') as string[])
+        const newUsers = JSON.parse(body.assignedUsers) as string[]
+        
+        for (const userId of newUsers) {
+          if (!prevUsers.has(userId) && userId !== decoded.userId) {
+            await notifyAssignment({
+              assignedUserId: userId,
+              assignedByUserId: decoded.userId,
+              itemType: 'opportunity',
+              itemTitle: body.title || opportunity.title,
+              itemId: params.id,
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error in multi-assignment notification:', err)
       }
     }
 

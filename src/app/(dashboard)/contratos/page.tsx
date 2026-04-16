@@ -9,6 +9,7 @@ import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { Upload } from 'lucide-react'
+import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 
 interface Contract {
   id: string
@@ -20,6 +21,9 @@ interface Contract {
   startDate: string
   endDate: string
   status: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED'
+  area: string
+  visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
+  sharedWith: string // JSON string de IDs de usuarios/áreas
   fileUrl: string
   uploadedBy: string
   company: { name: string }
@@ -38,6 +42,9 @@ type ContractFormData = {
   party: string
   startDate: string
   endDate: string
+  area: string
+  visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
+  sharedWith: string
   fileUrl: string
 }
 
@@ -61,6 +68,9 @@ export default function ContratosPage() {
     party: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
+    area: 'General',
+    visibility: 'COMPARTIDO',
+    sharedWith: '[]',
     fileUrl: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -134,6 +144,9 @@ export default function ContratosPage() {
       party: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
+      area: 'General',
+      visibility: 'COMPARTIDO',
+      sharedWith: '[]',
       fileUrl: '',
     })
   }, [])
@@ -154,6 +167,9 @@ export default function ContratosPage() {
       party: contract.party,
       startDate: new Date(contract.startDate).toISOString().split('T')[0],
       endDate: new Date(contract.endDate).toISOString().split('T')[0],
+      area: contract.area || 'General',
+      visibility: contract.visibility || 'COMPARTIDO',
+      sharedWith: contract.sharedWith || '[]',
       fileUrl: contract.fileUrl || '',
     })
     setIsModalOpen(true)
@@ -616,24 +632,50 @@ export default function ContratosPage() {
               fullWidth
             />
           </div>
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Fecha de Inicio"
-              type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              required
+            <Select
+              label="Área"
+              options={[
+                { value: 'General', label: 'General' },
+                { value: 'Recursos Humanos', label: 'Recursos Humanos' },
+                { value: 'Finanzas', label: 'Finanzas' },
+                { value: 'Legal', label: 'Legal' },
+                { value: 'Operaciones', label: 'Operaciones' },
+                { value: 'Marketing', label: 'Marketing' },
+                { value: 'TI / Tecnología', label: 'TI / Tecnología' },
+                { value: 'Ventas', label: 'Ventas' },
+              ]}
+              value={formData.area}
+              onChange={(e) => setFormData({ ...formData, area: e.target.value })}
               fullWidth
             />
-            <Input
-              label="Fecha de Fin"
-              type="date"
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              required
+            <Select
+              label="Visibilidad"
+              options={[
+                { value: 'PUBLICO',    label: '🌐 Público' },
+                { value: 'COMPARTIDO', label: '👥 Compartido' },
+                { value: 'PRIVADO',    label: '🔒 Privado' },
+              ]}
+              value={formData.visibility}
+              onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
               fullWidth
             />
           </div>
+
+          {formData.visibility === 'COMPARTIDO' && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+              <label className="block text-sm font-medium text-gray-700">Compartir con Usuarios</label>
+              <MultiUserSelector
+                companyId={selectedCompany !== 'all' ? selectedCompany : undefined}
+                value={formData.sharedWith}
+                onChange={(val) => setFormData({ ...formData, sharedWith: val })}
+              />
+              <p className="text-xs text-gray-400 italic">Si no seleccionas usuarios, el contrato será visible para todo el área corporativa seleccionada.</p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Archivo del Contrato{!editingContractId && <span className="text-red-500 ml-1">*</span>}</label>
             <input

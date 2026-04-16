@@ -153,6 +153,28 @@ export async function POST(request: NextRequest) {
           
           // Normalizar moneda
           if (currency === 'COR') currency = 'NIO'
+
+          // Buscar o crear cliente para el match de datos
+          let clientRecord = await prisma.client.findFirst({
+            where: {
+              companyId,
+              OR: [
+                { name: { equals: incomeData.cliente, mode: 'insensitive' } },
+                { alias: { equals: incomeData.cliente, mode: 'insensitive' } }
+              ]
+            }
+          })
+
+          if (!clientRecord) {
+            clientRecord = await prisma.client.create({
+              data: {
+                companyId,
+                name: incomeData.cliente,
+                status: 'ACTIVO',
+                notes: 'Creado automáticamente durante importación de ingresos'
+              }
+            })
+          }
           
           // Crear ingreso
           const income = await prisma.income.create({
@@ -160,6 +182,7 @@ export async function POST(request: NextRequest) {
               companyId,
               refNumber: incomeData.folio || incomeData.documento || `IMP-${Date.now()}`,
               client: incomeData.cliente,
+              clientId: clientRecord.id,
               concept: incomeData.documento || incomeData.origen || 'Importación',
               method: 'Importado',
               amount,

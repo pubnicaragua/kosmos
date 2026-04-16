@@ -1,0 +1,374 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { 
+  ArrowLeft, Clock, CheckCircle2, XCircle, Package, Truck, 
+  MapPin, User, Calendar, FileText, MoreHorizontal,
+  ChevronRight, AlertTriangle, ExternalLink, Printer,
+  Eye, CornerDownRight, HandThumbUp, HandThumbDown
+} from 'lucide-react'
+import { 
+  Button, Card, Badge, Modal 
+} from '@/components/ui-kit'
+import { useCompany } from '@/hooks/useCompany'
+
+const STATUS_CONFIG: Record<string, any> = {
+  PENDIENTE: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock, next: 'APROBADA' },
+  APROBADA: { label: 'Aprobada', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2, next: 'COMPRADO' },
+  RECHAZADA: { label: 'Rechazada', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, next: null },
+  COMPRADO: { label: 'Comprado', color: 'bg-indigo-100 text-indigo-700 border-indigo-200', icon: Package, next: 'RECIBIDO' },
+  RECIBIDO: { label: 'Recibido', color: 'bg-green-100 text-green-700 border-green-200', icon: Truck, next: null },
+}
+
+export default function DetalleSolicitudPage({ params }: { params: { id: string } }) {
+  const router = useRouter()
+  const { selectedCompany } = useCompany()
+  const [request, setRequest] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [currentUser, setCurrentUser] = useState<any>(null)
+
+  const fetchRequest = useCallback(async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      setIsLoading(true)
+      const res = await fetch(`/api/purchase-requests/${params.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRequest(data.data)
+      } else {
+        alert(data.error || 'Error al cargar detalle')
+        router.push('/solicitudes-compra')
+      }
+    } catch (err) {
+      console.error('Error loading request:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [params.id, router])
+
+  useEffect(() => {
+    fetchRequest()
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) setCurrentUser(JSON.parse(storedUser))
+  }, [fetchRequest])
+
+  const updateStatus = async (newStatus: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      setIsUpdating(true)
+      const res = await fetch(`/api/purchase-requests/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          status: newStatus,
+          rejectedReason: newStatus === 'RECHAZADA' ? rejectReason : undefined
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRequest(data.data)
+        setIsRejectModalOpen(false)
+      } else {
+        alert(data.error || 'Error al actualizar estado')
+      }
+    } catch (err) {
+      console.error('Error updating status:', err)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const canApprove = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER'
+
+  if (isLoading || !request) {
+    return <div className="p-12 text-center text-slate-400 font-bold">Cargando detalles de solicitud...</div>
+  }
+
+  const currentStatusConfig = STATUS_CONFIG[request.status] || STATUS_CONFIG.PENDIENTE
+  const StatusIcon = currentStatusConfig.icon
+
+  return (
+    <div className="max-w-7xl mx-auto pb-20">
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100">
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+              <span>Compras</span> <ChevronRight className="w-3 h-3" /> <span>#{request.requestNumber}</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Detalle de Solicitud</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="font-bold rounded-xl border-slate-200">
+            <Printer className="w-4 h-4 mr-2" /> IMPRIMIR
+          </Button>
+          {request.status === 'PENDIENTE' && canApprove && (
+            <>
+              <Button 
+                onClick={() => setIsRejectModalOpen(true)}
+                variant="outline"
+                className="font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-xl"
+                disabled={isUpdating}
+              >
+                RECHAZAR
+              </Button>
+              <Button 
+                onClick={() => updateStatus('APROBADA')}
+                className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl px-8 shadow-lg shadow-blue-100"
+                disabled={isUpdating}
+              >
+                APROBAR SOLICITUD
+              </Button>
+            </>
+          )}
+          {request.status === 'APROBADA' && (
+            <Button 
+              onClick={() => updateStatus('COMPRADO')}
+              className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl px-8 shadow-lg shadow-indigo-100"
+              disabled={isUpdating}
+            >
+              MARCAR COMO COMPRADO
+            </Button>
+          )}
+          {request.status === 'COMPRADO' && (
+            <Button 
+              onClick={() => updateStatus('RECIBIDO')}
+              className="bg-green-600 hover:bg-green-700 font-bold rounded-xl px-8 shadow-lg shadow-green-100"
+              disabled={isUpdating}
+            >
+              MARCAR PRODUCTOS RECIBIDOS
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Left Column - Main Info */}
+        <div className="lg:col-span-3 space-y-8">
+          <Card className="p-0 border-slate-100 shadow-sm rounded-3xl overflow-hidden">
+            <div className="p-8 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+              <div className="flex justify-between items-start">
+                <div className="space-y-4">
+                  <Badge className={`${currentStatusConfig.color} border-none font-black text-xs px-4 py-1.5 rounded-full`}>
+                    <div className="flex items-center gap-2">
+                      <StatusIcon className="w-4 h-4" />
+                      {currentStatusConfig.label.toUpperCase()}
+                    </div>
+                  </Badge>
+                  <div>
+                    <h2 className="text-3xl font-black tracking-tight">{request.requestNumber}</h2>
+                    <p className="opacity-60 text-sm font-medium">{request.requestingArea} • {request.requestType}</p>
+                  </div>
+                </div>
+                <div className="text-right space-y-2">
+                  <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Monto Estimado</p>
+                  <p className="text-4xl font-black text-blue-400">
+                    ${request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-3 gap-8">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl">
+                    <User className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Solicitante</p>
+                    <p className="font-bold text-slate-800">Cargando...</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl">
+                    <Calendar className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Fecha Solicitud</p>
+                    <p className="font-bold text-slate-800">{new Date(request.requestDate).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl">
+                    <MapPin className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Prioridad</p>
+                    <p className={`font-bold ${
+                      request.priority === 'ALTA' ? 'text-red-600' :
+                      request.priority === 'MEDIA' ? 'text-blue-600' :
+                      'text-slate-500'
+                    }`}>{request.priority}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              <div className="space-y-6">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Productos Solicitados</h3>
+                <div className="border border-slate-100 rounded-3xl overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Producto</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Cant.</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Stock Act.</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Venta Prom.</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Total Est.</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {request.items.map((item: any) => (
+                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-900">{item.productName}</span>
+                              <span className="text-[10px] font-bold text-slate-400">{item.sku || 'SIN SKU'}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center font-black text-blue-600">{item.requestedQuantity}</td>
+                          <td className="px-6 py-4 text-right font-bold text-slate-600">{item.currentStock}</td>
+                          <td className="px-6 py-4 text-right font-medium text-slate-500">{item.monthlyAverage?.toFixed(1) || 0} / mes</td>
+                          <td className="px-6 py-4 text-right font-black text-slate-900">${(item.totalCost || 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {request.notes && (
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Notas Adicionales</h4>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed">{request.notes}</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Column - Status Timeline & Meta */}
+        <div className="space-y-8">
+          <Card className="p-8 border-slate-100 shadow-sm rounded-3xl">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-8">Estado del Proceso</h3>
+            
+            <div className="space-y-8 relative">
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-100 -z-10" />
+              
+              <div className="flex gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-white shadow-md ${request.createdAt ? 'bg-green-500' : 'bg-slate-200'}`}>
+                  <FileText className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Solicitud Creada</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{new Date(request.requestDate).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-white shadow-md ${request.approvedAt ? 'bg-blue-500' : 'bg-slate-200'}`}>
+                  <HandThumbUp className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Aprobada por Jefe</p>
+                  {request.approvedAt ? (
+                    <p className="text-[10px] text-blue-600 font-bold">{new Date(request.approvedAt).toLocaleDateString()}</p>
+                  ) : <p className="text-[10px] text-slate-300 italic">Pendiente</p>}
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-white shadow-md ${request.purchasedAt ? 'bg-indigo-500' : 'bg-slate-200'}`}>
+                  <Package className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Compra Ejecutada</p>
+                  {request.expenseId ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-indigo-600 font-bold">Ver Gasto</span>
+                      <ExternalLink className="w-2.5 h-2.5 text-indigo-400" />
+                    </div>
+                  ) : <p className="text-[10px] text-slate-300 italic">Pendiente</p>}
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-white shadow-md ${request.receivedAt ? 'bg-green-600' : 'bg-slate-200'}`}>
+                  <Truck className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Productos Recibidos</p>
+                  {request.receivedAt ? (
+                    <p className="text-[10px] text-green-600 font-bold">Inventario actualizado</p>
+                  ) : <p className="text-[10px] text-slate-300 italic">Pendiente</p>}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {request.rejectedReason && (
+            <div className="p-6 bg-red-50 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <h4 className="text-[10px] font-black text-red-700 uppercase tracking-widest">Motivo de Rechazo</h4>
+              </div>
+              <p className="text-xs text-red-600 font-semibold leading-relaxed italic">"{request.rejectedReason}"</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reject Modal */}
+      <Modal 
+        isOpen={isRejectModalOpen} 
+        onClose={() => setIsRejectModalOpen(false)}
+        title="Rechazar Solicitud"
+      >
+        <div className="space-y-6 pt-4">
+          <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex gap-3">
+            <Info className="w-5 h-5 text-amber-500 shrink-0" />
+            <p className="text-xs text-amber-800 font-medium">Por favor, indica el motivo del rechazo para informar al solicitante.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Motivo / Justificación</label>
+            <textarea 
+              className="w-full rounded-2xl border-2 border-slate-100 p-4 text-sm focus:border-red-500 focus:outline-none transition-all placeholder:text-slate-300 min-h-[150px]"
+              placeholder="Ej: Presupuesto excedido, producto no necesario en este momento..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setIsRejectModalOpen(false)}>CANCELAR</Button>
+            <Button 
+              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl"
+              onClick={() => updateStatus('RECHAZADA')}
+              disabled={!rejectReason.trim() || isUpdating}
+            >
+              CONFIRMAR RECHAZO
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}

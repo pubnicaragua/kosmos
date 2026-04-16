@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
         return false
       })
     } catch (innerErr: any) {
+      console.error('[API Documents] Prisma error:', innerErr)
       if (innerErr?.code === 'P2022') {
         // Las columnas area/visibility/category aún no existen en la BD - usar SQL raw
         // En este caso, todos los documentos se tratan como COMPARTIDO (legacy)
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     return apiSuccess(documents)
   } catch (error: any) {
-    console.error('Error fetching documents:', error?.message, error?.code)
+    console.error('[API Documents] Error fetching documents:', error?.message, error?.code, error?.stack)
     return apiError(`Error al obtener documentos: ${error?.message || 'Error desconocido'}`, 500)
   }
 }

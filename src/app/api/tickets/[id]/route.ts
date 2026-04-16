@@ -99,14 +99,32 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       include: { client: { select: { id: true, name: true } } },
     })
 
-    // Notify newly assigned users when assignedTo changes
-    if (body.assignedTo && body.assignedTo !== ticket.assignedTo) {
-      const prevAssignees = new Set(
+    // Notify newly assigned users
+    const prevAssigneeIds = new Set(
+      ticket.assignedUsers ? JSON.parse(ticket.assignedUsers) : []
+    )
+    const currentAssigneeIds = body.assignedUsers || []
+    
+    if (Array.isArray(currentAssigneeIds) && currentAssigneeIds.length > 0) {
+      for (const userId of currentAssigneeIds) {
+        if (!prevAssigneeIds.has(userId) && userId !== decoded.userId) {
+          await notifyAssignment({
+            assignedUserId: userId,
+            assignedByUserId: decoded.userId,
+            itemType: 'ticket',
+            itemTitle: body.title || ticket.title,
+            itemId: ticket.id,
+          })
+        }
+      }
+    } else if (body.assignedTo && body.assignedTo !== ticket.assignedTo) {
+      // Fallback for names
+      const prevNames = new Set(
         (ticket.assignedTo || '').split(',').map((s: string) => s.trim()).filter(Boolean)
       )
-      const newAssignees = body.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
-      for (const name of newAssignees) {
-        if (!prevAssignees.has(name)) {
+      const newNames = body.assignedTo.split(',').map((s: string) => s.trim()).filter(Boolean)
+      for (const name of newNames) {
+        if (!prevNames.has(name)) {
           const userRecord = await prisma.user.findFirst({ where: { name }, select: { id: true } })
           if (userRecord && userRecord.id !== decoded.userId) {
             await notifyAssignment({

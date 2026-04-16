@@ -46,7 +46,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const body = await request.json()
-    const { name, industry, logo, isActive } = body
+    const { 
+      name, industry, logo, isActive,
+      quotePrimaryColor, quoteHeaderHtml, quoteFooterHtml, quoteTerms,
+      invoicePrimaryColor, invoiceHeaderHtml, invoiceFooterHtml 
+    } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return errorResponse('El nombre de la empresa es requerido', 400)
@@ -59,6 +63,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(industry !== undefined ? { industry } : {}),
         ...(logo !== undefined ? { logo } : {}),
         ...(isActive !== undefined ? { isActive } : {}),
+        ...(quotePrimaryColor !== undefined ? { quotePrimaryColor } : {}),
+        ...(quoteHeaderHtml !== undefined ? { quoteHeaderHtml } : {}),
+        ...(quoteFooterHtml !== undefined ? { quoteFooterHtml } : {}),
+        ...(quoteTerms !== undefined ? { quoteTerms } : {}),
+        ...(invoicePrimaryColor !== undefined ? { invoicePrimaryColor } : {}),
+        ...(invoiceHeaderHtml !== undefined ? { invoiceHeaderHtml } : {}),
+        ...(invoiceFooterHtml !== undefined ? { invoiceFooterHtml } : {}),
       },
     })
 
