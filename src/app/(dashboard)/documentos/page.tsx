@@ -279,6 +279,7 @@ export default function DocumentosPage() {
           category: 'General',
           area: 'General',
           visibility: 'COMPARTIDO',
+          sharedWith: '[]',
           fileUrl: '',
         })
       } else {
@@ -675,9 +676,9 @@ export default function DocumentosPage() {
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
               <label className="block text-sm font-medium text-gray-700">Compartir con Usuarios</label>
               <MultiUserSelector
-                companyId={selectedCompany !== 'all' ? selectedCompany : undefined}
-                value={formData.sharedWith}
-                onChange={(val) => setFormData({ ...formData, sharedWith: val })}
+                companyId={selectedCompany !== 'all' ? selectedCompany : ''}
+                selectedUserIds={JSON.parse(formData.sharedWith || '[]')}
+                onChange={(val) => setFormData({ ...formData, sharedWith: JSON.stringify(val) })}
               />
               <p className="text-xs text-gray-400 italic">Si no seleccionas usuarios, el documento será visible para toda la empresa dentro del área seleccionada.</p>
             </div>

@@ -6,10 +6,10 @@ import {
   Clock, CheckCircle2, XCircle, Package, Truck, 
   AlertTriangle, TrendingUp, BarChart3, ArrowRight
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui-kit/Button'
+import { Card } from '@/components/ui-kit/Card'
+import { Badge } from '@/components/ui-kit/Badge'
+import { Input } from '@/components/ui-kit/Input'
 import Link from 'next/link'
 import { useCompany } from '@/hooks/useCompany'
 
@@ -88,13 +88,13 @@ export default function SolicitudesCompraPage() {
               <Card className="p-4 hover:shadow-xl transition-all duration-300 group cursor-pointer border-slate-100 hover:border-blue-200">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-[10px] font-black text-slate-400 tracking-widest">{req.requestNumber}</span>
-                  <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-tighter ${
+                  <div className={`px-2 py-0.5 rounded-full border text-[9px] uppercase font-black tracking-tighter ${
                     req.priority === 'ALTA' ? 'border-red-500 text-red-600' :
                     req.priority === 'MEDIA' ? 'border-blue-500 text-blue-600' :
                     'border-slate-300 text-slate-500'
                   }`}>
                     {req.priority}
-                  </Badge>
+                  </div>
                 </div>
                 <h4 className="text-sm font-bold text-slate-800 mb-1 line-clamp-1">{req.requestingArea}</h4>
                 <div className="flex items-center gap-2 text-[11px] text-slate-500 mb-3">
@@ -264,13 +264,13 @@ export default function SolicitudesCompraPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{req.requestingArea}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="outline" className={`text-[9px] uppercase font-black ${
+                      <div className={`inline-block px-2 py-0.5 rounded-full border text-[9px] uppercase font-black ${
                         req.priority === 'ALTA' ? 'border-red-500 text-red-600' :
                         req.priority === 'MEDIA' ? 'border-blue-500 text-blue-600' :
                         'border-slate-300 text-slate-500'
                       }`}>
                         {req.priority}
-                      </Badge>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge className={`${STATUS_CONFIG[req.status as keyof typeof STATUS_CONFIG].color} border-none font-bold text-[10px]`}>
@@ -279,7 +279,7 @@ export default function SolicitudesCompraPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500 font-medium">{new Date(req.requestDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" className="group-hover:bg-white rounded-lg transition-all">
+                      <Button variant="ghost" className="group-hover:bg-white rounded-lg transition-all p-2">
                         <MoreVertical className="w-4 h-4 text-slate-400" />
                       </Button>
                     </td>

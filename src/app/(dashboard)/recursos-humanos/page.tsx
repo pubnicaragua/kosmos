@@ -550,7 +550,7 @@ export default function RecursosHumanosPage() {
                   variant="outline"
                   onClick={() => {
                     setShowModal(false)
-                    setFormData({ period: '', totalAmount: '', notes: '', createExpense: true })
+                    setFormData({ name: '', period: '', totalAmount: '', notes: '', createExpense: true })
                     setSelectedFile(null)
                   }}
                   className="flex-1"

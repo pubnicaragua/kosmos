@@ -6,7 +6,7 @@ import {
   ArrowLeft, Clock, CheckCircle2, XCircle, Package, Truck, 
   MapPin, User, Calendar, FileText, MoreHorizontal,
   ChevronRight, AlertTriangle, ExternalLink, Printer,
-  Eye, CornerDownRight, HandThumbUp, HandThumbDown
+  Eye, CornerDownRight, ThumbsUp, ThumbsDown, Info
 } from 'lucide-react'
 import { 
   Button, Card, Badge, Modal 
@@ -105,7 +105,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       {/* Top Navigation */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100">
+          <Button variant="ghost" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100 p-2">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Button>
           <div>
@@ -286,7 +286,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
 
               <div className="flex gap-4">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 border-4 border-white shadow-md ${request.approvedAt ? 'bg-blue-500' : 'bg-slate-200'}`}>
-                  <HandThumbUp className="w-3.5 h-3.5 text-white" />
+                  <ThumbsUp className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div>
                   <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Aprobada por Jefe</p>

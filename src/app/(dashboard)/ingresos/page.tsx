@@ -269,7 +269,7 @@ export default function IngresosPage() {
         rows,
         `ingresos_${new Date().toISOString().split('T')[0]}.xlsx`,
         'Reporte de Ingresos',
-        companies,
+        companies as any,
         selectedCompany
       )
     } finally {

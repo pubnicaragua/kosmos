@@ -22,6 +22,7 @@ export function ClientAutocomplete({
   companyId,
   value,
   onChange,
+  onSelect,
   placeholder = 'Buscar cliente...',
   className = '',
 }: ClientAutocompleteProps) {

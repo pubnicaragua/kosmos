@@ -23,6 +23,7 @@ interface Ticket {
   startDate: string | null
   dueDate: string | null
   attachments: string | null
+  evidence?: string | null
   company: { name: string }
   client: { id: string; name: string } | null
   assignedTo: string | null
@@ -428,13 +429,13 @@ export default function TicketsSoportePage() {
           status: formData.status,
           priority: formData.priority,
           assignedTo: formData.assignedTo || null,
-          assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
+          assignedUsers: formData.assignedUsers.length > 0 ? JSON.stringify(formData.assignedUsers) : null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           currency: formData.currency,
           startDate: formData.startDate || null,
           dueDate: formData.dueDate || null,
-          attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
-          evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
+          attachments: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
+          evidence: evidenceUrls.length > 0 ? JSON.stringify(evidenceUrls) : null,
           ...(editingTicketId ? {} : { companyId: targetCompanyId }),
         }),
       })
@@ -785,6 +786,7 @@ export default function TicketsSoportePage() {
                           </div>
                         )}
                       </div>
+                      <div className="flex justify-between items-end mt-4 pt-3 border-t border-slate-50">
                         <div className="flex flex-col">
                           <span className="text-[10px] text-gray-400 font-bold uppercase">Monto</span>
                           <span className="text-sm font-bold text-gray-900">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount?.toLocaleString() || '0'}</span>
@@ -857,7 +859,6 @@ export default function TicketsSoportePage() {
            </button>
         </div>
       </div>
-    </div>
 
       <Modal
         isOpen={isModalOpen}

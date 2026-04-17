@@ -463,6 +463,7 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
               </div>
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Evidencia</h3>
+                {campaign.evidenceUrl ? (
                   <div className="space-y-3">
                     <a
                       href={campaign.evidenceUrl}

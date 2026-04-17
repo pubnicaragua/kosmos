@@ -23,7 +23,7 @@ interface Contract {
   status: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED'
   area: string
   visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
-  sharedWith: string // JSON string de IDs de usuarios/áreas
+  sharedWith: string[] // IDs de usuarios/áreas
   fileUrl: string
   uploadedBy: string
   company: { name: string }
@@ -44,7 +44,7 @@ type ContractFormData = {
   endDate: string
   area: string
   visibility: 'PRIVADO' | 'COMPARTIDO' | 'PUBLICO'
-  sharedWith: string
+  sharedWith: string[]
   fileUrl: string
 }
 
@@ -70,7 +70,7 @@ export default function ContratosPage() {
     endDate: '',
     area: 'General',
     visibility: 'COMPARTIDO',
-    sharedWith: '[]',
+    sharedWith: [],
     fileUrl: '',
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -146,7 +146,7 @@ export default function ContratosPage() {
       endDate: '',
       area: 'General',
       visibility: 'COMPARTIDO',
-      sharedWith: '[]',
+      sharedWith: [],
       fileUrl: '',
     })
   }, [])
@@ -169,7 +169,7 @@ export default function ContratosPage() {
       endDate: new Date(contract.endDate).toISOString().split('T')[0],
       area: contract.area || 'General',
       visibility: contract.visibility || 'COMPARTIDO',
-      sharedWith: contract.sharedWith || '[]',
+      sharedWith: contract.sharedWith as unknown as string[],
       fileUrl: contract.fileUrl || '',
     })
     setIsModalOpen(true)
@@ -235,6 +235,7 @@ export default function ContratosPage() {
         },
         body: JSON.stringify({
           ...formData,
+          sharedWith: JSON.stringify(formData.sharedWith),
           fileUrl,
           ...(editingContractId ? {} : { companyId: targetCompanyId }),
         }),
@@ -632,6 +633,22 @@ export default function ContratosPage() {
               fullWidth
             />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Fecha de Inicio"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              required
+              fullWidth
+            />
+            <Input
+              label="Fecha de Vencimiento"
+              type="date"
+              value={formData.endDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              required
+              fullWidth
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -668,8 +685,8 @@ export default function ContratosPage() {
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
               <label className="block text-sm font-medium text-gray-700">Compartir con Usuarios</label>
               <MultiUserSelector
-                companyId={selectedCompany !== 'all' ? selectedCompany : undefined}
-                value={formData.sharedWith}
+                companyId={selectedCompany !== 'all' ? selectedCompany : companies[0]?.id}
+                selectedUserIds={formData.sharedWith}
                 onChange={(val) => setFormData({ ...formData, sharedWith: val })}
               />
               <p className="text-xs text-gray-400 italic">Si no seleccionas usuarios, el contrato será visible para todo el área corporativa seleccionada.</p>

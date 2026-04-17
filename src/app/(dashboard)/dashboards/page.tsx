@@ -585,7 +585,7 @@ export default function DashboardsPage() {
               <label key={kpi.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
                 <Checkbox
                   checked={visibleKpis.includes(kpi.id)}
-                  onCheckedChange={() => toggleKpi(kpi.id)}
+                  onChange={() => toggleKpi(kpi.id)}
                 />
                 <span className="text-sm font-medium text-gray-700">{kpi.label}</span>
               </label>

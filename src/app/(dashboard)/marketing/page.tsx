@@ -21,6 +21,7 @@ interface MarketingCampaign {
   evidenceUrl?: string | null
   assignedTo: string | null
   assignedUsers: string // JSON array
+  approvalStatus: string
   company: { name: string }
 }
 

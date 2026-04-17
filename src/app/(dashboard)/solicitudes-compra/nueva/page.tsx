@@ -155,7 +155,7 @@ export default function NuevaSolicitudPage() {
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100">
+          <Button variant="ghost" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100 p-2">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Button>
           <div>

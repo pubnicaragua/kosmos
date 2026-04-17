@@ -8,6 +8,7 @@ import { Input } from '@/components/ui-kit/Input'
 import { SkeletonCard } from '@/components/ui-kit/Skeleton'
 import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
+import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Opportunity {
   id: string
@@ -311,7 +312,7 @@ export default function PipelineVentasPage() {
       rows,
       `pipeline_ventas_${Date.now()}.xlsx`,
       'Reporte de Pipeline de Ventas',
-      companies,
+      companies as any,
       selectedCompany
     )
   }

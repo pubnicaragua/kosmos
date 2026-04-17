@@ -41,13 +41,13 @@ export async function GET(request: NextRequest) {
             isActive: company.isActive,
             role: userCompany?.role || 'SUPER_ADMIN',
             createdAt: company.createdAt,
-            quotePrimaryColor: company.quotePrimaryColor,
-            quoteHeaderHtml: company.quoteHeaderHtml,
-            quoteFooterHtml: company.quoteFooterHtml,
-            quoteTerms: company.quoteTerms,
-            invoicePrimaryColor: company.invoicePrimaryColor,
-            invoiceHeaderHtml: company.invoiceHeaderHtml,
-            invoiceFooterHtml: company.invoiceFooterHtml,
+            quotePrimaryColor: company.quotePrimaryColor as string,
+            quoteHeaderHtml: company.quoteHeaderHtml as string,
+            quoteFooterHtml: company.quoteFooterHtml as string,
+            quoteTerms: company.quoteTerms as string,
+            invoicePrimaryColor: company.invoicePrimaryColor as string,
+            invoiceHeaderHtml: company.invoiceHeaderHtml as string,
+            invoiceFooterHtml: company.invoiceFooterHtml as string,
           }
         })
       )
@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
       isActive: uc.company.isActive,
       role: uc.role,
       createdAt: uc.company.createdAt,
-      quotePrimaryColor: uc.company.quotePrimaryColor,
-      quoteHeaderHtml: uc.company.quoteHeaderHtml,
-      quoteFooterHtml: uc.company.quoteFooterHtml,
-      quoteTerms: uc.company.quoteTerms,
-      invoicePrimaryColor: uc.company.invoicePrimaryColor,
-      invoiceHeaderHtml: uc.company.invoiceHeaderHtml,
-      invoiceFooterHtml: uc.company.invoiceFooterHtml,
+      quotePrimaryColor: uc.company.quotePrimaryColor as string,
+      quoteHeaderHtml: uc.company.quoteHeaderHtml as string,
+      quoteFooterHtml: uc.company.quoteFooterHtml as string,
+      quoteTerms: uc.company.quoteTerms as string,
+      invoicePrimaryColor: uc.company.invoicePrimaryColor as string,
+      invoiceHeaderHtml: uc.company.invoiceHeaderHtml as string,
+      invoiceFooterHtml: uc.company.invoiceFooterHtml as string,
     }))
 
     return successResponse(companies)

@@ -24,6 +24,7 @@ export function ProductAutocomplete({
   companyId,
   value,
   onChange,
+  onSelect,
   placeholder = 'Buscar producto o SKU...',
   className = '',
 }: ProductAutocompleteProps) {

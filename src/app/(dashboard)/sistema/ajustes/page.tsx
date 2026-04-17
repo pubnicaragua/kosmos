@@ -9,8 +9,8 @@ import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
 import { 
   LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
-  FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen, 
-  Settings, Shield, Upload, Key, Info 
+  FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen,
+  Settings, Shield, Upload, Key, Info, ShoppingCart
 } from 'lucide-react'
 
 interface UserProfile {
