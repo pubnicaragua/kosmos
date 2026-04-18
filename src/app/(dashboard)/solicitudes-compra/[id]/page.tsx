@@ -331,7 +331,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <h4 className="text-[10px] font-black text-red-700 uppercase tracking-widest">Motivo de Rechazo</h4>
               </div>
-              <p className="text-xs text-red-600 font-semibold leading-relaxed italic">{'"'{request.rejectedReason}"'}</p>
+              <p className="text-xs text-red-600 font-semibold leading-relaxed italic">{`"${request.rejectedReason}"`}</p>
             </div>
           )}
         </div>

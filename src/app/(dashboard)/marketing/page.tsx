@@ -361,7 +361,7 @@ export default function MarketingPage() {
                       
                       {campaign.description && (
                         <p className="text-[11px] text-gray-500 mb-4 line-clamp-2 italic leading-relaxed">
-                          {'"'{campaign.description}"'}
+                          {`"${campaign.description}"`}
                         </p>
                       )}
 
