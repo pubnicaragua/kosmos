@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
       return errorResponse('Token inválido o expirado', 401)
     }
 
+    if (!supabase) {
+      return errorResponse('Storage no configurado', 503)
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     
@@ -70,6 +74,10 @@ export async function POST(request: NextRequest) {
     const buffer = new Uint8Array(bytes)
 
     // Subir a Supabase Storage
+    if (!supabase) {
+      return errorResponse('Storage no configurado', 503)
+    }
+    
     const { data: storageData, error: storageError } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(fileName, buffer, {
