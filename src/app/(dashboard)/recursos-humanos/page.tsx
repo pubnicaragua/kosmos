@@ -425,7 +425,7 @@ export default function RecursosHumanosPage() {
                   </div>
                   {payroll.notes && (
                     <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2 italic">
-                      "{payroll.notes}"
+                      {'"'{payroll.notes}"'}
                     </p>
                   )}
                 </div>
