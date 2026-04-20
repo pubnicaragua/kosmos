@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
-    const module = searchParams.get('module')
+    const templateModule = searchParams.get('module')
     const type = searchParams.get('type')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       companyId: { in: companyIds },
     }
     if (companyId) where.companyId = companyId
-    if (module) where.module = module
+    if (templateModule) where.module = templateModule
     if (type) where.type = type
     where.isActive = true
 
@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
-    const { name, type, fileUrl, content, module, companyId } = body
+    const { name, type, fileUrl, content, module: templateModule, companyId } = body
 
-    if (!name || !type || !module || !companyId) {
+    if (!name || !type || !templateModule || !companyId) {
       return apiError('Nombre, tipo, módulo y empresa son requeridos', 400)
     }
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         type,
         fileUrl: fileUrl || null,
         content: content || null,
-        module,
+        module: templateModule,
         companyId,
         createdBy: decoded.userId,
       },
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest) {
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
-    const { id, name, type, fileUrl, content, module, isActive } = body
+    const { id, name, type, fileUrl, content, module: templateModule, isActive } = body
 
     if (!id) return apiError('ID de plantilla requerido', 400)
 
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest) {
         ...(type && { type }),
         ...(fileUrl !== undefined && { fileUrl }),
         ...(content !== undefined && { content }),
-        ...(module && { module }),
+        ...(templateModule && { module: templateModule }),
         ...(isActive !== undefined && { isActive }),
       },
     })
