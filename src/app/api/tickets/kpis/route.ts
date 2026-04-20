@@ -115,7 +115,8 @@ export async function GET(request: NextRequest) {
     // Tickets por prioridad
     const ticketsByPriority: { [key: string]: number } = {}
     tickets.forEach(ticket => {
-      ticketsByPriority[ticket.priority] = (ticketsByPriority[ticket.priority] || 0) + 1
+      const priority = ticket.priority || 'SIN_PRIORIDAD'
+      ticketsByPriority[priority] = (ticketsByPriority[priority] || 0) + 1
     })
 
     const kpis = {
