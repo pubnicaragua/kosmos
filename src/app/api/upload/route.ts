@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase, STORAGE_BUCKET } from '@/lib/supabase'
+import { supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 
@@ -74,11 +74,11 @@ export async function POST(request: NextRequest) {
     const buffer = new Uint8Array(bytes)
 
     // Subir a Supabase Storage
-    if (!supabase) {
+    if (!supabaseAdmin) {
       return errorResponse('Storage no configurado', 503)
     }
     
-    const { data: storageData, error: storageError } = await supabase.storage
+    const { data: storageData, error: storageError } = await supabaseAdmin.storage
       .from(STORAGE_BUCKET)
       .upload(fileName, buffer, {
         contentType: mimeType,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener URL pública
-    const { data: { publicUrl } } = supabase.storage
+    const { data: { publicUrl } } = supabaseAdmin.storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(fileName)
 
