@@ -8,7 +8,7 @@ import {
   LayoutDashboard, DollarSign, TrendingDown, Clipboard, Users, 
   Filter, Package, HelpCircle, FileText, FileSignature, Settings,
   LogOut, Menu, X, Megaphone, ChevronLeft, ChevronRight, Bell, ShoppingCart,
-  FileSpreadsheet
+  FileSpreadsheet, Table
 } from 'lucide-react'
 
 const iconMap: Record<string, any> = {
@@ -27,6 +27,7 @@ const iconMap: Record<string, any> = {
   Settings,
   Bell,
   FileSpreadsheet,
+  Table,
 }
 
 // Map nav item id -> module key used in RolePermission

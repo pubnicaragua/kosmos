@@ -143,6 +143,12 @@ export const navigationSections: NavSection[] = [
     href: '/sistema/plantillas',
     icon: 'FileSpreadsheet',
   },
+  {
+    id: 'excel-editor',
+    label: 'Editor Excel',
+    href: '/sistema/plantillas/excel-editor',
+    icon: 'Table',
+  },
     ],
   },
 ]
