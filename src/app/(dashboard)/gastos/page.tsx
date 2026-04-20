@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, FormEvent, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -40,6 +41,7 @@ interface Company {
 }
 
 export default function GastosPage() {
+  const router = useRouter()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -176,11 +178,84 @@ export default function GastosPage() {
     setCurrentPage(1)
   }, [selectedCompany, selectedPeriod, selectedStatus, selectedProvider])
 
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'pdf'>('xlsx')
+
+  const exportToPDF = (data: Expense[]) => {
+    if (!data.length) {
+      alert('No hay datos para exportar')
+      return
+    }
+
+    const printContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #1a1a1a; font-size: 18px; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            th { background: #f3f4f6; padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db; }
+            td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+            .amount { text-align: right; }
+            .status-paid { color: #059669; }
+            .status-pending { color: #d97706; }
+            .status-cancelled { color: #dc2626; }
+            .footer { margin-top: 20px; font-size: 9px; color: #6b7280; text-align: right; }
+          </style>
+        </head>
+        <body>
+          <h1>Reporte de Gastos Operativos</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Concepto</th>
+                <th>Categoría</th>
+                <th>Método</th>
+                <th class="amount">Monto</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(e => `
+                <tr>
+                  <td>${e.company}</td>
+                  <td>${new Date(e.date).toLocaleDateString('es-ES')}</td>
+                  <td>${e.provider}</td>
+                  <td>${e.concept}</td>
+                  <td>${e.category}</td>
+                  <td>${e.method}</td>
+                  <td class="amount">$${e.amount.toFixed(2)}</td>
+                  <td class="status-${e.status.toLowerCase()}">${e.status === 'PAID' ? 'Pagado' : e.status === 'PENDING' ? 'Pendiente' : 'Anulado'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="footer">Generated: ${new Date().toLocaleString('es-ES')}</div>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.print()
+    }
+  }
+
   const handleExport = () => {
     if (!expenses.length) {
       alert('No hay datos para exportar')
       return
     }
+
+    if (exportFormat === 'pdf') {
+      exportToPDF(expenses)
+      return
+    }
+
     const rows = expenses.map((e) => ({
       Empresa: e.company,
       Fecha: new Date(e.date).toLocaleDateString('es-ES'),
@@ -315,6 +390,14 @@ export default function GastosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona y visualiza el historial de gastos operativos de la empresa.</p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value as 'xlsx' | 'pdf')}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg"
+          >
+            <option value="xlsx">XLSX</option>
+            <option value="pdf">PDF</option>
+          </select>
           <Button variant="outline" onClick={handleExport}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -533,7 +616,11 @@ export default function GastosPage() {
             </thead>
             <tbody>
               {expenses.map((expense) => (
-                <tr key={expense.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr 
+                  key={expense.id} 
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}
+                >
                   <td className="py-4 px-4">
                     <div className="text-sm font-medium text-gray-900">{expense.company}</div>
                   </td>

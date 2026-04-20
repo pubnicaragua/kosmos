@@ -39,46 +39,65 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' },
     })
 
-    // Gather stats per user — only use fields that exist in schema:
-    // Ticket has createdBy; Activity/Opportunity use assignedTo (name-based)
-    const userStats = await Promise.all(
-      users.map(async (user) => {
-        const [ticketsCreated, ticketsAssigned, activitiesAssigned, campaignsCreated] = await Promise.all([
-          prisma.ticket.count({
-            where: { createdBy: user.id, createdAt: { gte: since } },
-          }),
-          prisma.ticket.count({
-            where: { assignedTo: { contains: user.name }, createdAt: { gte: since } },
-          }),
-          prisma.activity.count({
-            where: { assignedTo: { contains: user.name }, createdAt: { gte: since } },
-          }),
-          prisma.marketingCampaign.count({
-            where: { createdBy: user.id, createdAt: { gte: since } },
-          }),
-        ])
+    // Gather stats per user — optimized with single aggregated query
+    // Get all counts in one query per table instead of per-user
+    const [ticketsStats, activitiesStats, campaignsStats] = await Promise.all([
+      prisma.ticket.groupBy({
+        by: ['createdBy'],
+        where: { createdAt: { gte: since } },
+        _count: { id: true },
+      }),
+      prisma.activity.groupBy({
+        by: ['assignedTo'],
+        where: { createdAt: { gte: since } },
+        _count: { id: true },
+      }),
+      prisma.marketingCampaign.groupBy({
+        by: ['createdBy'],
+        where: { createdAt: { gte: since } },
+        _count: { id: true },
+      }),
+    ])
 
-        // Latest ticket for last-active indicator
-        const latestTicket = await prisma.ticket.findFirst({
-          where: { createdBy: user.id },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true, title: true, status: true },
-        })
-
-        return {
-          user,
-          stats: {
-            ticketsCreated,
-            ticketsAssigned,
-            activitiesAssigned,
-            campaignsCreated,
-            total: ticketsCreated + ticketsAssigned + activitiesAssigned + campaignsCreated,
-          },
-          lastActive: latestTicket?.createdAt ?? null,
-          recentTicket: latestTicket,
-        }
-      })
+    // Build lookup maps for O(1) access
+    const ticketCountByUser = Object.fromEntries(ticketsStats.map(t => [t.createdBy, t._count.id]))
+    const activityCountByUser = Object.fromEntries(
+      activitiesStats.map(a => [a.assignedTo, a._count.id]).filter(([k]) => k)
     )
+    const campaignCountByUser = Object.fromEntries(campaignsStats.map(c => [c.createdBy, c._count.id]))
+
+    // Latest tickets for all users in one query
+    const latestTickets = await prisma.ticket.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true, title: true, status: true, createdBy: true },
+      take: users.length,
+    })
+
+    const latestTicketByUser = Object.fromEntries(
+      latestTickets.map(t => [t.createdBy, { createdAt: t.createdAt, title: t.title, status: t.status }])
+    )
+
+    const userStats = users.map(user => {
+      const ticketsCreated = ticketCountByUser[user.id] || 0
+      const ticketsAssigned = activityCountByUser[user.name] || 0
+      const activitiesAssigned = 0
+      const campaignsCreated = campaignCountByUser[user.id] || 0
+      const recent = latestTicketByUser[user.id]
+
+      return {
+        user,
+        stats: {
+          ticketsCreated,
+          ticketsAssigned,
+          activitiesAssigned,
+          campaignsCreated,
+          total: ticketsCreated + ticketsAssigned + activitiesAssigned + campaignsCreated,
+        },
+        lastActive: recent?.createdAt ?? null,
+        recentTicket: recent,
+      }
+    })
 
     // Recent system-wide feed from Ticket and MarketingCampaign (have createdBy)
     // Plus recent Activities and Opportunities (no createdBy — show without user attribution)
