@@ -58,7 +58,7 @@ export default function NuevaCotizacionPage() {
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!Array.isArray(items)) return []
+    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }]
     return items
   }, [items])
 
