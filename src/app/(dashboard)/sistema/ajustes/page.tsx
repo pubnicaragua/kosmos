@@ -7,6 +7,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
+import { SimpleRichTextEditor } from '@/components/ui-kit/SimpleRichTextEditor'
 import { 
   LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
   FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen,
@@ -1354,34 +1355,28 @@ export default function AjustesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado Personalizado (HTML/Texto)</label>
-                    <textarea
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado Personalizado</label>
+                    <SimpleRichTextEditor
                       value={companyForm.quoteHeaderHtml}
-                      onChange={(e) => setCompanyForm({...companyForm, quoteHeaderHtml: e.target.value})}
-                      placeholder="Agrega textos adicionales o códigos HTML para el encabezado..."
-                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
+                      onChange={(value) => setCompanyForm({...companyForm, quoteHeaderHtml: value})}
                       disabled={!canEditCompany}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Términos y Condiciones por Defecto</label>
-                    <textarea
+                    <SimpleRichTextEditor
                       value={companyForm.quoteTerms}
-                      onChange={(e) => setCompanyForm({...companyForm, quoteTerms: e.target.value})}
-                      placeholder="Ej: • Validez: 30 días..."
-                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary focus:border-primary"
+                      onChange={(value) => setCompanyForm({...companyForm, quoteTerms: value})}
                       disabled={!canEditCompany}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página</label>
-                    <Input
+                    <SimpleRichTextEditor
                       value={companyForm.quoteFooterHtml}
-                      onChange={(e) => setCompanyForm({...companyForm, quoteFooterHtml: e.target.value})}
-                      placeholder="Texto legal o agradecimiento..."
-                      fullWidth
+                      onChange={(value) => setCompanyForm({...companyForm, quoteFooterHtml: value})}
                       disabled={!canEditCompany}
                     />
                   </div>
@@ -1446,11 +1441,9 @@ export default function AjustesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página de Factura</label>
-                    <textarea
+                    <SimpleRichTextEditor
                       value={companyForm.invoiceFooterHtml}
-                      onChange={(e) => setCompanyForm({...companyForm, invoiceFooterHtml: e.target.value})}
-                      placeholder="Términos de crédito, cuentas bancarias, etc."
-                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary focus:border-primary"
+                      onChange={(value) => setCompanyForm({...companyForm, invoiceFooterHtml: value})}
                       disabled={!canEditCompany}
                     />
                   </div>

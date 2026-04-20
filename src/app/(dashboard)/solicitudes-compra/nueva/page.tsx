@@ -71,7 +71,7 @@ export default function NuevaSolicitudPage() {
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!Array.isArray(items)) return []
+    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0 }]
     return items
   }, [items])
 
