@@ -8,7 +8,6 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 import { Input } from '@/components/ui-kit/Input'
-import { Modal } from '@/components/ui-kit/Modal'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
 
 interface Product {
@@ -57,10 +56,6 @@ export default function InventarioPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [showCategoryModal, setShowCategoryModal] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null)
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' })
-  const [savingCategory, setSavingCategory] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedTab, setSelectedTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -128,43 +123,6 @@ export default function InventarioPage() {
       alert('Error al guardar cambios')
     } finally {
       setSavingRows(prev => { const n = { ...prev }; delete n[productId]; return n })
-    }
-  }
-
-  const updateEditField = (productId: string, field: keyof EditingProduct, value: string) => {
-    setEditingRows(prev => ({
-      ...prev,
-      [productId]: { ...prev[productId], [field]: value }
-    }))
-  }
-
-  const handleEditCategory = (cat: { id: string; name: string }) => {
-    setEditingCategory(cat)
-    setCategoryForm({ name: cat.name, description: '' })
-    setShowCategoryModal(true)
-  }
-
-  const handleSaveCategory = async () => {
-    if (!editingCategory || !categoryForm.name.trim()) return
-    setSavingCategory(true)
-    try {
-      const token = localStorage.getItem('accessToken')
-      const res = await fetch('/api/product-categories', {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingCategory.id, name: categoryForm.name.trim() })
-      })
-      const data = await res.json()
-      if (data.success) {
-        setShowCategoryModal(false)
-        fetchCategories()
-      } else {
-        alert(data.message || 'Error al editar categoría')
-      }
-    } catch (e) {
-      alert('Error al editar categoría')
-    } finally {
-      setSavingCategory(false)
     }
   }
 
@@ -370,12 +328,6 @@ export default function InventarioPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Exportar
-          </Button>
-          <Button variant="outline" onClick={() => { setEditingCategory({ id: '', name: '' }); setCategoryForm({ name: '', description: '' }); setShowCategoryModal(true); }} className="h-10">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.007M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            Categorías
           </Button>
           <Button onClick={() => router.push('/inventario/edicion')} className="h-10 bg-blue-600 hover:bg-blue-700">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -610,32 +562,75 @@ export default function InventarioPage() {
                       </button>
                     </td>
                   </tr>
-)
-      </div>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      {/* ModalEditarCategoría */}
-      <Modal 
-        isOpen={showCategoryModal} 
-        onClose={() => setShowCategoryModal(false)}
-        title="Editar Categoría"
-      >
-        <div className="space-y-4 p-4">
-          <Input
-            label="Nombre de categoría"
-            value={categoryForm.name}
-            onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
-            fullWidth
-          />
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowCategoryModal(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveCategory} disabled={savingCategory || !categoryForm.name.trim()}>
-              {savingCategory ? 'Guardando...' : 'Guardar'}
-            </Button>
+        {products.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            No se encontraron productos
+          </div>
+        )}
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Mostrando {showingFrom} a {showingTo} de {totalItems} resultados
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="75">75</option>
+            </select>
           </div>
         </div>
-      </Modal>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          {visiblePages.map((page, index) => {
+            const previousPage = visiblePages[index - 1]
+            const hasGap = previousPage && page - previousPage > 1
+
+            return (
+              <div key={page} className="flex items-center gap-2">
+                {hasGap && <span className="text-gray-500">...</span>}
+                <button
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-8 h-8 rounded ${
+                    currentPage === page ? 'bg-primary text-white' : 'border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              </div>
+            )
+          })}
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
