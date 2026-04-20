@@ -176,15 +176,20 @@ useEffect(() => {
     fetchProducts()
   }, [selectedCompany])
 
+  const safeItemsArray = Array.isArray(items) ? items : []
+
   useEffect(() => {
-    setItems((prev) => prev.map((item) => ({
-      ...item,
-      total: recalculateItemTotal(item, taxApplies),
-    })))
+    setItems((prev) => {
+      const arr = Array.isArray(prev) ? prev : []
+      return arr.map((item: any) => ({
+        ...item,
+        total: recalculateItemTotal(item, taxApplies),
+      }))
+    })
   }, [taxApplies])
 
   const addItem = () => {
-    setItems([...items, {
+    setItems([...safeItemsArray, {
       tempId: Date.now(),
       productId: '',
       description: '',
@@ -197,14 +202,14 @@ useEffect(() => {
   }
 
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
-    const updated = [...items]
+    const updated = [...safeItemsArray]
     updated[index] = { ...updated[index], [field]: value }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
   }
 
   const selectProduct = (index: number, product: InventoryProduct) => {
-    const updated = [...items]
+    const updated = [...safeItemsArray]
     updated[index] = {
       ...updated[index],
       productId: product.id,
@@ -216,13 +221,13 @@ useEffect(() => {
   }
 
   const deleteItem = (index: number) => {
-    if (items.length > 1) {
-      setItems(items.filter((_, i) => i !== index))
+    if (safeItemsArray.length > 1) {
+      setItems(safeItemsArray.filter((_, i) => i !== index))
     }
   }
 
-  const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0)
-  const totalDiscount = (subtotal * (globalDiscount / 100)) + items.reduce((sum, item) => {
+  const subtotal = safeItemsArray.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
+  const totalDiscount = (subtotal * (globalDiscount / 100)) + safeItemsArray.reduce((sum: number, item: any) => {
     const itemSubtotal = item.quantity * item.unitPrice
     return sum + (itemSubtotal * (item.discount / 100))
   }, 0)
@@ -258,7 +263,7 @@ useEffect(() => {
           notes: clientNotes,
           internalNotes,
           terms,
-          items: items.filter(item => item.description.trim() !== '').map(item => ({
+          items: safeItemsArray.filter((item: any) => item.description.trim() !== '').map((item: any) => ({
             productId: item.productId || undefined,
             description: item.description,
             quantity: item.quantity,
@@ -358,7 +363,7 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, index) => (
+                  {safeItemsArray.map((item: any, index: number) => (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-3 px-2">

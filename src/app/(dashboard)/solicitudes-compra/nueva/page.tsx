@@ -73,7 +73,8 @@ export default function NuevaSolicitudPage() {
   const safeItems: RequestItem[] = Array.isArray(items) ? items : []
 
   const addItem = () => {
-    setItems([...items, { 
+    const currentItems = Array.isArray(items) ? items : []
+    setItems([...currentItems, { 
       tempId: Date.now(), 
       productId: '', 
       productName: '', 
@@ -101,7 +102,8 @@ export default function NuevaSolicitudPage() {
   }
 
   const handleProductSelect = (tempId: number, product: any) => {
-    setItems(items.map(item => {
+    const currentItems = Array.isArray(items) ? items : []
+    setItems(currentItems.map(item => {
       if (item.tempId === tempId) {
         return {
           ...item,
@@ -112,7 +114,7 @@ export default function NuevaSolicitudPage() {
           currentStock: product.stock,
           minStock: product.minStock,
           unitCost: product.cost || 0,
-          monthlyAverage: 0 // In a real scenario, we would trigger an API call to get this
+          monthlyAverage: 0
         }
       }
       return item
@@ -136,7 +138,7 @@ export default function NuevaSolicitudPage() {
         body: JSON.stringify({
           companyId: selectedCompany,
           ...formData,
-          items: items.filter(i => i.productName.trim() !== '')
+          items: Array.isArray(items) ? items.filter((i: any) => i.productName.trim() !== '') : []
         })
       })
 
@@ -154,7 +156,8 @@ export default function NuevaSolicitudPage() {
     }
   }
 
-  const totalAmount = items.reduce((sum, i) => sum + (i.unitCost * i.requestedQuantity), 0)
+  const safeItemsArray = Array.isArray(items) ? items : []
+  const totalAmount = safeItemsArray.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0)
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
