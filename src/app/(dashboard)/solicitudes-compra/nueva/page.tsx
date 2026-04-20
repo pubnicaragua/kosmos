@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, Plus, Trash2, Save, ShoppingCart, 
@@ -69,12 +69,14 @@ export default function NuevaSolicitudPage() {
     }
   ])
 
-  // Safe array helpers
-  const safeItems: RequestItem[] = Array.isArray(items) ? items : []
+  // Safe array - always use this instead of items directly
+  const itemsArray = useMemo(() => {
+    if (!Array.isArray(items)) return []
+    return items
+  }, [items])
 
   const addItem = () => {
-    const currentItems = Array.isArray(items) ? items : []
-    setItems([...currentItems, { 
+    setItems([...itemsArray, { 
       tempId: Date.now(), 
       productId: '', 
       productName: '', 
@@ -90,20 +92,17 @@ export default function NuevaSolicitudPage() {
   }
 
   const removeItem = (tempId: number) => {
-    const currentItems = Array.isArray(items) ? items : []
-    if (currentItems.length > 1) {
-      setItems(currentItems.filter(item => item.tempId !== tempId))
+    if (itemsArray.length > 1) {
+      setItems(itemsArray.filter(item => item.tempId !== tempId))
     }
   }
 
   const updateItem = (tempId: number, field: keyof RequestItem, value: any) => {
-    const currentItems = Array.isArray(items) ? items : []
-    setItems(currentItems.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
+    setItems(itemsArray.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
   }
 
   const handleProductSelect = (tempId: number, product: any) => {
-    const currentItems = Array.isArray(items) ? items : []
-    setItems(currentItems.map(item => {
+    setItems(itemsArray.map(item => {
       if (item.tempId === tempId) {
         return {
           ...item,
@@ -138,7 +137,7 @@ export default function NuevaSolicitudPage() {
         body: JSON.stringify({
           companyId: selectedCompany,
           ...formData,
-          items: Array.isArray(items) ? items.filter((i: any) => i.productName.trim() !== '') : []
+          items: itemsArray.filter((i: any) => i.productName.trim() !== '')
         })
       })
 
@@ -156,8 +155,7 @@ export default function NuevaSolicitudPage() {
     }
   }
 
-  const safeItemsArray = Array.isArray(items) ? items : []
-  const totalAmount = safeItemsArray.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0)
+  const totalAmount = itemsArray.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0)
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -202,7 +200,7 @@ export default function NuevaSolicitudPage() {
             </div>
             
             <div className="space-y-6">
-              {items.map((item, index) => (
+              {itemsArray.map((item: any, index: number) => (
                 <div key={item.tempId} className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100 relative group transition-all hover:bg-white hover:shadow-md">
                   <button 
                     onClick={() => removeItem(item.tempId)}

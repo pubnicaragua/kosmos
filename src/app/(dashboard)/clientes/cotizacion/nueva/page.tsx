@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 
@@ -56,9 +56,14 @@ export default function NuevaCotizacionPage() {
     { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }
   ])
 
-  // Safe array helpers
-  const safeClients: ClientOption[] = Array.isArray(clients) ? clients : []
-  const safeProducts: InventoryProduct[] = Array.isArray(products) ? products : []
+  // Safe array - always use this instead of items directly
+  const itemsArray = useMemo(() => {
+    if (!Array.isArray(items)) return []
+    return items
+  }, [items])
+
+  const safeClients = Array.isArray(clients) ? clients : []
+  const safeProducts = Array.isArray(products) ? products : []
   const [globalDiscount, setGlobalDiscount] = useState(0)
 
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
@@ -176,7 +181,7 @@ useEffect(() => {
     fetchProducts()
   }, [selectedCompany])
 
-  const safeItemsArray = Array.isArray(items) ? items : []
+  const itemsArray = Array.isArray(items) ? items : []
 
   useEffect(() => {
     setItems((prev) => {
@@ -189,7 +194,7 @@ useEffect(() => {
   }, [taxApplies])
 
   const addItem = () => {
-    setItems([...safeItemsArray, {
+    setItems([...itemsArray, {
       tempId: Date.now(),
       productId: '',
       description: '',
@@ -202,14 +207,14 @@ useEffect(() => {
   }
 
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
-    const updated = [...safeItemsArray]
+    const updated = [...itemsArray]
     updated[index] = { ...updated[index], [field]: value }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
   }
 
   const selectProduct = (index: number, product: InventoryProduct) => {
-    const updated = [...safeItemsArray]
+    const updated = [...itemsArray]
     updated[index] = {
       ...updated[index],
       productId: product.id,
@@ -221,13 +226,13 @@ useEffect(() => {
   }
 
   const deleteItem = (index: number) => {
-    if (safeItemsArray.length > 1) {
-      setItems(safeItemsArray.filter((_, i) => i !== index))
+    if (itemsArray.length > 1) {
+      setItems(itemsArray.filter((_, i) => i !== index))
     }
   }
 
-  const subtotal = safeItemsArray.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
-  const totalDiscount = (subtotal * (globalDiscount / 100)) + safeItemsArray.reduce((sum: number, item: any) => {
+  const subtotal = itemsArray.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
+  const totalDiscount = (subtotal * (globalDiscount / 100)) + itemsArray.reduce((sum: number, item: any) => {
     const itemSubtotal = item.quantity * item.unitPrice
     return sum + (itemSubtotal * (item.discount / 100))
   }, 0)
@@ -263,7 +268,7 @@ useEffect(() => {
           notes: clientNotes,
           internalNotes,
           terms,
-          items: safeItemsArray.filter((item: any) => item.description.trim() !== '').map((item: any) => ({
+          items: itemsArray.filter((item: any) => item.description.trim() !== '').map((item: any) => ({
             productId: item.productId || undefined,
             description: item.description,
             quantity: item.quantity,
@@ -363,7 +368,7 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {safeItemsArray.map((item: any, index: number) => (
+                  {itemsArray.map((item: any, index: number) => (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-3 px-2">
