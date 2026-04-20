@@ -69,7 +69,7 @@ export default function SolicitudesCompraPage() {
     const config = STATUS_CONFIG[status]
     const Icon = config.icon
     return (
-      <div className="flex-1 min-w-[300px] bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+      <div className="flex-1 min-w-[280px] md:min-w-[300px] bg-slate-50/50 rounded-2xl p-3 md:p-4 border border-slate-100">
         <div className="flex items-center justify-between mb-4 px-2">
           <div className="flex items-center gap-2">
             <div className={`p-1.5 rounded-lg ${config.color.split(' ')[0]} bg-opacity-20`}>
@@ -226,13 +226,13 @@ export default function SolicitudesCompraPage() {
         </div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="h-96 bg-slate-100 animate-pulse rounded-2xl" />
             ))}
           </div>
         ) : view === 'kanban' ? (
-          <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
+          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[400px]">
             {Object.keys(STATUS_CONFIG).map((status) => (
               <KanbanColumn 
                 key={status} 
