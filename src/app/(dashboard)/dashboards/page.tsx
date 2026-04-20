@@ -234,22 +234,34 @@ export default function DashboardsPage() {
     )
   }
 
-  const chartRows = useMemo(
-    () =>
-      (data?.monthlyData || []).map((row) => {
-        const [year, month] = row.month.split('-').map(Number)
-        const monthDate = Number.isFinite(year) && Number.isFinite(month) ? new Date(year, (month || 1) - 1, 1) : new Date()
-        const label = monthDate.toLocaleDateString('es-ES', { month: 'short' })
+const chartRows = useMemo(() => {
+    const arr = data?.monthlyData
+    if (!arr || !Array.isArray(arr)) {
+      return []
+    }
+    return arr.map((row: any) => {
+      const monthStr = row?.month || ''
+      const parts = monthStr.split('-').map(Number)
+      const year = parts[0]
+      const month = parts[1]
+      const monthDate = Number.isFinite(year) && Number.isFinite(month) ? new Date(year, (month || 1) - 1, 1) : new Date()
+      const label = monthDate.toLocaleDateString('es-ES', { month: 'short' })
 
-        return {
-          ...row,
-          label: label.charAt(0).toUpperCase() + label.slice(1),
-        }
-      }),
-    [data?.monthlyData]
-  )
+      return {
+        ...row,
+        incomes: Number(row?.incomes) || 0,
+        expenses: Number(row?.expenses) || 0,
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+      }
+    })
+  }, [data?.monthlyData])
 
-  const maxChartValue = chartRows.reduce((max, row) => Math.max(max, row.incomes, row.expenses), 0) || 1
+  const maxChartValue = useMemo(() => {
+    if (!chartRows || !Array.isArray(chartRows) || chartRows.length === 0) {
+      return 1
+    }
+    return chartRows.reduce((max: number, row: any) => Math.max(max, row.incomes || 0, row.expenses || 0), 0) || 1
+  }, [chartRows])
 
   const handleSearchClients = () => {
     if (searchQuery.trim()) {
@@ -265,11 +277,38 @@ export default function DashboardsPage() {
     router.push(query ? `${basePath}?${query}` : basePath)
   }
 
-  // Generar datos para sparklines
-  const salesTrend = useMemo(() => (data?.monthlyData || []).map(d => ({ value: d.incomes })), [data?.monthlyData])
-  const expensesTrend = useMemo(() => (data?.monthlyData || []).map(d => ({ value: d.expenses })), [data?.monthlyData])
-  const clientsTrend = useMemo(() => (data?.monthlyData || []).map(d => ({ value: Math.random() * 10 + 5 })), [data?.monthlyData]) // Mock trend for clients
-  const pipelineTrendData = useMemo(() => (data?.monthlyData || []).map(d => ({ value: d.incomes * 1.5 })), [data?.monthlyData]) // Mock trend based on income
+// Generar datos para sparklines - asegurar que siempre sean arrays válidos
+  const salesTrend = useMemo(() => {
+    const arr = data?.monthlyData
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      return [{ value: 0 }]
+    }
+    return arr.map(d => ({ value: Number(d.incomes) || 0 }))
+  }, [data?.monthlyData])
+
+  const expensesTrend = useMemo(() => {
+    const arr = data?.monthlyData
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      return [{ value: 0 }]
+    }
+    return arr.map(d => ({ value: Number(d.expenses) || 0 }))
+  }, [data?.monthlyData])
+
+  const clientsTrend = useMemo(() => {
+    const arr = data?.monthlyData
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      return [{ value: 5 }]
+    }
+    return arr.map(() => ({ value: Math.random() * 10 + 5 }))
+  }, [data?.monthlyData])
+
+  const pipelineTrendData = useMemo(() => {
+    const arr = data?.monthlyData
+    if (!arr || !Array.isArray(arr) || arr.length === 0) {
+      return [{ value: 0 }]
+    }
+    return arr.map(d => ({ value: Number(d.incomes) * 1.5 || 0 }))
+  }, [data?.monthlyData])
 
   if (isLoading) {
     return <SkeletonDashboard />
@@ -349,17 +388,17 @@ export default function DashboardsPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {visibleKpis.includes('totalSales') && (
           <div onClick={() => handleKpiDrillDown('/ingresos')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="VENTAS TOTALES"
-              value={formatCurrency(data?.kpis.totalSales || 0)}
-              change={data?.kpis.salesGrowth || 0}
+              value={formatCurrency(Number(data?.kpis?.totalSales) || 0)}
+              change={Number(data?.kpis?.salesGrowth) || 0}
               changeLabel="VS PERIODO ANTERIOR"
-              trend={data?.kpis.salesGrowth && data.kpis.salesGrowth > 0 ? 'up' : 'down'}
+              trend={(data?.kpis?.salesGrowth || 0) > 0 ? 'up' : 'down'}
               icon={<DollarSign className="w-6 h-6 text-success" />}
-              sparklineData={salesTrend}
+              sparklineData={Array.isArray(salesTrend) ? salesTrend : [{ value: 0 }]}
             />
           </div>
         )}
@@ -368,12 +407,12 @@ export default function DashboardsPage() {
           <div onClick={() => handleKpiDrillDown('/gastos')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="GASTOS OPERATIVOS"
-              value={formatCurrency(data?.kpis.operationalExpenses || 0)}
-              change={data?.kpis.expensesChange || 0}
+              value={formatCurrency(Number(data?.kpis?.operationalExpenses) || 0)}
+              change={Number(data?.kpis?.expensesChange) || 0}
               changeLabel="VS PERIODO ANTERIOR"
-              trend={data?.kpis.expensesChange && data.kpis.expensesChange < 0 ? 'up' : 'down'}
+              trend={(data?.kpis?.expensesChange || 0) < 0 ? 'up' : 'down'}
               icon={<BarChart3 className="w-6 h-6 text-error" />}
-              sparklineData={expensesTrend}
+              sparklineData={Array.isArray(expensesTrend) ? expensesTrend : [{ value: 0 }]}
             />
           </div>
         )}
@@ -382,12 +421,12 @@ export default function DashboardsPage() {
           <div onClick={() => handleKpiDrillDown('/pipeline-ventas')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="VALOR PIPELINE"
-              value={formatCurrency(data?.kpis.pipelineValue || 0)}
+              value={formatCurrency(Number(data?.kpis?.pipelineValue) || 0)}
               change={pipelineChange}
               changeLabel={pipelineLabel}
               trend={pipelineTrend}
               icon={<TrendingUp className="w-6 h-6 text-primary" />}
-              sparklineData={pipelineTrendData}
+              sparklineData={Array.isArray(pipelineTrendData) ? pipelineTrendData : [{ value: 0 }]}
             />
           </div>
         )}
@@ -396,26 +435,26 @@ export default function DashboardsPage() {
           <div onClick={() => handleKpiDrillDown('/clientes')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="CLIENTES ACTIVOS"
-              value={formatNumber(data?.kpis.activeClients || 0)}
-              change={data?.kpis.clientsGrowth || 0}
-              changeLabel={`${data?.kpis.newClientsThisPeriod || 0} NUEVOS EN PERIODO`}
-              trend={data?.kpis.clientsGrowth && data.kpis.clientsGrowth > 0 ? 'up' : 'neutral'}
+              value={formatNumber(Number(data?.kpis?.activeClients) || 0)}
+              change={Number(data?.kpis?.clientsGrowth) || 0}
+              changeLabel={`${Number(data?.kpis?.newClientsThisPeriod) || 0} NUEVOS EN PERIODO`}
+              trend={(data?.kpis?.clientsGrowth || 0) > 0 ? 'up' : 'neutral'}
               icon={<Users className="w-6 h-6 text-primary" />}
-              sparklineData={clientsTrend}
+              sparklineData={Array.isArray(clientsTrend) ? clientsTrend : [{ value: 5 }]}
             />
           </div>
         )}
 
-        {visibleKpis.includes('ticketResolutionRate') && (
+{visibleKpis.includes('ticketResolutionRate') && (
           <div onClick={() => handleKpiDrillDown('/tickets-soporte')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="% RESOLUCIÓN TICKETS"
-              value={`${(data?.kpis.ticketResolutionRate || 0).toFixed(1)}%`}
+              value={`${(data?.kpis?.ticketResolutionRate || 0).toFixed(1)}%`}
               change={0}
               changeLabel="TASA DE RESPUESTA"
               trend="neutral"
               icon={<CheckCircle2 className="w-6 h-6 text-success" />}
-              sparklineData={salesTrend.map(v => ({ value: v.value * 0.8 }))} // Mock
+              sparklineData={Array.isArray(salesTrend) ? salesTrend.map(v => ({ value: v.value * 0.8 })) : [{ value: 0 }]}
             />
           </div>
         )}
@@ -424,26 +463,26 @@ export default function DashboardsPage() {
           <div onClick={() => handleKpiDrillDown('/marketing')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="ROI MARKETING"
-              value={`${(data?.kpis.marketingRoi || 0).toFixed(1)}x`}
+              value={`${(data?.kpis?.marketingRoi || 0).toFixed(1)}x`}
               change={0}
-              changeLabel={`GASTO: $${data?.kpis.marketingSpent.toLocaleString()}`}
+              changeLabel={`GASTO: $${(data?.kpis?.marketingSpent || 0).toLocaleString()}`}
               trend="up"
               icon={<Megaphone className="w-6 h-6 text-indigo-500" />}
-              sparklineData={salesTrend.map(v => ({ value: v.value * 0.1 }))} // Mock
+              sparklineData={Array.isArray(salesTrend) ? salesTrend.map(v => ({ value: v.value * 0.1 })) : [{ value: 0 }]}
             />
           </div>
         )}
 
-        {visibleKpis.includes('wonValue') && (
+{visibleKpis.includes('wonValue') && (
           <div className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="NEGOCIOS GANADOS"
-              value={formatCurrency(data?.kpis.wonValue || 0)}
+              value={formatCurrency(Number(data?.kpis?.wonValue) || 0)}
               change={0}
-              changeLabel={`${data?.kpis.wonCount || 0} CIERRES EXITOSOS`}
+              changeLabel={`${Number(data?.kpis?.wonCount) || 0} CIERRES EXITOSOS`}
               trend="up"
               icon={<Target className="w-6 h-6 text-success" />}
-              sparklineData={salesTrend}
+              sparklineData={Array.isArray(salesTrend) ? salesTrend : [{ value: 0 }]}
             />
           </div>
         )}
@@ -452,12 +491,12 @@ export default function DashboardsPage() {
           <div onClick={() => handleKpiDrillDown('/contratos')} className="cursor-pointer transition-transform hover:scale-[1.02]">
             <KPICard
               title="CONTRATOS ACTIVOS"
-              value={formatNumber(data?.kpis.activeContracts || 0)}
+              value={formatNumber(Number(data?.kpis?.activeContracts) || 0)}
               change={0}
               changeLabel="VIGENCIA ACTUAL"
               trend="neutral"
               icon={<Briefcase className="w-6 h-6 text-slate-700" />}
-              sparklineData={clientsTrend}
+              sparklineData={Array.isArray(clientsTrend) ? clientsTrend : [{ value: 5 }]}
             />
           </div>
         )}
@@ -481,25 +520,25 @@ export default function DashboardsPage() {
               </div>
             </div>
           </div>
-          <div className="h-64 flex items-end justify-between gap-2">
-            {chartRows.length === 0 ? (
+<div className="h-64 flex items-end justify-between gap-2">
+            {!Array.isArray(chartRows) || chartRows.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
                 No hay datos para el periodo seleccionado
               </div>
             ) : (
-              chartRows.map((row) => (
-                <div key={row.month} className="flex-1 flex flex-col items-center gap-2">
+              chartRows.map((row: any, idx: number) => (
+                <div key={row?.month || idx} className="flex-1 flex flex-col items-center gap-2">
                   <div className="w-full flex gap-1">
                     <div
                       className="flex-1 bg-success rounded-t"
-                      style={{ height: `${Math.max((row.incomes / maxChartValue) * 220, 4)}px` }}
+                      style={{ height: `${Math.max(((row?.incomes || 0) / maxChartValue) * 220, 4)}px` }}
                     ></div>
                     <div
                       className="flex-1 bg-error rounded-t"
-                      style={{ height: `${Math.max((row.expenses / maxChartValue) * 220, 4)}px` }}
+                      style={{ height: `${Math.max(((row?.expenses || 0) / maxChartValue) * 220, 4)}px` }}
                     ></div>
                   </div>
-                  <span className="text-xs text-gray-500">{row.label}</span>
+                  <span className="text-xs text-gray-500">{row?.label || ''}</span>
                 </div>
               ))
             )}
@@ -515,23 +554,23 @@ export default function DashboardsPage() {
               </svg>
             </button>
           </div>
-          <div className="space-y-4">
-            {(data?.performanceByCompany || []).length === 0 ? (
+<div className="space-y-4">
+            {(!data?.performanceByCompany || !Array.isArray(data.performanceByCompany) || data.performanceByCompany.length === 0) ? (
               <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
                 No hay datos de rendimiento por empresa para este periodo.
               </div>
             ) : (
-              data?.performanceByCompany.slice(0, 4).map((company, i) => (
+              data.performanceByCompany.slice(0, 4).map((company: any, i: number) => (
                 <div key={i} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900">{company.company}</span>
+                        <span className="text-sm font-medium text-gray-900">{company?.company || 'Sin nombre'}</span>
                         <Badge
                           variant={
-                            company.status === 'positive'
+                            company?.status === 'positive'
                               ? 'success'
-                              : company.status === 'negative'
+                              : company?.status === 'negative'
                               ? 'error'
                               : 'info'
                           }
@@ -540,20 +579,20 @@ export default function DashboardsPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">{company.industry || 'Sin industria'}</span>
+                        <span className="text-xs text-gray-500">{company?.industry || 'Sin industria'}</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-sm font-semibold text-gray-900">{formatCurrency(company.sales)}</span>
+                          <span className="text-sm font-semibold text-gray-900">{formatCurrency(Number(company?.sales) || 0)}</span>
                           <span
                             className={`text-xs ${
-                              company.growth > 0
+                              (company?.growth || 0) > 0
                                 ? 'text-success'
-                                : company.growth < 0
+                                : (company?.growth || 0) < 0
                                 ? 'text-error'
                                 : 'text-gray-500'
                             }`}
                           >
-                            {company.growth > 0 ? '+' : company.growth < 0 ? '-' : '='}
-                            {Math.abs(company.growth).toFixed(2)}%
+                            {(company?.growth || 0) > 0 ? '+' : (company?.growth || 0) < 0 ? '-' : '='}
+                            {Math.abs(Number(company?.growth) || 0).toFixed(2)}%
                           </span>
                         </div>
                       </div>

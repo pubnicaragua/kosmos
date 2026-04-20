@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { supabase, STORAGE_BUCKET } from '@/lib/supabase'
+import { supabase, supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase'
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -59,9 +59,10 @@ export async function GET(
     }
 
     if (!filePath) {
-      // Fallback: try Supabase Storage
-      if (supabase) {
-        const { data, error } = await supabase.storage
+      // Fallback: try Supabase Storage (use admin client to bypass RLS)
+      const sbClient = supabaseAdmin || supabase
+      if (sbClient) {
+        const { data, error } = await sbClient.storage
           .from(STORAGE_BUCKET)
           .download(filename)
         
