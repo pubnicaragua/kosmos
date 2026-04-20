@@ -181,8 +181,6 @@ useEffect(() => {
     fetchProducts()
   }, [selectedCompany])
 
-  const itemsArray = Array.isArray(items) ? items : []
-
   useEffect(() => {
     setItems((prev) => {
       const arr = Array.isArray(prev) ? prev : []
