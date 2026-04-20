@@ -19,6 +19,7 @@ model User {
   refreshTokens  RefreshToken[]
   ticketComments TicketComment[]
   userCompanies  UserCompany[]
+  templates     Template[]
 
   @@map("users")
 }
@@ -48,6 +49,7 @@ model Company {
   quotes             Quote[]
   tickets            Ticket[]
   userCompanies      UserCompany[]
+  templates          Template[]
 
   // Configuración de Plantillas (Proformas y Facturas)
   quotePrimaryColor   String?   @map("quote_primary_color")
@@ -747,4 +749,27 @@ enum ClientType {
   NUEVO
   RECURRENTE
   PROYECTO
+}
+
+model Template {
+  id          String        @id @default(cuid())
+  name        String
+  type        TemplateType
+  fileUrl     String?
+  content     String?      @db.Text
+  module      String       // cotizacion, factura, inventario, contrato, etc
+  isActive    Boolean      @default(true)
+  companyId   String
+  company    Company     @relation(fields: [companyId], references: [id])
+  createdBy   String
+  user       User        @relation(fields: [createdBy], references: [id])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@map("templates")
+}
+
+enum TemplateType {
+  EDITABLE    // Plantilla editable en el sistema
+  STATIC     // Archivo estatico (PDF/XLSX)
 }
