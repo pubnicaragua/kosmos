@@ -615,7 +615,7 @@ export default function InventarioPage() {
 
       {/* ModalEditarCategoría */}
       <Modal 
-        open={showCategoryModal} 
+        isOpen={showCategoryModal} 
         onClose={() => setShowCategoryModal(false)}
         title="Editar Categoría"
       >
