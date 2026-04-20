@@ -153,7 +153,7 @@ export default function ExcelEditorPage() {
             No hay ningún archivo cargado.
           </p>
           <p className="text-sm text-gray-400 mb-4">
-            Haz click en "Importar Excel" para cargar un archivo .xlsx
+            Haz click en Importar Excel para cargar un archivo .xlsx
           </p>
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="w-4 h-4 mr-2" />
