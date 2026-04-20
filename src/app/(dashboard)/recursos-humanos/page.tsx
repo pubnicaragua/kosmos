@@ -109,10 +109,21 @@ export default function RecursosHumanosPage() {
     }
   }
 
-  const handleDownloadTemplate = () => {
+const handleDownloadTemplate = () => {
+    // Enhanced template with professional fields
     const headers = [
-      { Nombre: 'Juan Perez', Periodo: 'Enero 2026', Monto: 1500.50, Notas: 'Pago de salario base' },
-      { Nombre: 'Maria Lopez', Periodo: 'Enero 2026', Monto: 1800.00, Notas: 'Pago base + bonos' },
+      { 
+        Nombre: 'Juan Perez', 
+        Cedula: '001-123456-0000A', 
+        Cargo: 'Técnico de CCTV', 
+        Departamento: 'Operaciones', 
+        Salario: 15000.00, 
+        FechaIngreso: '2025-01-15', 
+        TipoContrato: 'Indefinido', 
+        Estado: 'Activo', 
+        Sucursal: 'Central', 
+        Notas: 'Excelente rendimiento' 
+      },
     ]
     const workbook = XLSX.utils.book_new()
     const worksheet = XLSX.utils.json_to_sheet(headers)
@@ -332,12 +343,18 @@ export default function RecursosHumanosPage() {
             <Download className="w-4 h-4 mr-2" />
             PLANTILLA
           </Button>
-          <label className="cursor-pointer">
+          <label htmlFor="payroll-import" className="cursor-pointer">
             <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold pointer-events-none">
               <Upload className="w-4 h-4 mr-2" />
               IMPORTAR
             </Button>
-            <input type="file" className="hidden" onChange={handleImportXLSX} accept=".xlsx,.xls" />
+            <input 
+              id="payroll-import" 
+              type="file" 
+              className="hidden" 
+              onChange={handleImportXLSX} 
+              accept=".xlsx,.xls" 
+            />
           </label>
           <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
             <Upload className="w-4 h-4 mr-2" />

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { supabase, STORAGE_BUCKET } from '@/lib/supabase'
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -58,6 +59,27 @@ export async function GET(
     }
 
     if (!filePath) {
+      // Fallback: try Supabase Storage
+      if (supabase) {
+        const { data, error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .download(filename)
+        
+        if (!error && data) {
+          const buffer = await data.arrayBuffer()
+          const ext = filename.split('.').pop()?.toLowerCase() || ''
+          const mimeType = MIME_MAP[ext] || 'application/octet-stream'
+          
+          return new NextResponse(new Uint8Array(buffer), {
+            status: 200,
+            headers: {
+              'Content-Type': mimeType,
+              'Cache-Control': 'private, max-age=86400',
+              'Content-Disposition': `inline; filename="${filename}"`,
+            },
+          })
+        }
+      }
       return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 })
     }
 
