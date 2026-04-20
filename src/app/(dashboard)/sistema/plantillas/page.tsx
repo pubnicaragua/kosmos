@@ -314,15 +314,17 @@ export default function PlantillasPage() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
-                {template.fileUrl && (
+                {(template.fileUrl || template.content) && (
                   <a
-                    href={template.fileUrl}
+                    href={template.type === 'EDITABLE' 
+                      ? `/sistema/plantillas/preview/${template.id}` 
+                      : template.fileUrl || '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ml-auto text-sm text-primary hover:underline flex items-center gap-1"
                   >
                     <File className="w-4 h-4" />
-                    Ver
+                    {template.type === 'EDITABLE' ? 'Editar' : 'Ver'}
                   </a>
                 )}
               </div>

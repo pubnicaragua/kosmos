@@ -16,8 +16,21 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const templateModule = searchParams.get('module')
     const type = searchParams.get('type')
+    const id = searchParams.get('id')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
+
+    // If getting single template by ID
+    if (id) {
+      const template = await prisma.template.findUnique({
+        where: { id },
+      })
+      if (!template) return apiError('Plantilla no encontrada', 404)
+      if (!companyIds.includes(template.companyId)) {
+        return apiError('No tienes acceso a esta plantilla', 403)
+      }
+      return apiSuccess(template)
+    }
 
     const where: any = {
       companyId: { in: companyIds },
