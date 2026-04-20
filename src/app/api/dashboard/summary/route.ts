@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       prisma.opportunity.aggregate({
         where: {
           ...opportunityWhereClause,
-          stage: 'GANADA',
+          stage: 'CALIFICADO',
         },
         _sum: { value: true },
         _count: { id: true },
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
       prisma.opportunity.count({
         where: {
           ...opportunityWhereClause,
-          stage: 'PERDIDA',
+          stage: 'PROSPECTO',
         },
       }),
     ])
