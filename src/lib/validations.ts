@@ -212,7 +212,7 @@ export const ticketSchema = z.object({
     'COTIZACION_TECNICA'
   ]).optional(),
   status: z.string().optional(),
-  priority: z.enum(['BAJA', 'MEDIA', 'ALTA']).optional(),
+  priority: z.string().optional(),
   assignedTo: z.string().optional(),
   branch: z.string().optional(),
   amount: z.number().min(0).optional(),
@@ -256,7 +256,7 @@ export const purchaseRequestSchema = z.object({
   requestingArea: z.string().min(1, 'Área solicitante requerida'),
   requestedBy: z.string().min(1, 'Solicitante requerido'),
   requestType: z.enum(['REPOSICION', 'PRODUCTO_NUEVO', 'PEDIDO_ESPECIAL']).optional(),
-  priority: z.enum(['BAJA', 'MEDIA', 'ALTA']).optional(),
+  priority: z.string().optional(),
   status: z.enum(['PENDIENTE', 'APROBADA', 'RECHAZADA', 'COMPRADO', 'RECIBIDO']).optional(),
   notes: z.string().optional(),
   items: z.array(purchaseRequestItemSchema).min(1, 'Debe incluir al menos un producto'),
