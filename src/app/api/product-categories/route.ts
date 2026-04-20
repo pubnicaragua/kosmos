@@ -63,3 +63,31 @@ export async function POST(request: NextRequest) {
     return apiError('Error al crear categoría', 500)
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const body = await request.json()
+    const { id, name, description } = body
+
+    if (!id) return apiError('ID de categoría requerido', 400)
+
+    const category = await prisma.productCategory.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(description !== undefined && { description }),
+      },
+    })
+
+    return apiSuccess(category)
+  } catch (error) {
+    console.error('Error updating category:', error)
+    return apiError('Error al actualizar categoría', 500)
+  }
+}
