@@ -69,6 +69,9 @@ export default function NuevaSolicitudPage() {
     }
   ])
 
+  // Safe array helpers
+  const safeItems: RequestItem[] = Array.isArray(items) ? items : []
+
   const addItem = () => {
     setItems([...items, { 
       tempId: Date.now(), 
@@ -86,13 +89,15 @@ export default function NuevaSolicitudPage() {
   }
 
   const removeItem = (tempId: number) => {
-    if (items.length > 1) {
-      setItems(items.filter(item => item.tempId !== tempId))
+    const currentItems = Array.isArray(items) ? items : []
+    if (currentItems.length > 1) {
+      setItems(currentItems.filter(item => item.tempId !== tempId))
     }
   }
 
   const updateItem = (tempId: number, field: keyof RequestItem, value: any) => {
-    setItems(items.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
+    const currentItems = Array.isArray(items) ? items : []
+    setItems(currentItems.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
   }
 
   const handleProductSelect = (tempId: number, product: any) => {

@@ -39,6 +39,8 @@ export default function NuevaCotizacionPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
   const [products, setProducts] = useState<InventoryProduct[]>([])
+  const [isLoadingClients, setIsLoadingClients] = useState(true)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedClient, setSelectedClient] = useState('')
   const [currency, setCurrency] = useState('USD')
@@ -53,6 +55,10 @@ export default function NuevaCotizacionPage() {
   const [items, setItems] = useState<QuoteItem[]>([
     { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }
   ])
+
+  // Safe array helpers
+  const safeClients: ClientOption[] = Array.isArray(clients) ? clients : []
+  const safeProducts: InventoryProduct[] = Array.isArray(products) ? products : []
   const [globalDiscount, setGlobalDiscount] = useState(0)
 
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
@@ -76,13 +82,14 @@ export default function NuevaCotizacionPage() {
         const data = await response.json()
         if (!data.success) return
 
-        setCompanies(data.data)
+        const companiesData = Array.isArray(data.data) ? data.data : []
+        setCompanies(companiesData)
 
         const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
         if (activeCompany?.id) {
           setSelectedCompany(activeCompany.id)
-        } else if (data.data.length > 0) {
-          setSelectedCompany(data.data[0].id)
+        } else if (companiesData.length > 0) {
+          setSelectedCompany(companiesData[0].id)
         }
       } catch (error) {
         console.error('Error fetching companies:', error)
@@ -92,44 +99,44 @@ export default function NuevaCotizacionPage() {
     fetchCompanies()
   }, [])
 
-  useEffect(() => {
+useEffect(() => {
     if (selectedCompany === 'all') {
       setClients([])
       setSelectedClient('')
+      setIsLoadingClients(false)
       return
     }
 
-    const fetchClients = async () => {
+    setIsLoadingClients(true)
+    const doFetch = async () => {
       const token = localStorage.getItem('accessToken')
-      if (!token) return
-
+      if (!token) {
+        setClients([])
+        setIsLoadingClients(false)
+        return
+      }
       try {
         const params = new URLSearchParams({ companyId: selectedCompany })
         const response = await fetch(`/api/clients?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
-
         const data = await response.json()
-        if (!data.success) return
-
-        const fetchedClients = data.data as ClientOption[]
-        setClients(fetchedClients)
-        if (fetchedClients.length > 0) {
-          setSelectedClient((current) => {
-            if (current && fetchedClients.some((client) => client.id === current)) {
-              return current
-            }
-            return fetchedClients[0].id
-          })
+        if (data.success && Array.isArray(data.data)) {
+          setClients(data.data)
+          if (data.data.length > 0 && !selectedClient) {
+            setSelectedClient(data.data[0].id)
+          }
         } else {
-          setSelectedClient('')
+          setClients([])
         }
-      } catch (error) {
-        console.error('Error fetching clients:', error)
+      } catch (e) {
+        console.error('Error fetching clients:', e)
+        setClients([])
+      } finally {
+        setIsLoadingClients(false)
       }
     }
-
-    fetchClients()
+    doFetch()
   }, [selectedCompany])
 
   // Cargar productos del inventario cuando cambia la empresa
@@ -141,7 +148,10 @@ export default function NuevaCotizacionPage() {
 
     const fetchProducts = async () => {
       const token = localStorage.getItem('accessToken')
-      if (!token) return
+      if (!token) {
+        setIsLoadingProducts(false)
+        return
+      }
 
       try {
         const params = new URLSearchParams({ companyId: selectedCompany })
@@ -151,10 +161,15 @@ export default function NuevaCotizacionPage() {
 
         const data = await response.json()
         if (data.success) {
-          setProducts(data.data || [])
+          setProducts(Array.isArray(data.data) ? data.data : [])
+        } else {
+          setProducts([])
         }
       } catch (error) {
         console.error('Error fetching products:', error)
+        setProducts([])
+      } finally {
+        setIsLoadingProducts(false)
       }
     }
 
