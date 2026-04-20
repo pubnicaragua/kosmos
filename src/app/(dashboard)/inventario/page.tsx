@@ -135,8 +135,8 @@ export default function InventarioPage() {
     setEditingRows(prev => ({
       ...prev,
       [productId]: { ...prev[productId], [field]: value }
-    })
-  })
+    }))
+  }
 
   const handleEditCategory = (cat: { id: string; name: string }) => {
     setEditingCategory(cat)
