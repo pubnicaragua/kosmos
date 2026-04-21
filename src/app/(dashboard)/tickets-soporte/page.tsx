@@ -469,47 +469,25 @@ export default function TicketsSoportePage() {
       setIsSaving(false)
     }
   }
-        }
-      }
 
-      const response = await fetch(editingTicketId ? `/api/tickets/${editingTicketId}` : '/api/tickets', {
-        method: editingTicketId ? 'PUT' : 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description || null,
-          clientId: formData.clientId || null,
-          status: formData.status,
-          priority: formData.priority,
-          assignedTo: formData.assignedTo || null,
-          assignedUsers: formData.assignedUsers.length > 0 ? JSON.stringify(formData.assignedUsers) : null,
-          amount: formData.amount ? parseFloat(formData.amount) : null,
-          currency: formData.currency,
-          startDate: formData.startDate || null,
-          dueDate: formData.dueDate || null,
-          attachments: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
-          evidence: evidenceUrls.length > 0 ? JSON.stringify(evidenceUrls) : null,
-          ...(editingTicketId ? {} : { companyId: targetCompanyId }),
-        }),
+  const handleDelete = async (ticketId: string) => {
+    if (!window.confirm('¿Eliminar este ticket?')) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       })
-
       const data = await response.json()
-      if (!data.success) {
-        alert(data.error || 'No se pudo guardar el ticket')
-        return
+      if (data.success) {
+        setTickets(prev => prev.filter(t => t.id !== ticketId))
+      } else {
+        alert(data.error || 'Error al eliminar ticket')
       }
-
-      setIsModalOpen(false)
-      resetForm()
-      fetchData()
     } catch (error) {
-      console.error('Error saving ticket:', error)
-      alert('Error al guardar ticket')
-    } finally {
-      setIsSaving(false)
+      console.error('Error deleting ticket:', error)
+      alert('Error al eliminar ticket')
     }
   }
 

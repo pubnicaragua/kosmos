@@ -11,6 +11,7 @@ interface SimpleRichTextEditorProps {
 
 export function SimpleRichTextEditor({ value, onChange, disabled }: SimpleRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
+  const isInitializedRef = useRef(false)
 
   const execCommand = (command: string, value?: string) => {
     if (disabled) return
@@ -81,14 +82,20 @@ export function SimpleRichTextEditor({ value, onChange, disabled }: SimpleRichTe
       </div>
       <div
         ref={editorRef}
-        contentEditable
+        contentEditable={!disabled}
         suppressContentEditableWarning
         onInput={() => {
           if (editorRef.current) {
             onChange(editorRef.current.innerHTML)
           }
         }}
-        className="min-h-[100px] p-3 text-sm outline-none"
+        onFocus={() => {
+          if (!isInitializedRef.current && editorRef.current && value) {
+            editorRef.current.innerHTML = value
+            isInitializedRef.current = true
+          }
+        }}
+        className="min-h-[100px] p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
         dangerouslySetInnerHTML={{ __html: value }}
         style={{ fontFamily: 'Arial, sans-serif' }}
       />
