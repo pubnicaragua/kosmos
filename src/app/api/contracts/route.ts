@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { companyId, ...contractData } = body
-    const endDate = new Date(contractData.endDate)
 
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
@@ -93,6 +92,7 @@ export async function POST(request: NextRequest) {
         endDate: endDateValue,
         status: getContractStatus(endDateValue),
         uploadedBy: decoded.userId,
+        companyId,
       },
     })
 
