@@ -712,10 +712,10 @@ export default function InventarioPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <h3 className="text-sm font-bold text-amber-900 mb-2">Instrucciones de uso:</h3>
                 <ol className="text-sm text-amber-800 space-y-1 list-decimal list-inside">
-                  <li>Descarga la plantilla haciendo clic en "Descargar Plantilla"</li>
+                  <li>Descarga la plantilla haciendo clic en &quot;Descargar Plantilla&quot;</li>
                   <li>Llena los datos de tus productos siguiendo el ejemplo incluido</li>
                   <li>Guarda el archivo Excel con tus datos</li>
-                  <li>Ve a "Agregar Producto" y usa la opción de importación masiva</li>
+                  <li>Ve a &quot;Agregar Producto&quot; y usa la opción de importación masiva</li>
                   <li>Selecciona tu archivo y confirma la importación</li>
                 </ol>
               </div>

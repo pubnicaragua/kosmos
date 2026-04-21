@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 
@@ -216,13 +216,13 @@ export function NotificationCenter() {
     localStorage.setItem('notifications', JSON.stringify(notifications))
   }, [notifications])
 
-  const playNotificationSound = () => {
+  const playNotificationSound = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.play().catch(() => emitFallbackTone())
     } else {
       emitFallbackTone()
     }
-  }
+  }, [])
 
   const showBrowserNotification = (title: string, body: string) => {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -230,7 +230,7 @@ export function NotificationCenter() {
     }
   }
 
-  const addNotification = (notification: NotificationPayload) => {
+  const addNotification = useCallback((notification: NotificationPayload) => {
     const newNotification: Notification = {
       ...notification,
       id: Date.now().toString(),
@@ -241,7 +241,7 @@ export function NotificationCenter() {
     setNotifications(prev => [newNotification, ...prev])
     playNotificationSound()
     showBrowserNotification(notification.title, notification.message)
-  }
+  }, [playNotificationSound])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -252,7 +252,7 @@ export function NotificationCenter() {
 
     window.addEventListener('add-notification', handler as EventListener)
     return () => window.removeEventListener('add-notification', handler as EventListener)
-  }, [])
+  }, [addNotification])
 
   const markAsRead = (id: string) => {
     setNotifications((prev) => {

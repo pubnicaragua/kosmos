@@ -658,10 +658,10 @@ const handleDownloadTemplate = () => {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <h3 className="text-sm font-bold text-amber-900 mb-2">Cómo usar la plantilla:</h3>
                 <ol className="text-sm text-amber-800 space-y-1 list-decimal list-inside">
-                  <li>Descarga la plantilla haciendo clic en "Descargar Plantilla"</li>
+                  <li>Descarga la plantilla haciendo clic en &quot;Descargar Plantilla&quot;</li>
                   <li>Llena los datos de tus empleados siguiendo el ejemplo incluido</li>
                   <li>Guarda el archivo Excel con todos los empleados</li>
-                  <li>Usa el botón "IMPORTAR" para subir el archivo con múltiples empleados</li>
+                  <li>Usa el botón &quot;IMPORTAR&quot; para subir el archivo con múltiples empleados</li>
                   <li>El sistema creará automáticamente los registros de nómina</li>
                 </ol>
               </div>
