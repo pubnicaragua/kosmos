@@ -49,6 +49,7 @@ interface EditingProduct {
   promotion: string
   promotionCost: string
   promotionDiscount: string
+  categoryId: string
 }
 
 export default function InventarioPage() {
@@ -67,6 +68,7 @@ export default function InventarioPage() {
   const [editingRows, setEditingRows] = useState<Record<string, EditingProduct>>({})
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
 
   const startEditing = (product: Product) => {
     setEditingRows(prev => ({
@@ -82,6 +84,7 @@ export default function InventarioPage() {
         promotion: product.promotion || '',
         promotionCost: product.promotionCost != null ? String(product.promotionCost) : '',
         promotionDiscount: product.promotionDiscount != null ? String(product.promotionDiscount) : '',
+        categoryId: product.category?.id || '',
       },
     }))
   }
@@ -111,6 +114,7 @@ export default function InventarioPage() {
           promotion: row.promotion || null,
           promotionCost: row.promotionCost !== '' ? Number(row.promotionCost) : null,
           promotionDiscount: row.promotionDiscount !== '' ? Number(row.promotionDiscount) : null,
+          categoryId: row.categoryId || null,
         }),
       })
       if (res.ok) {
@@ -230,6 +234,10 @@ export default function InventarioPage() {
   }
 
   const handleDownloadTemplate = () => {
+    setShowTemplateModal(true)
+  }
+
+  const handleConfirmDownloadTemplate = () => {
     const templateData = [
       {
         'PRODUCTO': 'Ejemplo Producto',
@@ -251,6 +259,7 @@ export default function InventarioPage() {
       companies,
       selectedCompany
     )
+    setShowTemplateModal(false)
   }
 
   const handleExport = () => {
@@ -477,7 +486,11 @@ export default function InventarioPage() {
                           className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
-                        <div className="text-sm text-gray-500">{product.category?.name || '-'}</div>
+                        <select value={editing.categoryId} onChange={e => updateEditField(product.id, 'categoryId', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm">
+                          <option value="">Sin categoría</option>
+                          {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                        </select>
                       </td>
                       <td className="py-2 px-2">
                         <input value={editing.description} onChange={e => updateEditField(product.id, 'description', e.target.value)}
@@ -631,6 +644,93 @@ export default function InventarioPage() {
           </Button>
         </div>
       </div>
+
+      {/* Modal de explicación de plantilla */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Plantilla de Importación de Inventario</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-blue-900 mb-2">¿Qué es la plantilla?</h3>
+                <p className="text-sm text-blue-800">
+                  La plantilla es un archivo Excel con el formato correcto para importar productos masivamente al inventario. 
+                  Incluye columnas predefinidas y un ejemplo de cómo llenar los datos.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-900">Columnas incluidas:</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">PRODUCTO</p>
+                      <p className="text-xs text-gray-500">Nombre del producto</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">STOCK</p>
+                      <p className="text-xs text-gray-500">Cantidad disponible</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">CATEGORÍA</p>
+                      <p className="text-xs text-gray-500">Clasificación del producto</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">SKU</p>
+                      <p className="text-xs text-gray-500">Código único del producto</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">COSTO / PRECIO</p>
+                      <p className="text-xs text-gray-500">Valores monetarios</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">MARGEN %</p>
+                      <p className="text-xs text-gray-500">Margen de ganancia</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-amber-900 mb-2">Instrucciones de uso:</h3>
+                <ol className="text-sm text-amber-800 space-y-1 list-decimal list-inside">
+                  <li>Descarga la plantilla haciendo clic en "Descargar Plantilla"</li>
+                  <li>Llena los datos de tus productos siguiendo el ejemplo incluido</li>
+                  <li>Guarda el archivo Excel con tus datos</li>
+                  <li>Ve a "Agregar Producto" y usa la opción de importación masiva</li>
+                  <li>Selecciona tu archivo y confirma la importación</li>
+                </ol>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button variant="outline" onClick={() => setShowTemplateModal(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmDownloadTemplate} className="flex-1 bg-primary hover:bg-primary-dark">
+                Descargar Plantilla
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

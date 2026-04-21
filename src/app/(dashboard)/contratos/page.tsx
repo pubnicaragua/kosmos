@@ -159,18 +159,26 @@ export default function ContratosPage() {
 
   const openEditModal = (contract: Contract) => {
     setEditingContractId(contract.id)
+    let parsedSharedWith: string[] = []
+    try {
+      if (contract.sharedWith && typeof contract.sharedWith === 'string') {
+        parsedSharedWith = JSON.parse(contract.sharedWith)
+      } else if (Array.isArray(contract.sharedWith)) {
+        parsedSharedWith = contract.sharedWith
+      }
+    } catch { /* ignore */ }
     setFormData({
       contractId: contract.contractId,
       name: contract.name,
       concept: contract.concept,
-      category: contract.category || 'Operativo',
+      category: contract.category,
       party: contract.party,
-      startDate: new Date(contract.startDate).toISOString().split('T')[0],
-      endDate: new Date(contract.endDate).toISOString().split('T')[0],
-      area: contract.area || 'General',
-      visibility: contract.visibility || 'COMPARTIDO',
-      sharedWith: contract.sharedWith as unknown as string[],
-      fileUrl: contract.fileUrl || '',
+      startDate: contract.startDate.split('T')[0],
+      endDate: contract.endDate.split('T')[0],
+      area: contract.area,
+      visibility: contract.visibility,
+      sharedWith: Array.isArray(parsedSharedWith) ? parsedSharedWith : [],
+      fileUrl: contract.fileUrl,
     })
     setIsModalOpen(true)
   }

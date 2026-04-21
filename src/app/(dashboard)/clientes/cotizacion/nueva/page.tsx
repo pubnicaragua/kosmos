@@ -211,16 +211,16 @@ useEffect(() => {
     setItems(updated)
   }
 
-  const selectProduct = (index: number, product: InventoryProduct) => {
-    const updated = [...itemsArray]
-    updated[index] = {
-      ...updated[index],
-      productId: product.id,
-      description: product.name,
-      unitPrice: product.price,
+  const selectProduct = (index: number, product: any) => {
+    if (!product) return
+    updateItem(index, 'productId', product.id)
+    updateItem(index, 'description', product.name)
+    updateItem(index, 'unitPrice', product.price || 0)
+    // Show stock info if available
+    if (product.stock !== undefined) {
+      const stockInfo = product.stock > 0 ? ` (Stock: ${product.stock})` : ' (Sin stock)'
+      updateItem(index, 'description', product.name + stockInfo)
     }
-    updated[index].total = recalculateItemTotal(updated[index], taxApplies)
-    setItems(updated)
   }
 
   const deleteItem = (index: number) => {

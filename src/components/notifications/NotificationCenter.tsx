@@ -24,7 +24,9 @@ export function NotificationCenter() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const reminderIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
   const seenDbIdsRef = useRef<Set<string>>(new Set())
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const emitFallbackTone = () => {
     try {
@@ -93,6 +95,66 @@ export function NotificationCenter() {
     }
   }
 
+  const connectWebSocket = () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/notifications/ws?token=${token}`
+    
+    try {
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        console.log('WebSocket connected for notifications')
+        pollNotifications() // Initial load
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'notification') {
+            const newNotif: Notification = {
+              id: `db-${data.notification.id}`,
+              dbId: data.notification.id,
+              title: data.notification.title,
+              message: data.notification.message,
+              type: data.notification.type === 'ASSIGNMENT' ? 'info' : 'success',
+              read: false,
+              createdAt: data.notification.createdAt,
+              link: data.notification.link || undefined,
+            }
+            
+            if (!seenDbIdsRef.current.has(newNotif.dbId!)) {
+              seenDbIdsRef.current.add(newNotif.dbId!)
+              setNotifications(prev => [newNotif, ...prev])
+              setUnreadCount(prev => prev + 1)
+              playNotificationSound()
+              showBrowserNotification(newNotif.title, newNotif.message)
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message:', err)
+        }
+      }
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+
+      ws.onclose = () => {
+        console.log('WebSocket closed, reconnecting in 5s...')
+        wsRef.current = null
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000)
+      }
+    } catch (err) {
+      console.error('Failed to connect WebSocket:', err)
+      // Fallback to polling
+      pollIntervalRef.current = setInterval(pollNotifications, 15000)
+    }
+  }
+
   useEffect(() => {
     // Initialize notification sound
     audioRef.current = new Audio('/notification-sound.mp3')
@@ -108,13 +170,20 @@ export function NotificationCenter() {
       } catch { /* ignore */ }
     }
 
-    // Poll DB immediately then every 15 seconds
-    pollNotifications()
-    pollIntervalRef.current = setInterval(pollNotifications, 15000)
+    // Try WebSocket first, fallback to polling
+    connectWebSocket()
+    
+    // Backup polling every 30s in case WebSocket fails
+    pollIntervalRef.current = setInterval(pollNotifications, 30000)
 
     return () => {
       if (reminderIntervalRef.current) clearInterval(reminderIntervalRef.current)
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

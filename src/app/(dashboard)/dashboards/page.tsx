@@ -195,43 +195,81 @@ export default function DashboardsPage() {
         ? 'Todas las empresas'
         : companies.find((company) => company.id === selectedCompany)?.name || 'Empresa'
 
-    const periodLabel = selectedPeriod === 'month' ? 'Este mes' : selectedPeriod === 'quarter' ? 'Este trimestre' : 'Este ano'
+    const periodLabel = selectedPeriod === 'month' ? 'Este mes' : selectedPeriod === 'quarter' ? 'Este trimestre' : 'Este año'
     const generatedAt = new Date().toLocaleString('es-ES')
 
-    const summaryRows = [
-      { Campo: 'Empresa', Valor: selectedCompanyName },
-      { Campo: 'Periodo', Valor: periodLabel },
-      { Campo: 'Generado', Valor: generatedAt },
-      { Campo: 'Ventas Totales', Valor: data?.kpis.totalSales || 0 },
-      { Campo: 'Crecimiento Ventas (%)', Valor: Number((data?.kpis.salesGrowth || 0).toFixed(2)) },
-      { Campo: 'Gastos Operativos', Valor: data?.kpis.operationalExpenses || 0 },
-      { Campo: 'Variacion Gastos (%)', Valor: Number((data?.kpis.expensesChange || 0).toFixed(2)) },
-      { Campo: 'Pipeline', Valor: data?.kpis.pipelineValue || 0 },
-      { Campo: 'Clientes Activos', Valor: data?.kpis.activeClients || 0 },
-    ]
-
-    const monthlyRows = (data?.monthlyData || []).map((row) => ({
-      Mes: row.month,
-      Ingresos: row.incomes,
-      Gastos: row.expenses,
-    }))
-
-    const companyRows = (data?.performanceByCompany || []).map((row) => ({
-      Empresa: row.company,
-      Ventas: row.sales,
-      Crecimiento: Number(row.growth.toFixed(2)),
-      Estado: row.status,
-    }))
-
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryRows), 'Resumen')
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(monthlyRows), 'Ingresos vs Gastos')
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(companyRows), 'Empresas')
 
-    XLSX.writeFile(
-      workbook,
-      `informe-dashboard-${selectedCompanyName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`
-    )
+    // HOJA 1: RESUMEN EJECUTIVO con formato profesional
+    const summaryData = [
+      ['INFORME DE DASHBOARD EJECUTIVO'],
+      [''],
+      ['Empresa:', selectedCompanyName],
+      ['Período:', periodLabel],
+      ['Fecha de generación:', generatedAt],
+      [''],
+      ['INDICADORES CLAVE DE RENDIMIENTO (KPIs)'],
+      [''],
+      ['Métrica', 'Valor', 'Variación %'],
+      ['Ventas Totales', data?.kpis.totalSales || 0, (data?.kpis.salesGrowth || 0).toFixed(2) + '%'],
+      ['Gastos Operativos', data?.kpis.operationalExpenses || 0, (data?.kpis.expensesChange || 0).toFixed(2) + '%'],
+      ['Valor Pipeline', data?.kpis.pipelineValue || 0, (data?.kpis.pipelineChange || 0).toFixed(2) + '%'],
+      ['Clientes Activos', data?.kpis.activeClients || 0, (data?.kpis.clientsGrowth || 0).toFixed(2) + '%'],
+      ['Nuevos Clientes', data?.kpis.newClientsThisPeriod || 0, ''],
+      ['Contratos Activos', data?.kpis.activeContracts || 0, ''],
+      ['Tasa Resolución Tickets', (data?.kpis.ticketResolutionRate || 0).toFixed(1) + '%', ''],
+      ['ROI Marketing', (data?.kpis.marketingRoi || 0).toFixed(2) + 'x', ''],
+      ['Presupuesto Marketing', data?.kpis.marketingBudget || 0, ''],
+      ['Gasto Marketing', data?.kpis.marketingSpent || 0, ''],
+    ]
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData)
+    ws1['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 15 }]
+    XLSX.utils.book_append_sheet(workbook, ws1, 'Resumen Ejecutivo')
+
+    // HOJA 2: INGRESOS VS GASTOS con totales
+    const monthlyData = [
+      ['ANÁLISIS MENSUAL DE INGRESOS Y GASTOS'],
+      [''],
+      ['Mes', 'Ingresos ($)', 'Gastos ($)', 'Balance ($)', 'Margen (%)'],
+    ]
+    let totalIngresos = 0
+    let totalGastos = 0
+    ;(data?.monthlyData || []).forEach((row) => {
+      const ingresos = row.incomes || 0
+      const gastos = row.expenses || 0
+      const balance = ingresos - gastos
+      const margen = ingresos > 0 ? ((balance / ingresos) * 100).toFixed(2) : '0'
+      totalIngresos += ingresos
+      totalGastos += gastos
+      monthlyData.push([row.month, ingresos.toString(), gastos.toString(), balance.toString(), margen + '%'])
+    })
+    monthlyData.push([''])
+    monthlyData.push(['TOTALES', totalIngresos.toString(), totalGastos.toString(), (totalIngresos - totalGastos).toString(), totalIngresos > 0 ? (((totalIngresos - totalGastos) / totalIngresos) * 100).toFixed(2) + '%' : '0%'])
+    const ws2 = XLSX.utils.aoa_to_sheet(monthlyData)
+    ws2['!cols'] = [{ wch: 15 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 }]
+    XLSX.utils.book_append_sheet(workbook, ws2, 'Ingresos vs Gastos')
+
+    // HOJA 3: RENDIMIENTO POR EMPRESA
+    const companyData = [
+      ['RENDIMIENTO POR EMPRESA'],
+      [''],
+      ['Empresa', 'Industria', 'Ventas ($)', 'Crecimiento (%)', 'Estado'],
+    ]
+    ;(data?.performanceByCompany || []).forEach((row) => {
+      companyData.push([
+        row.company,
+        row.industry || 'N/A',
+        (row.sales || 0).toString(),
+        (row.growth || 0).toFixed(2) + '%',
+        row.status === 'positive' ? 'Positivo' : row.status === 'negative' ? 'Negativo' : 'Neutral'
+      ])
+    })
+    const ws3 = XLSX.utils.aoa_to_sheet(companyData)
+    ws3['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 12 }]
+    XLSX.utils.book_append_sheet(workbook, ws3, 'Rendimiento Empresas')
+
+    const fileName = `Dashboard_${selectedCompanyName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+    XLSX.writeFile(workbook, fileName)
   }
 
 const chartRows = useMemo(() => {
@@ -520,86 +558,100 @@ const chartRows = useMemo(() => {
               </div>
             </div>
           </div>
-<div className="h-64 flex items-end justify-between gap-2">
+<div className="h-80 flex items-end justify-between gap-3">
             {!Array.isArray(chartRows) || chartRows.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
                 No hay datos para el periodo seleccionado
               </div>
             ) : (
-              chartRows.map((row: any, idx: number) => (
-                <div key={row?.month || idx} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full flex gap-1">
-                    <div
-                      className="flex-1 bg-success rounded-t"
-                      style={{ height: `${Math.max(((row?.incomes || 0) / maxChartValue) * 220, 4)}px` }}
-                    ></div>
-                    <div
-                      className="flex-1 bg-error rounded-t"
-                      style={{ height: `${Math.max(((row?.expenses || 0) / maxChartValue) * 220, 4)}px` }}
-                    ></div>
+              chartRows.map((row: any, idx: number) => {
+                const incomeHeight = Math.max(((row?.incomes || 0) / maxChartValue) * 280, 8)
+                const expenseHeight = Math.max(((row?.expenses || 0) / maxChartValue) * 280, 8)
+                return (
+                  <div key={row?.month || idx} className="flex-1 flex flex-col items-center gap-2 group">
+                    <div className="w-full flex gap-2 items-end relative">
+                      <div className="flex-1 flex flex-col items-center relative">
+                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-success text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap">
+                          ${(row?.incomes || 0).toLocaleString()}
+                        </div>
+                        <div
+                          className="w-full bg-gradient-to-t from-success to-green-400 rounded-t-lg shadow-sm hover:shadow-md transition-all"
+                          style={{ height: `${incomeHeight}px` }}
+                        ></div>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center relative">
+                        <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-error text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap">
+                          ${(row?.expenses || 0).toLocaleString()}
+                        </div>
+                        <div
+                          className="w-full bg-gradient-to-t from-error to-red-400 rounded-t-lg shadow-sm hover:shadow-md transition-all"
+                          style={{ height: `${expenseHeight}px` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">{row?.label || ''}</span>
                   </div>
-                  <span className="text-xs text-gray-500">{row?.label || ''}</span>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </Card>
 
-        <Card>
+<Card>
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">RENDIMIENTO POR EMPRESA</h3>
-            <button className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </button>
+            <p className="text-xs text-gray-500">Ventas y crecimiento por compañía</p>
           </div>
 <div className="space-y-4">
             {(!data?.performanceByCompany || !Array.isArray(data.performanceByCompany) || data.performanceByCompany.length === 0) ? (
-              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
+              <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-500 text-center">
+                <svg className="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
                 No hay datos de rendimiento por empresa para este periodo.
               </div>
             ) : (
-              data.performanceByCompany.slice(0, 4).map((company: any, i: number) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900">{company?.company || 'Sin nombre'}</span>
-                        <Badge
-                          variant={
-                            company?.status === 'positive'
-                              ? 'success'
-                              : company?.status === 'negative'
-                              ? 'error'
-                              : 'info'
-                          }
-                        >
-                          <div className="w-2 h-2 rounded-full bg-current"></div>
-                        </Badge>
+              data.performanceByCompany.slice(0, 5).map((company: any, i: number) => {
+                const growthValue = Number(company?.growth) || 0
+                const salesValue = Number(company?.sales) || 0
+                const maxSales = Math.max(...data.performanceByCompany.map((c: any) => Number(c?.sales) || 0))
+                const barWidth = maxSales > 0 ? (salesValue / maxSales) * 100 : 0
+                
+                return (
+                  <div key={i} className="group hover:bg-gray-50 p-3 rounded-lg transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                          company?.status === 'positive' ? 'bg-success' :
+                          company?.status === 'negative' ? 'bg-error' : 'bg-gray-400'
+                        }`}></div>
+                        <span className="text-sm font-bold text-gray-900">{company?.company || 'Sin nombre'}</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500">{company?.industry || 'Sin industria'}</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-semibold text-gray-900">{formatCurrency(Number(company?.sales) || 0)}</span>
-                          <span
-                            className={`text-xs ${
-                              (company?.growth || 0) > 0
-                                ? 'text-success'
-                                : (company?.growth || 0) < 0
-                                ? 'text-error'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {(company?.growth || 0) > 0 ? '+' : (company?.growth || 0) < 0 ? '-' : '='}
-                            {Math.abs(Number(company?.growth) || 0).toFixed(2)}%
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">{formatCurrency(salesValue)}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          growthValue > 0 ? 'bg-success/10 text-success' :
+                          growthValue < 0 ? 'bg-error/10 text-error' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {growthValue > 0 ? '↑' : growthValue < 0 ? '↓' : '='} {Math.abs(growthValue).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 min-w-[80px]">{company?.industry || 'Sin industria'}</span>
+                      <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            company?.status === 'positive' ? 'bg-gradient-to-r from-success to-green-400' :
+                            company?.status === 'negative' ? 'bg-gradient-to-r from-error to-red-400' : 'bg-gray-400'
+                          }`}
+                          style={{ width: `${barWidth}%` }}
+                        ></div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </Card>

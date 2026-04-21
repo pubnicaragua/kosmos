@@ -127,7 +127,7 @@ export default function SolicitudesCompraPage() {
   }
 
   return (
-    <div className="space-y-8 p-1">
+    <div className="space-y-8 max-w-full overflow-x-hidden">
       {/* Header section with Stats */}
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-end">

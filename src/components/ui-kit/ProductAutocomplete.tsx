@@ -48,7 +48,8 @@ export function ProductAutocomplete({
         })
         const data = await res.json()
         if (data.success) {
-          setProducts(data.data || [])
+          const list = Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
+          setProducts(list)
         }
       } catch (e) {
         console.error('Error fetching products:', e)
@@ -67,7 +68,8 @@ export function ProductAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filtered = products.filter((p) =>
+  const safeProducts = Array.isArray(products) ? products : []
+  const filtered = safeProducts.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase())
   )

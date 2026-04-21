@@ -187,12 +187,14 @@ export default function TicketsSoportePage() {
     amount: '',
     currency: 'USD',
     startDate: new Date().toISOString().split('T')[0],
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: '',
     attachments: [],
     evidence: [],
     existingAttachments: [],
     existingEvidence: [],
   })
+
+  const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([])
 
   const getPeriodRange = (period: string) => {
     const endDate = new Date()
@@ -396,11 +398,13 @@ export default function TicketsSoportePage() {
             body: uploadFormData,
           })
           const uploadData = await uploadRes.json()
-          if (uploadData.success && uploadData.data?.url) attachmentUrls.push(uploadData.data.url)
+          if (uploadData.success) {
+            attachmentUrls.push(uploadData.data.url)
+          }
         }
       }
 
-      // Upload evidence
+      // Upload evidence files
       let evidenceUrls: string[] = [...formData.existingEvidence]
       if (formData.evidence.length > 0) {
         for (const file of formData.evidence) {
@@ -412,7 +416,59 @@ export default function TicketsSoportePage() {
             body: uploadFormData,
           })
           const uploadData = await uploadRes.json()
-          if (uploadData.success && uploadData.data?.url) evidenceUrls.push(uploadData.data.url)
+          if (uploadData.success) {
+            evidenceUrls.push(uploadData.data.url)
+          }
+        }
+      }
+
+      const payload: any = {
+        title: formData.title,
+        description: formData.description || null,
+        clientId: formData.clientId || null,
+        status: formData.status,
+        priority: formData.priority,
+        assignedTo: formData.assignedTo || null,
+        assignedUsers: formData.assignedUsers.length > 0 ? JSON.stringify(formData.assignedUsers) : null,
+        amount: formData.amount ? parseFloat(formData.amount) : null,
+        currency: formData.currency,
+        startDate: formData.startDate || null,
+        dueDate: formData.dueDate || null,
+        attachments: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
+        evidence: evidenceUrls.length > 0 ? JSON.stringify(evidenceUrls) : null,
+      }
+
+      if (!editingTicketId) {
+        payload.companyId = targetCompanyId
+      }
+
+      const response = await fetch(
+        editingTicketId ? `/api/tickets/${editingTicketId}` : '/api/tickets',
+        {
+          method: editingTicketId ? 'PUT' : 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      const data = await response.json()
+      if (data.success) {
+        setIsModalOpen(false)
+        resetForm()
+        fetchData()
+      } else {
+        alert(data.error || 'Error al guardar ticket')
+      }
+    } catch (error) {
+      console.error('Error saving ticket:', error)
+      alert('Error al guardar ticket')
+    } finally {
+      setIsSaving(false)
+    }
+  }
         }
       }
 

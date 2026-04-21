@@ -66,7 +66,8 @@ export function ClientAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filtered = clients.filter((c) =>
+  const safeClients = Array.isArray(clients) ? clients : []
+  const filtered = safeClients.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.contactName || '').toLowerCase().includes(search.toLowerCase())

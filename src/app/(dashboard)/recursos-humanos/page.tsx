@@ -37,6 +37,8 @@ export default function RecursosHumanosPage() {
     createExpense: true,
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   useEffect(() => {
     const company = localStorage.getItem('activeCompany')
@@ -110,6 +112,10 @@ export default function RecursosHumanosPage() {
   }
 
 const handleDownloadTemplate = () => {
+    setShowTemplateModal(true)
+  }
+
+  const handleConfirmDownloadTemplate = () => {
     // Enhanced template with professional fields
     const headers = [
       { 
@@ -129,6 +135,7 @@ const handleDownloadTemplate = () => {
     const worksheet = XLSX.utils.json_to_sheet(headers)
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla Nomina')
     XLSX.writeFile(workbook, 'plantilla_nomina_kosmos.xlsx')
+    setShowTemplateModal(false)
   }
 
   const handleImportXLSX = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -453,8 +460,9 @@ const handleDownloadTemplate = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 text-[10px] font-bold p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 text-center uppercase tracking-widest transition-colors"
+                    title="Descargar archivo de planilla"
                   >
-                    Descargar
+                    Ver Archivo
                   </a>
                   <select
                     value={payroll.status}
@@ -579,6 +587,101 @@ const handleDownloadTemplate = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de explicación de plantilla */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Plantilla de Nómina</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-blue-900 mb-2">¿Para qué sirve la plantilla?</h3>
+                <p className="text-sm text-blue-800">
+                  La plantilla te permite registrar múltiples empleados de forma masiva. Incluye campos profesionales 
+                  como nombre, cédula, cargo, departamento, salario, fecha de ingreso, tipo de contrato y más.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-900">Campos incluidos:</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Nombre</p>
+                      <p className="text-xs text-gray-500">Nombre completo del empleado</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Cédula</p>
+                      <p className="text-xs text-gray-500">Documento de identidad</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Cargo</p>
+                      <p className="text-xs text-gray-500">Puesto de trabajo</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Departamento</p>
+                      <p className="text-xs text-gray-500">Área de trabajo</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Salario</p>
+                      <p className="text-xs text-gray-500">Salario mensual</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Tipo de Contrato</p>
+                      <p className="text-xs text-gray-500">Indefinido, temporal, etc.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-amber-900 mb-2">Cómo usar la plantilla:</h3>
+                <ol className="text-sm text-amber-800 space-y-1 list-decimal list-inside">
+                  <li>Descarga la plantilla haciendo clic en "Descargar Plantilla"</li>
+                  <li>Llena los datos de tus empleados siguiendo el ejemplo incluido</li>
+                  <li>Guarda el archivo Excel con todos los empleados</li>
+                  <li>Usa el botón "IMPORTAR" para subir el archivo con múltiples empleados</li>
+                  <li>El sistema creará automáticamente los registros de nómina</li>
+                </ol>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-green-900 mb-2">💡 Consejo:</h3>
+                <p className="text-sm text-green-800">
+                  Puedes descargar la plantilla, llenarla con tus datos, y luego volver a importarla con más empleados. 
+                  El sistema agregará los nuevos registros sin duplicar los existentes.
+                </p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button variant="outline" onClick={() => setShowTemplateModal(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={handleConfirmDownloadTemplate} className="flex-1 bg-primary hover:bg-primary-dark">
+                Descargar Plantilla
+              </Button>
+            </div>
           </div>
         </div>
       )}
