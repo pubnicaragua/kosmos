@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
     const countResult = await prisma.contract.count({ where: { companyId } })
     const contractNumber = String(countResult + 1).padStart(3, '0')
     const contractId = `CTR-${year}-${contractNumber}`
+    const endDateValue = contractData.endDate ? new Date(contractData.endDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    const startDateValue = contractData.startDate ? new Date(contractData.startDate) : new Date()
 
     const contract = await prisma.contract.create({
       data: {
@@ -87,9 +89,9 @@ export async function POST(request: NextRequest) {
         contractId,
         concept: contractData.concept || 'Contrato de servicio',
         party: contractData.party || 'Cliente',
-        startDate: contractData.startDate ? new Date(contractData.startDate) : new Date(),
-        endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        status: getContractStatus(endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
+        startDate: startDateValue,
+        endDate: endDateValue,
+        status: getContractStatus(endDateValue),
         uploadedBy: decoded.userId,
       },
     })
