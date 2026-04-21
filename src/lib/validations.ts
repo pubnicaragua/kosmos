@@ -30,13 +30,13 @@ export const incomesFiltersSchema = z.object({
 })
 
 export const expenseSchema = z.object({
-  provider: z.string().min(1, 'Proveedor requerido'),
-  concept: z.string().min(1, 'Concepto requerido'),
-  category: z.string().min(1, 'Categoría requerida'),
-  method: z.string().min(1, 'Método de pago requerido'),
-  amount: z.number().positive('El monto debe ser positivo'),
+  provider: z.string().optional(),
+  concept: z.string().optional(),
+  category: z.string().optional(),
+  method: z.string().optional(),
+  amount: z.number().optional(),
   status: z.enum(['PAID', 'PENDING', 'CANCELLED']).optional(),
-  date: z.string(),
+  date: z.string().optional(),
   refNumber: z.string().optional(),
 })
 
@@ -72,8 +72,8 @@ export const activitiesFiltersSchema = z.object({
 export const opportunitySchema = z.object({
   title: z.string().min(1, 'Título requerido'),
   client: z.string().min(1, 'Cliente requerido'),
-  value: z.number().positive('El valor debe ser positivo'),
-  stage: z.enum(['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO']),
+  value: z.number().optional(),
+  stage: z.enum(['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO']).optional(),
   status: z.string().optional(),
   assignedTo: z.string().optional(),
   closeDate: z.string().optional(),
@@ -122,22 +122,16 @@ const nicaraguaRucPattern = /^J\d{13}$/
 // Clients
 export const clientSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
-  email: z.string().email('Email inválido').min(1, 'Email requerido'),
+  email: z.string().email('Email inválido').optional().or(z.string().min(0)),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   country: z.string().optional(),
-  ruc: z.string().optional().refine(
-    (val) => !val || nicaraguaRucPattern.test(val),
-    { message: 'RUC debe tener formato: J0310000000000 (J seguido de 13 dígitos)' }
-  ),
-  cedula: z.string().optional().refine(
-    (val) => !val || nicaraguaCedulaPattern.test(val),
-    { message: 'Cédula debe tener formato: 000-000000-0000X (ej: 001-010190-0001A)' }
-  ),
+  ruc: z.string().optional(),
+  cedula: z.string().optional(),
   taxId: z.string().optional(),
   status: z.enum(['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO', 'ACTIVO', 'INACTIVO']).optional(),
-  contactName: z.string().min(1, 'Nombre de contacto requerido'),
+  contactName: z.string().optional(),
   notes: z.string().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })
@@ -153,24 +147,24 @@ export const quoteItemSchema = z.object({
 })
 
 export const quoteSchema = z.object({
-  quoteNumber: z.string().min(1, 'Número de cotización requerido'),
+  quoteNumber: z.string().optional(),
   clientId: z.string().min(1, 'Cliente requerido'),
   contactName: z.string().optional(),
-  contactEmail: z.string().email('Email inválido').optional(),
+  contactEmail: z.string().optional(),
   contactPhone: z.string().optional(),
-  assignedTo: z.string().optional(), // Vendedor asignado
+  assignedTo: z.string().optional(),
   clientType: z.enum(['NUEVO', 'RECURRENTE', 'PROYECTO']).optional(),
-  closeProbability: z.number().min(0).max(100).optional(), // 0-100%
+  closeProbability: z.number().optional(),
   currency: z.string().default('USD'),
   paymentMethod: z.enum(['CONTADO', 'CREDITO']).default('CONTADO'),
   taxApplies: z.boolean().default(true),
-  issueDate: z.string().optional(), // Fecha de emisión
-  validUntil: z.string().min(1, 'Fecha de validez requerida'),
+  issueDate: z.string().optional(),
+  validUntil: z.string().optional(),
   rejectionReason: z.string().optional(),
   notes: z.string().optional(),
   internalNotes: z.string().optional(),
   terms: z.string().optional(),
-  items: z.array(quoteItemSchema).min(1, 'Debe agregar al menos un item'),
+  items: z.array(quoteItemSchema).optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })
 
