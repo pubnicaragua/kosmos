@@ -78,6 +78,11 @@ export async function POST(request: NextRequest) {
     return apiSuccess(client, undefined, 201)
   } catch (error) {
     console.error('Error creating client:', error)
-    return apiError('Error al crear cliente', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    console.error('Client create error:', error)
+    return apiError(`Error al crear cliente: ${error?.message || error}`, 500)
   }
 }

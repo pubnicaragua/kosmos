@@ -154,8 +154,15 @@ export async function POST(request: NextRequest) {
     })
 
     return apiSuccess(expense, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating expense:', error)
-    return apiError('Error al crear gasto', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    if (error?.message?.includes('foreign key')) {
+      return apiError('La empresa o categoría no existe', 400)
+    }
+    return apiError(`Error al crear gasto: ${error?.message || error}`, 500)
   }
 }

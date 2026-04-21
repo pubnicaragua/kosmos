@@ -117,8 +117,15 @@ export async function POST(request: NextRequest) {
     })
 
     return apiSuccess(quote, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating quote:', error)
-    return apiError('Error al crear cotización', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    if (error?.code === 'P2002') {
+      return apiError('Ya existe una cotización con ese número', 400)
+    }
+    return apiError(`Error al crear cotización: ${error?.message || error}`, 500)
   }
 }

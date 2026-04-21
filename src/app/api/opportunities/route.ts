@@ -143,8 +143,12 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess(opportunity, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating opportunity:', error)
-    return apiError('Error al crear oportunidad', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    return apiError(`Error al crear oportunidad: ${error?.message || error}`, 500)
   }
 }
