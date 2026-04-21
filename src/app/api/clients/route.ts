@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     })
 
     return apiSuccess(client, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating client:', error)
     if (error?.name === 'ZodError') {
       const issues = error.issues?.map((i: any) => i.message).join(', ')
