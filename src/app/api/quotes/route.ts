@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         discount: totalDiscount,
         tax: totalTax,
         total,
-        validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
+        validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         notes: validatedData.notes || null,
         internalNotes: validatedData.internalNotes || null,
         terms: validatedData.terms || null,
