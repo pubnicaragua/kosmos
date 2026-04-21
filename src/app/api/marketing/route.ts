@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     } catch (createErr: any) {
       // Fallback: some columns may not exist in production DB yet
       const errMsg = String(createErr?.message || '').toLowerCase()
-      const isColumnMissing = createErr?.code === 'P2022' || errMsg.includes('column') || errMsg.includes('does not exist')
+      const isColumnMissing = createErr?.code === 'P2022' || errMsg.includes('column') || errMsg.includes('does not exist') || errMsg.includes('unknown argument')
       if (isColumnMissing) {
         // Intentar sin campos opcionales que pueden no existir
         const { adType, evidenceUrl, approvalStatus, ...safeData } = baseData
@@ -164,8 +164,29 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess(campaign, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating marketing campaign:', error)
-    return apiError('Error al crear campaña', 500)
+    
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`No se pudo crear la campagne porque: ${issues}`, 400)
+    }
+    if (error?.code === 'P2002') {
+      return apiError('Ya existe una campaña con ese nombre', 400)
+    }
+    if (error?.code === 'P2021') {
+      return apiError('La tabla de campañas no está disponible', 503)
+    }
+    if (error?.code === 'P2000') {
+      return apiError('El valor de un campo excede el límite permitido', 400)
+    }
+    if (error?.message?.includes('foreign key')) {
+      return apiError('La empresa seleccionada no existe', 400)
+    }
+    if (error?.message?.includes('not null')) {
+      return apiError('Faltan datos requeridos para crear la campaña', 400)
+    }
+    
+    return apiError('Error al crear campaña. Verifica los datos e intenta de nuevo.', 500)
   }
 }

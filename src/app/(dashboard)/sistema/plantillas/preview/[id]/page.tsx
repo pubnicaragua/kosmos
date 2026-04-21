@@ -376,6 +376,7 @@ export default function TemplateEditorPage() {
           }}
           className="min-h-[700px] p-8 outline-none"
           style={{ fontFamily: 'Arial, sans-serif' }}
+          dangerouslySetInnerHTML={{ __html: editorContent }}
         />
       </div>
 

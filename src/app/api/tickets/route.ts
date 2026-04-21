@@ -183,6 +183,34 @@ export async function POST(request: NextRequest) {
     return apiSuccess(ticket, undefined, 201)
   } catch (error: any) {
     console.error('Error creating ticket:', error)
-    return apiError('Error al crear ticket', 500)
+    
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`No se pudo crear el ticket porque: ${issues}`, 400)
+    }
+    if (error?.code === 'P2002') {
+      return apiError('Ya existe un ticket con ese número', 400)
+    }
+    if (error?.code === 'P2021') {
+      return apiError('La tabla de tickets no está disponible', 503)
+    }
+    if (error?.code === 'P2000') {
+      return apiError('El valor de un campo excede el límite permitido', 400)
+    }
+    if (error?.message?.includes('foreign key')) {
+      const errMsg = error.message.toLowerCase()
+      if (errMsg.includes('client')) {
+        return apiError('El cliente seleccionado no existe', 400)
+      }
+      if (errMsg.includes('company')) {
+        return apiError('La empresa no existe o no tienes acceso', 400)
+      }
+      return apiError('El registro relacionado no existe', 400)
+    }
+    if (error?.message?.includes('not null')) {
+      return apiError('Faltan datos requeridos para crear el ticket', 400)
+    }
+    
+    return apiError('Error al crear ticket. Verifica los datos e intenta de nuevo.', 500)
   }
 }

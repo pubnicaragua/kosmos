@@ -83,9 +83,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     return apiSuccess(updated)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating opportunity:', error)
-    return apiError('Error al actualizar oportunidad', 500)
+    
+    // Mensajes de error específicos
+    if (error?.code === 'P2002') {
+      return apiError('No se pudo actualizar porque el registro no existe o ya fue modificado', 400)
+    }
+    if (error?.code === 'P2013') {
+      return apiError('Faltan campos requeridos para actualizar la oportunidad', 400)
+    }
+    if (error?.code === 'P2021') {
+      return apiError('La tabla de oportunidades no está disponible en la base de datos', 503)
+    }
+    if (error?.name === 'PrismaClientInitializationError') {
+      return apiError('Error de conexión con la base de datos. Intenta de nuevo.', 503)
+    }
+    if (error?.message?.includes('foreign key')) {
+      return apiError('El cliente o usuario asignado no existe en el sistema', 400)
+    }
+    if (error?.message?.includes('unique constraint')) {
+      return apiError('Ya existe una oportunidad con esos datos', 400)
+    }
+    if (error?.message?.includes('not null')) {
+      return apiError('Faltan datos requeridos: nombre del campo obligatorio', 400)
+    }
+    
+    return apiError('Error al actualizar oportunidad. Intenta de nuevo.', 500)
   }
 }
 
@@ -114,8 +138,19 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     await prisma.opportunity.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Oportunidad eliminada' })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting opportunity:', error)
-    return apiError('Error al eliminar oportunidad', 500)
+    
+    if (error?.code === 'P2023') {
+      return apiError('No se puede eliminar esta oportunidad porque tiene datos relacionados', 409)
+    }
+    if (error?.code === 'P2002') {
+      return apiError('El registro que intentas eliminar no existe', 404)
+    }
+    if (error?.message?.includes('foreign key')) {
+      return apiError('No se puede eliminar porque está relacionada con otros datos', 409)
+    }
+    
+    return apiError('Error al eliminar oportunidad. Intenta de nuevo.', 500)
   }
 }
