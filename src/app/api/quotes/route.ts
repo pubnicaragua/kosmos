@@ -89,9 +89,13 @@ export async function POST(request: NextRequest) {
 
     const total = subtotal - totalDiscount + totalTax
 
+    const year = new Date().getFullYear()
+    const countResult = await prisma.quote.count({ where: { companyId: validatedData.companyId } })
+    const quoteNumber = validatedData.quoteNumber || `COT-${year}-${String(countResult + 1).padStart(6, '0')}`
+
     const quote = await prisma.quote.create({
       data: {
-        quoteNumber: validatedData.quoteNumber,
+        quoteNumber,
         companyId: validatedData.companyId,
         clientId: validatedData.clientId,
         currency: validatedData.currency,
