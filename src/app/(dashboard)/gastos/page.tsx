@@ -63,6 +63,13 @@ export default function GastosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { refNumber: 'GAS-001', provider: 'Proveedor Ejemplo', concept: 'Gasto de ejemplo', category: 'Operaciones', method: 'Transferencia', amount: 100, status: 'PENDING', date: '2024-01-15', notes: 'Observación opcional' },
+    ]
+    exportWithCompanyHeader(templateData, 'plantilla_gastos.xlsx', 'Plantilla de Gastos', companies, selectedCompany)
+  }
   const [formData, setFormData] = useState({
     provider: '',
     concept: '',
@@ -804,17 +811,29 @@ export default function GastosPage() {
         title="Importar Gastos desde Excel"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Sube un archivo Excel (.xlsx, .xls) con las siguientes columnas:
-          </p>
-          <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-            <li><strong>Proveedor</strong> (obligatorio): Nombre del proveedor</li>
-            <li><strong>Concepto/Descripción</strong>: Detalle del gasto</li>
-            <li><strong>Monto/Total</strong> (obligatorio): Valor del gasto</li>
-            <li><strong>Fecha</strong>: Fecha del gasto</li>
-            <li><strong>Referencia/Factura</strong>: Número de referencia</li>
-            <li><strong>Categoría</strong>: Tipo de gasto</li>
-          </ul>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-800 mb-2">📋 Formato del archivo</h4>
+            <p className="text-sm text-blue-700 mb-2">El archivo debe ser Excel (.xlsx, .xls) con las siguientes columnas:</p>
+            <ul className="text-sm text-blue-700 space-y-1 ml-4 list-disc">
+              <li><strong>refNumber</strong> - Número de referencia/-factura</li>
+              <li><strong>provider</strong> - Proveedor o beneficiario</li>
+              <li><strong>concept</strong> - Descripción del gasto</li>
+              <li><strong>category</strong> - Categoría</li>
+              <li><strong>method</strong> - Método de pago (Transferencia, Efectivo, etc.)</li>
+              <li><strong>amount</strong> - Monto (número)</li>
+              <li><strong>status</strong> - Estado: PAID, PENDING, CANCELLED</li>
+              <li><strong>date</strong> - Fecha (YYYY-MM-DD)</li>
+              <li><strong>notes</strong> - Observaciones (opcional)</li>
+            </ul>
+          </div>
+
+          <Button variant="outline" onClick={handleDownloadTemplate} className="w-full">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Descargar Plantilla de Ejemplo
+          </Button>
+
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
             <input
               type="file"
