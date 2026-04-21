@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         discount: totalDiscount,
         tax: totalTax,
         total,
-        validUntil: new Date(validatedData.validUntil),
+        validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
         notes: validatedData.notes || null,
         internalNotes: validatedData.internalNotes || null,
         terms: validatedData.terms || null,
