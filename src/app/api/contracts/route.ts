@@ -76,9 +76,15 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const year = new Date().getFullYear()
+    const countResult = await prisma.contract.count({ where: { companyId } })
+    const contractNumber = String(countResult + 1).padStart(3, '0')
+    const contractId = `CTR-${year}-${contractNumber}`
+
     const contract = await prisma.contract.create({
       data: {
         ...contractData,
+        contractId,
         companyId,
         startDate: new Date(contractData.startDate),
         endDate,
