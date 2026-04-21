@@ -148,6 +148,10 @@ export async function POST(request: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         ...expenseData,
+        provider: expenseData.provider || 'General',
+        concept: expenseData.concept || 'Gasto general',
+        category: expenseData.category || 'Otro',
+        method: expenseData.method || 'Efectivo',
         companyId,
         date: expenseData.date ? new Date(expenseData.date) : new Date(),
       },
