@@ -85,17 +85,22 @@ export async function POST(request: NextRequest) {
       data: {
         ...contractData,
         contractId,
-        companyId,
-        startDate: new Date(contractData.startDate),
-        endDate,
-        status: getContractStatus(endDate),
+        concept: contractData.concept || 'Contrato de servicio',
+        party: contractData.party || 'Cliente',
+        startDate: contractData.startDate ? new Date(contractData.startDate) : new Date(),
+        endDate: endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        status: getContractStatus(endDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
         uploadedBy: decoded.userId,
       },
     })
 
     return apiSuccess(contract, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating contract:', error)
-    return apiError('Error al crear contrato', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    return apiError(`Error al crear contrato: ${error?.message || error}`, 500)
   }
 }

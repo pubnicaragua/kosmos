@@ -210,7 +210,10 @@ export async function POST(request: NextRequest) {
     if (error?.message?.includes('not null')) {
       return apiError('Faltan datos requeridos para crear el ticket', 400)
     }
+    if (error?.message?.includes('TicketType') || error?.message?.includes('does not exist')) {
+      return apiError('El tipo de ticket no está configurado. Contacta al administrador.', 500)
+    }
     
-    return apiError('Error al crear ticket. Verifica los datos e intenta de nuevo.', 500)
+    return apiError(`Error al crear ticket: ${error?.message || error}`, 500)
   }
 }

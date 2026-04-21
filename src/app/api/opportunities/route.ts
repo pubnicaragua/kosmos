@@ -101,10 +101,10 @@ export async function POST(request: NextRequest) {
       opportunity = await prisma.opportunity.create({
         data: {
           ...baseOppData,
-          value: baseOppData.value || 0,
+value: baseOppData.value || 0,
+          currency: 'USD',
           companyId,
           closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
-          currency: oppData.currency || 'USD',
           assignedUsers: oppData.assignedUsers || '[]',
           ...(priority !== undefined ? { priority } : {}),
           ...(description !== undefined ? { description } : {}),
@@ -113,14 +113,15 @@ export async function POST(request: NextRequest) {
     } catch (e: any) {
       if (e?.code === 'P2022') {
         // columnas opcionales no existen aún - crear sin priority/description
-        opportunity = await prisma.opportunity.create({
-          data: {
-            ...baseOppData,
-            value: baseOppData.value || 0,
-            companyId,
-            closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
-          },
-        })
+opportunity = await prisma.opportunity.create({
+        data: {
+          ...baseOppData,
+          value: baseOppData.value || 0,
+          currency: 'USD',
+          companyId,
+          closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
+        },
+      })
       } else throw e
     }
 

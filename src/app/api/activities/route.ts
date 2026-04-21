@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
       data: {
         ...activityData,
         companyId,
-        dueDate: new Date(activityData.dueDate),
+        dueDate: activityData.dueDate ? new Date(activityData.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        type: activityData.type || 'OTHER',
       },
     })
 
@@ -144,8 +145,12 @@ export async function POST(request: NextRequest) {
     }
 
     return apiSuccess(activity, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating activity:', error)
-    return apiError('Error al crear actividad', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    return apiError(`Error al crear actividad: ${error?.message || error}`, 500)
   }
 }

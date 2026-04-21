@@ -108,8 +108,12 @@ export async function POST(request: NextRequest) {
     })
 
     return apiSuccess(product, undefined, 201)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating product:', error)
-    return apiError('Error al crear producto', 500)
+    if (error?.name === 'ZodError') {
+      const issues = error.issues?.map((i: any) => i.message).join(', ')
+      return apiError(`Datos inválidos: ${issues}`, 400)
+    }
+    return apiError(`Error al crear producto: ${error?.message || error}`, 500)
   }
 }
