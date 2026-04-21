@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
       data: {
         ...expenseData,
         companyId,
-        date: new Date(expenseData.date),
+        date: expenseData.date ? new Date(expenseData.date) : new Date(),
       },
     })
 

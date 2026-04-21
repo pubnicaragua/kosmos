@@ -51,14 +51,14 @@ export const expensesFiltersSchema = z.object({
 })
 
 export const activitySchema = z.object({
-  type: z.enum(['CALL', 'MEETING', 'QUOTE', 'OTHER']),
+  type: z.enum(['CALL', 'MEETING', 'QUOTE', 'OTHER']).optional(),
   title: z.string().min(1, 'Título requerido'),
   description: z.string().optional(),
   client: z.string().optional(),
   status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),
-  dueDate: z.string(),
+  dueDate: z.string().optional(),
 })
 
 export const activitiesFiltersSchema = z.object({
@@ -99,13 +99,13 @@ export const documentsFiltersSchema = z.object({
 })
 
 export const contractSchema = z.object({
-  contractId: z.string().min(1, 'ID de contrato requerido'),
+  contractId: z.string().optional(),
   name: z.string().min(1, 'Nombre requerido'),
-  concept: z.string().min(1, 'Concepto requerido'),
+  concept: z.string().optional(),
   category: z.string().optional(),
-  party: z.string().min(1, 'Contraparte requerida'),
-  startDate: z.string().min(1, 'Fecha de inicio requerida'),
-  endDate: z.string().min(1, 'Fecha de fin requerida'),
+  party: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   fileUrl: z.string().optional(),
   uploadedBy: z.string().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),

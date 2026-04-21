@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       date,
     } = body
 
-    if (!companyId || !client || !concept || !method || amount === undefined || !date) {
+    if (!companyId || !amount) {
       return errorResponse('Campos requeridos incompletos', 400)
     }
 
@@ -159,7 +159,7 @@ export async function POST(request: NextRequest) {
         amount: normalizedAmount,
         margin: Number.isFinite(normalizedMargin) ? normalizedMargin : 0,
         status: status || 'PENDING',
-        date: new Date(date),
+        date: date ? new Date(date) : new Date(),
       },
       include: {
         company: {

@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
       opportunity = await prisma.opportunity.create({
         data: {
           ...baseOppData,
+          value: baseOppData.value || 0,
           companyId,
           closeDate: oppData.closeDate ? new Date(oppData.closeDate) : null,
           currency: oppData.currency || 'USD',
