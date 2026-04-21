@@ -22,7 +22,7 @@ interface Product {
   promotion: string | null
   promotionCost: number | null
   promotionDiscount: number | null
-  category: { name: string } | null
+  category: { id: string; name: string } | null
   company: { name: string } | null
 }
 
