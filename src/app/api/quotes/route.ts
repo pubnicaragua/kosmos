@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0
     let totalTax = 0
 
-    const itemsData = validatedData.items.map((item) => {
+    const itemsData = (validatedData.items || []).map((item) => {
       const itemSubtotal = item.quantity * item.unitPrice
       const itemDiscount = itemSubtotal * ((item.discount || 0) / 100)
       // Solo aplicar IVA si taxApplies es true
