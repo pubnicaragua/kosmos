@@ -1,0 +1,47 @@
+[
+  {
+    "filename": "Login y Dashboard.mp4",
+    "title": "Login y Dashboard - Kosmos CRM",
+    "description": "Video de entrenamiento completo que muestra cómo iniciar sesión en el sistema Kosmos CRM y navegar por el dashboard principal. Aprende a acceder al sistema, entender la interfaz principal, utilizar los filtros de empresa y período, ver los KPIs en tiempo real, interactuar con las gráficas dinámicas, y exportar reportes en Excel con formato profesional.",
+    "category": "dashboard",
+    "duration": "8:45",
+    "size": "18.9 MB",
+    "url": "/videos/Login y Dashboard.mp4"
+  },
+  {
+    "filename": "Ingresos - Kosmos CRM.mp4",
+    "title": "Módulo de Ingresos - Kosmos CRM",
+    "description": "Tutorial completo del módulo de ingresos. Aprende a registrar nuevas ventas, editar ingresos existentes, aplicar filtros por cliente y fecha, utilizar la búsqueda en tiempo real, exportar reportes de ingresos, ver estadísticas por período, y gestionar diferentes métodos de pago y monedas.",
+    "category": "ingresos",
+    "duration": "12:30",
+    "size": "53.1 MB",
+    "url": "/videos/Ingresos - Kosmos CRM.mp4"
+  },
+  {
+    "filename": "Módulo de Gastos.mp4",
+    "title": "Módulo de Gastos - Kosmos CRM",
+    "description": "Video de capacitación del módulo de gastos. Descubre cómo registrar gastos operativos, categorizar expenses, adjuntar comprobantes, configurar proveedores, generar reportes de gastos mensuales, analizar tendencias de gastos, y optimizar el control financiero de tu empresa.",
+    "category": "gastos",
+    "duration": "10:15",
+    "size": "25.0 MB",
+    "url": "/videos/Módulo de Gastos.mp4"
+  },
+  {
+    "filename": "Notificaciones y Sistema Operativo.mp4",
+    "title": "Notificaciones y Sistema Operativo - Kosmos CRM",
+    "description": "Aprende a utilizar el sistema de notificaciones en tiempo real, configurar alertas personalizadas, gestionar notificaciones por email, entender el centro de notificaciones, configurar recordatorios automáticos, y utilizar las herramientas del sistema operativo para máxima productividad.",
+    "category": "notificaciones",
+    "duration": "9:20",
+    "size": "25.7 MB",
+    "url": "/videos/Notificaciones y Sistema Operativo.mp4"
+  },
+  {
+    "filename": "Solicitudes de Compras.mp4",
+    "title": "Solicitudes de Compras - Kosmos CRM",
+    "description": "Tutorial completo del módulo de solicitudes de compras. Aprende a crear solicitudes de compra, aprobar/rechazar solicitudes, gestionar proveedores, controlar inventario mínimo, generar órdenes de compra, recibir mercancía, actualizar stock automáticamente, y generar reportes de compras.",
+    "category": "compras",
+    "duration": "11:45",
+    "size": "18.4 MB",
+    "url": "/videos/Solicitudes de Compras.mp4"
+  }
+]

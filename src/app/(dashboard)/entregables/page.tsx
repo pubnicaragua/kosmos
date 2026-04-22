@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 // Iconos SVG personalizados
 const FileTextIcon = () => (
@@ -73,6 +73,15 @@ export default function EntregablesPage() {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [expandedPhase, setExpandedPhase] = useState<number | null>(1)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [trainingVideos, setTrainingVideos] = useState<any[]>([])
+
+  // Cargar videos de entrenamiento
+  useEffect(() => {
+    fetch('/videos/training-videos.json')
+      .then(res => res.json())
+      .then(data => setTrainingVideos(data))
+      .catch(console.error)
+  }, [])
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text)
@@ -406,6 +415,74 @@ export default function EntregablesPage() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Videos de Entrenamiento */}
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Videos de Entrenamiento</h2>
+              <p className="text-slate-600 text-sm">Tutoriales completos para dominar cada módulo del Kosmos CRM</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {trainingVideos.map((video, index) => (
+              <div key={index} className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 h-48 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <button
+                    onClick={() => window.open(video.url, '_blank')}
+                    className="relative z-10 w-16 h-16 bg-white/90 hover:bg-white rounded-full flex items-center justify-center transition-colors group"
+                  >
+                    <svg className="w-8 h-8 text-purple-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  </button>
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                    {video.duration}
+                  </div>
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="font-semibold text-slate-800 mb-2 line-clamp-2">{video.title}</h3>
+                  <p className="text-sm text-slate-600 mb-3 line-clamp-3">{video.description}</p>
+                  
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full capitalize">
+                      {video.category}
+                    </span>
+                    <span>{video.size}</span>
+                  </div>
+                  
+                  <button
+                    onClick={() => window.open(video.url, '_blank')}
+                    className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Ver Video
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {trainingVideos.length === 0 && (
+            <div className="text-center py-12 text-slate-500">
+              <svg className="w-16 h-16 mx-auto mb-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <p>Cargando videos de entrenamiento...</p>
+            </div>
+          )}
         </div>
 
         {/* Documentación de Soporte */}
