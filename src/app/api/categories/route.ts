@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
     if (!companyId) return NextResponse.json({ success: false, error: 'companyId requerido' }, { status: 400 })
 
-    const categories = await prisma.category.findMany({
+    const categories = await prisma.productCategory.findMany({
       where: { companyId },
       orderBy: { name: 'asc' }
     })
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 })
     }
 
-    const category = await prisma.category.create({
+    const category = await prisma.productCategory.create({
       data: {
         name,
         companyId
