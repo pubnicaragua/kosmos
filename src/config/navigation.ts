@@ -131,19 +131,25 @@ export const navigationSections: NavSection[] = [
     id: 'configuracion',
     label: 'CONFIGURACIÓN',
     items: [
-{
-    id: 'system',
-    label: 'Ajustes',
-    href: '/sistema/ajustes',
-    icon: 'Settings',
-  },
-  {
-    id: 'templates',
-    label: 'Plantillas',
-    href: '/sistema/plantillas',
-    icon: 'FileSpreadsheet',
-  },
-  ],
+      {
+        id: 'system',
+        label: 'Ajustes',
+        href: '/sistema/ajustes',
+        icon: 'Settings',
+      },
+      {
+        id: 'templates',
+        label: 'Plantillas',
+        href: '/sistema/plantillas',
+        icon: 'FileSpreadsheet',
+      },
+      {
+        id: 'entregables',
+        label: 'Videos de Entrenamiento',
+        href: '/entregables',
+        icon: 'HelpCircle',
+      },
+    ],
   },
 ]
 

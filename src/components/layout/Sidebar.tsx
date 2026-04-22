@@ -48,6 +48,7 @@ const NAV_TO_MODULE: Record<string, string> = {
   documents: 'documentos',
   contracts: 'contratos',
   system: 'sistema',
+  entregables: 'entregables',
 }
 
 interface RolePermission {

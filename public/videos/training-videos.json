@@ -6,7 +6,8 @@
     "category": "dashboard",
     "duration": "8:45",
     "size": "18.9 MB",
-    "url": "/videos/Login y Dashboard.mp4"
+    "url": "/videos/Login y Dashboard.mp4",
+    "storagePath": "training/Login y Dashboard.mp4"
   },
   {
     "filename": "Ingresos - Kosmos CRM.mp4",
@@ -15,7 +16,8 @@
     "category": "ingresos",
     "duration": "12:30",
     "size": "53.1 MB",
-    "url": "/videos/Ingresos - Kosmos CRM.mp4"
+    "url": "/videos/Ingresos - Kosmos CRM.mp4",
+    "storagePath": "training/Ingresos - Kosmos CRM.mp4"
   },
   {
     "filename": "Módulo de Gastos.mp4",
@@ -24,7 +26,8 @@
     "category": "gastos",
     "duration": "10:15",
     "size": "25.0 MB",
-    "url": "/videos/Módulo de Gastos.mp4"
+    "url": "/videos/Módulo de Gastos.mp4",
+    "storagePath": "training/Módulo de Gastos.mp4"
   },
   {
     "filename": "Notificaciones y Sistema Operativo.mp4",
@@ -33,7 +36,8 @@
     "category": "notificaciones",
     "duration": "9:20",
     "size": "25.7 MB",
-    "url": "/videos/Notificaciones y Sistema Operativo.mp4"
+    "url": "/videos/Notificaciones y Sistema Operativo.mp4",
+    "storagePath": "training/Notificaciones y Sistema Operativo.mp4"
   },
   {
     "filename": "Solicitudes de Compras.mp4",
@@ -42,6 +46,7 @@
     "category": "compras",
     "duration": "11:45",
     "size": "18.4 MB",
-    "url": "/videos/Solicitudes de Compras.mp4"
+    "url": "/videos/Solicitudes de Compras.mp4",
+    "storagePath": "training/Solicitudes de Compras.mp4"
   }
 ]
