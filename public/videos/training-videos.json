@@ -26,8 +26,8 @@
     "category": "gastos",
     "duration": "14:20",
     "size": "32.5 MB",
-    "url": "/videos/Módulo de Gastos v2.mp4",
-    "storagePath": "training/Módulo de Gastos v2.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Gastos-v2.mp4",
+    "storagePath": "training/Modulo-de-Gastos-v2.mp4"
   },
   {
     "filename": "Módulo de Cotizaciones.mp4",
@@ -36,8 +36,8 @@
     "category": "cotizaciones",
     "duration": "16:45",
     "size": "38.2 MB",
-    "url": "/videos/Módulo de Cotizaciones.mp4",
-    "storagePath": "training/Módulo de Cotizaciones.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Cotizaciones.mp4",
+    "storagePath": "training/Modulo-de-Cotizaciones.mp4"
   },
   {
     "filename": "Módulo de Marketing.mp4",
@@ -46,8 +46,8 @@
     "category": "marketing",
     "duration": "15:30",
     "size": "35.8 MB",
-    "url": "/videos/Módulo de Marketing.mp4",
-    "storagePath": "training/Módulo de Marketing.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Marketing.mp4",
+    "storagePath": "training/Modulo-de-Marketing.mp4"
   },
   {
     "filename": "Módulo de Solicitud de Compras v2.mp4",
@@ -56,8 +56,8 @@
     "category": "compras",
     "duration": "18:15",
     "size": "42.1 MB",
-    "url": "/videos/Módulo de Solicitud de Compras v2.mp4",
-    "storagePath": "training/Módulo de Solicitud de Compras v2.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Solicitud-de-Compras-v2.mp4",
+    "storagePath": "training/Modulo-de-Solicitud-de-Compras-v2.mp4"
   },
   {
     "filename": "Módulo de Recursos Humanos.mp4",
@@ -66,8 +66,8 @@
     "category": "rrhh",
     "duration": "17:40",
     "size": "40.3 MB",
-    "url": "/videos/Módulo de Recursos Humanos.mp4",
-    "storagePath": "training/Módulo de Recursos Humanos.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Recursos-Humanos.mp4",
+    "storagePath": "training/Modulo-de-Recursos-Humanos.mp4"
   },
   {
     "filename": "Módulo de Ajustes - Plantillas.mp4",
@@ -76,8 +76,8 @@
     "category": "ajustes",
     "duration": "13:25",
     "size": "29.7 MB",
-    "url": "/videos/Módulo de Ajustes - Plantillas.mp4",
-    "storagePath": "training/Módulo de Ajustes - Plantillas.mp4"
+    "url": "https://sejfwazpxuzccndpgpso.supabase.co/storage/v1/object/public/uploads/training/Modulo-de-Ajustes---Plantillas.mp4",
+    "storagePath": "training/Modulo-de-Ajustes---Plantillas.mp4"
   },
   {
     "filename": "Notificaciones y Sistema Operativo.mp4",
