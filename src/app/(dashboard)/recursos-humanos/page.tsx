@@ -59,7 +59,7 @@ export default function RecursosHumanosPage() {
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [showPayrollModal, setShowPayrollModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [employeeForm, setEmployeeForm] = useState({
