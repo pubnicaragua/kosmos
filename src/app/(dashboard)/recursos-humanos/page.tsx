@@ -105,10 +105,14 @@ export default function RecursosHumanosPage() {
 
   useEffect(() => {
     if (activeCompany?.id) {
-      fetchPayrolls()
+      if (activeTab === 'employees') {
+        fetchEmployees()
+      } else {
+        fetchPayrolls()
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCompany])
+  }, [activeCompany, activeTab])
 
   const fetchPayrolls = async () => {
     const token = localStorage.getItem('accessToken')
@@ -125,6 +129,26 @@ export default function RecursosHumanosPage() {
       }
     } catch (err) {
       console.error('Error fetching payrolls:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchEmployees = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !activeCompany?.id) return
+
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/employees?companyId=${activeCompany.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEmployees(data.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching employees:', err)
     } finally {
       setLoading(false)
     }
