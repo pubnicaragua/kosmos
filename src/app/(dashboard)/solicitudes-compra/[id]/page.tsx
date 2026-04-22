@@ -93,6 +93,10 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
 
   const canApprove = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER'
 
+  const handlePrint = () => {
+    window.print()
+  }
+
   if (isLoading || !request) {
     return <div className="p-12 text-center text-slate-400 font-bold">Cargando detalles de solicitud...</div>
   }
@@ -116,7 +120,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="font-bold rounded-xl border-slate-200">
+          <Button variant="outline" className="font-bold rounded-xl border-slate-200" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> IMPRIMIR
           </Button>
           {request.status === 'PENDIENTE' && canApprove && (
@@ -194,7 +198,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Solicitante</p>
-                    <p className="font-bold text-slate-800">Cargando...</p>
+                    <p className="font-bold text-slate-800">{request.requestedByName || request.requestedBy || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

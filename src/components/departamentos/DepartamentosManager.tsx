@@ -73,12 +73,16 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('accessToken')
-      const res = await fetch(`/api/users?companyId=${companyId}`, {
+      const res = await fetch(`/api/companies/${companyId}/users`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
       if (data.success) {
-        setUsers(data.data || [])
+        setUsers(data.data.map((m: any) => ({
+          id: m.user.id,
+          name: m.user.name,
+          email: m.user.email,
+        })))
       }
     } catch (error) {
       console.error('Error fetching users:', error)
