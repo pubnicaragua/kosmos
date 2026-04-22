@@ -127,7 +127,7 @@ export default function SolicitudesCompraPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-full overflow-x-hidden">
+    <div className="space-y-8">
       {/* Header section with Stats */}
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-end">
@@ -136,7 +136,7 @@ export default function SolicitudesCompraPage() {
             <p className="text-slate-500 text-sm mt-1 font-medium">Gestión estratégica de suministros y reposición de inventario.</p>
           </div>
           <Link href="/solicitudes-compra/nueva">
-            <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 py-6 px-8 rounded-xl font-bold gap-2">
+            <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl font-bold gap-2">
               <Plus className="w-5 h-5" />
               NUEVA SOLICITUD
             </Button>

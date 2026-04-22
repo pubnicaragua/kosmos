@@ -462,7 +462,7 @@ const handleDownloadTemplate = () => {
                     className="flex-1 text-[10px] font-bold p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 text-center uppercase tracking-widest transition-colors"
                     title="Descargar archivo de planilla"
                   >
-                    Ver Archivo
+                    Ver Documentos
                   </a>
                   <select
                     value={payroll.status}

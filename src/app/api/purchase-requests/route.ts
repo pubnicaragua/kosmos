@@ -94,6 +94,33 @@ export async function POST(req: Request) {
       }
     })
 
+    // Notify admins of the company
+    try {
+      const companyUsers = await prisma.userCompany.findMany({
+        where: {
+          companyId: companyId,
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+        },
+        include: {
+          user: true
+        }
+      })
+
+      for (const cu of companyUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: cu.userId,
+            title: 'Nueva Solicitud de Compra',
+            message: `Solicitud ${requestNumber} requiere aprobación - Prioridad: ${priority}`,
+            type: 'ASSIGNMENT',
+            link: `/solicitudes-compra/${request.id}`
+          }
+        })
+      }
+    } catch (notifError) {
+      console.error('Error creating notifications:', notifError)
+    }
+
     return NextResponse.json({ success: true, data: request })
   } catch (error) {
     console.error('Error creating purchase request:', error)

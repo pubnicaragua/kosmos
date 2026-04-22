@@ -157,6 +157,30 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Notify admins
+    try {
+      const companyUsers = await prisma.userCompany.findMany({
+        where: {
+          companyId: companyId,
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+        }
+      })
+
+      for (const cu of companyUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: cu.userId,
+            title: 'Nuevo Gasto Registrado',
+            message: `Gasto de ${expenseData.provider || 'General'} por $${expenseData.amount}`,
+            type: 'ASSIGNMENT',
+            link: `/gastos`
+          }
+        })
+      }
+    } catch (notifError) {
+      console.error('Error creating notifications:', notifError)
+    }
+
     return apiSuccess(expense, undefined, 201)
   } catch (error: any) {
     console.error('Error creating expense:', error)

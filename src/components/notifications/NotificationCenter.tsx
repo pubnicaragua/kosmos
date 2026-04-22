@@ -99,6 +99,19 @@ export function NotificationCenter() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
+    // Check if in production (Vercel doesn't support WebSocket)
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    
+    if (isProduction) {
+      console.log('Production environment detected, using polling instead of WebSocket')
+      // Use polling in production
+      if (!pollIntervalRef.current) {
+        pollNotifications() // Initial load
+        pollIntervalRef.current = setInterval(pollNotifications, 10000) // Poll every 10s
+      }
+      return
+    }
+
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/api/notifications/ws?token=${token}`
     
@@ -109,6 +122,11 @@ export function NotificationCenter() {
       ws.onopen = () => {
         console.log('WebSocket connected for notifications')
         pollNotifications() // Initial load
+        // Stop polling if WebSocket connects
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current)
+          pollIntervalRef.current = null
+        }
       }
 
       ws.onmessage = (event) => {
@@ -141,12 +159,23 @@ export function NotificationCenter() {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error)
+        // Fallback to polling on error
+        if (!pollIntervalRef.current) {
+          console.log('WebSocket failed, falling back to polling')
+          pollNotifications()
+          pollIntervalRef.current = setInterval(pollNotifications, 10000)
+        }
       }
 
       ws.onclose = () => {
-        console.log('WebSocket closed, reconnecting in 5s...')
+        console.log('WebSocket closed')
         wsRef.current = null
-        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 5000)
+        // Fallback to polling instead of reconnecting
+        if (!pollIntervalRef.current) {
+          console.log('Starting polling fallback')
+          pollNotifications()
+          pollIntervalRef.current = setInterval(pollNotifications, 10000)
+        }
       }
     } catch (err) {
       console.error('Failed to connect WebSocket:', err)

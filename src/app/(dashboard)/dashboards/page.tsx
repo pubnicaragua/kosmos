@@ -412,7 +412,7 @@ const chartRows = useMemo(() => {
           options={[
             { value: 'month', label: 'ESTE MES' },
             { value: 'quarter', label: 'ESTE TRIMESTRE' },
-            { value: 'year', label: 'ESTE ANO' },
+            { value: 'year', label: 'ESTE AÑO' },
           ]}
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}

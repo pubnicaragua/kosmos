@@ -69,6 +69,8 @@ export default function InventarioPage() {
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
 
   const startEditing = (product: Product) => {
     setEditingRows(prev => ({
@@ -167,6 +169,47 @@ export default function InventarioPage() {
       console.error('Error fetching categories:', e)
     }
   }, [])
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Ingresa un nombre para la categoría')
+      return
+    }
+    if (selectedCompany === 'all') {
+      alert('Selecciona una empresa primero')
+      return
+    }
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          companyId: selectedCompany
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setCategories(prev => [...prev, data.data])
+        setShowCategoryModal(false)
+        setNewCategoryName('')
+        alert('Categoría creada exitosamente')
+      } else {
+        alert(data.error || 'Error al crear categoría')
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      alert('Error al crear categoría')
+    }
+  }
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')

@@ -120,6 +120,32 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Notify admins of the company
+    try {
+      const companyUsers = await prisma.userCompany.findMany({
+        where: {
+          companyId: validatedData.companyId,
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+        }
+      })
+
+      for (const cu of companyUsers) {
+        if (cu.userId !== decoded.userId) {
+          await prisma.notification.create({
+            data: {
+              userId: cu.userId,
+              title: 'Nueva Cotización Creada',
+              message: `Cotización ${quoteNumber} para ${quote.client.name}`,
+              type: 'ASSIGNMENT',
+              link: `/clientes/cotizacion/${quote.id}`
+            }
+          })
+        }
+      }
+    } catch (notifError) {
+      console.error('Error creating notifications:', notifError)
+    }
+
     return apiSuccess(quote, undefined, 201)
   } catch (error: any) {
     console.error('Error creating quote:', error)

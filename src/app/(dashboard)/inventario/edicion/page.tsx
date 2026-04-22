@@ -210,10 +210,15 @@ export default function InventarioEdicionPage() {
             isNew: true,
           }
         })
-        .filter((row) => row.name) // Solo nombre es requerido, SKU es opcional
+        .filter((row) => {
+          // Validar que tenga al menos nombre O sku
+          const hasName = row.name && row.name.trim().length > 0
+          const hasSku = row.sku && row.sku.trim().length > 0
+          return hasName || hasSku
+        })
 
       if (!importedRows.length) {
-        alert('No se encontraron filas válidas. Verifica que el archivo incluya al menos una columna de Nombre, Producto o Articulo.')
+        alert('No se encontraron filas válidas. Verifica que el archivo incluya al menos una columna de Nombre, Producto, Articulo, SKU o Codigo.')
         return
       }
 
