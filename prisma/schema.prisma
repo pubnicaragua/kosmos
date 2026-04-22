@@ -19,7 +19,7 @@ model User {
   refreshTokens  RefreshToken[]
   ticketComments TicketComment[]
   userCompanies  UserCompany[]
-  templates     Template[]
+  templates      Template[]
 
   @@map("users")
 }
@@ -50,17 +50,18 @@ model Company {
   quotes             Quote[]
   tickets            Ticket[]
   userCompanies      UserCompany[]
+  departments        Department[]
   templates          Template[]
 
   // Configuración de Plantillas (Proformas y Facturas)
-  quotePrimaryColor   String?   @map("quote_primary_color")
-  quoteHeaderHtml     String?   @db.Text @map("quote_header_html")
-  quoteFooterHtml     String?   @db.Text @map("quote_footer_html")
-  quoteTerms          String?   @db.Text @map("quote_terms")
-  invoicePrimaryColor String?   @map("invoice_primary_color")
-  invoiceHeaderHtml   String?   @db.Text @map("invoice_header_html")
-  invoiceFooterHtml   String?   @db.Text @map("invoice_footer_html")
-  ticketStages        Json?     @map("ticket_stages")
+  quotePrimaryColor   String? @map("quote_primary_color")
+  quoteHeaderHtml     String? @map("quote_header_html") @db.Text
+  quoteFooterHtml     String? @map("quote_footer_html") @db.Text
+  quoteTerms          String? @map("quote_terms") @db.Text
+  invoicePrimaryColor String? @map("invoice_primary_color")
+  invoiceHeaderHtml   String? @map("invoice_header_html") @db.Text
+  invoiceFooterHtml   String? @map("invoice_footer_html") @db.Text
+  ticketStages        Json?   @map("ticket_stages")
 
   @@map("companies")
 }
@@ -122,19 +123,19 @@ model Income {
 }
 
 model Expense {
-  id        String        @id @default(cuid())
-  companyId String        @map("company_id")
-  refNumber String?       @map("ref_number")
-  provider  String
-  concept   String
-  category  String
-  method    String
-  amount    Float
-  status    ExpenseStatus @default(PENDING)
-  date      DateTime
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
-  company   Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id               String            @id @default(cuid())
+  companyId        String            @map("company_id")
+  refNumber        String?           @map("ref_number")
+  provider         String
+  concept          String
+  category         String
+  method           String
+  amount           Float
+  status           ExpenseStatus     @default(PENDING)
+  date             DateTime
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payrolls         Payroll[]         @relation("ExpensePayrolls")
   purchaseRequests PurchaseRequest[] @relation("ExpensePurchaseRequests")
 
@@ -142,43 +143,43 @@ model Expense {
 }
 
 model Opportunity {
-  id          String           @id @default(cuid())
-  companyId   String           @map("company_id")
-  title       String
-  client      String
-  value       Float
-  stage       OpportunityStage @default(PROSPECTO)
-  status      String           @default("Pendiente")
-  order       Int              @default(0)
-  assignedTo  String?          @map("assigned_to")
-  assignedUsers String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
-  currency    String           @default("USD") // USD o NIO (C$)
-  closeDate   DateTime?        @map("close_date")
-  priority    String?          @default("MEDIA")
-  description String?
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  companyId     String           @map("company_id")
+  title         String
+  client        String
+  value         Float
+  stage         OpportunityStage @default(PROSPECTO)
+  status        String           @default("Pendiente")
+  order         Int              @default(0)
+  assignedTo    String?          @map("assigned_to")
+  assignedUsers String?          @map("assigned_users") // JSON array de IDs de usuarios asignados
+  currency      String           @default("USD") // USD o NIO (C$)
+  closeDate     DateTime?        @map("close_date")
+  priority      String?          @default("MEDIA")
+  description   String?
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("opportunities")
 }
 
 model Document {
-  id          String       @id @default(cuid())
-  companyId   String       @map("company_id")
-  name        String
-  type        DocumentType
-  concept     String
-  category    String?
-  area        String?      @default("General")
-  visibility  String?      @default("COMPARTIDO")
-  sharedWith  String?      @map("shared_with") // JSON array de IDs de usuarios con acceso
-  fileUrl     String       @map("file_url")
-  fileSize    Int          @map("file_size")
-  uploadedBy  String       @map("uploaded_by")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  companyId  String       @map("company_id")
+  name       String
+  type       DocumentType
+  concept    String
+  category   String?
+  area       String?      @default("General")
+  visibility String?      @default("COMPARTIDO")
+  sharedWith String?      @map("shared_with") // JSON array de IDs de usuarios con acceso
+  fileUrl    String       @map("file_url")
+  fileSize   Int          @map("file_size")
+  uploadedBy String       @map("uploaded_by")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("documents")
 }
@@ -305,23 +306,23 @@ model QuoteItem {
 }
 
 model Product {
-  id                  String                @id @default(cuid())
-  companyId           String                @map("company_id")
-  categoryId          String?               @map("category_id")
-  name                String
-  sku                 String
-  description         String?
-  unit                String                @default("UNI")
-  stock               Int                   @default(0)
-  minStock            Int                   @default(0) @map("min_stock")
-  cost                Float                 @default(0)
-  price               Float
-  isActive            Boolean               @default(true) @map("is_active")
-  createdAt           DateTime              @default(now()) @map("created_at")
-  updatedAt           DateTime              @updatedAt @map("updated_at")
-  category            ProductCategory?      @relation(fields: [categoryId], references: [id])
-  company             Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  quoteItems          QuoteItem[]
+  id                   String                @id @default(cuid())
+  companyId            String                @map("company_id")
+  categoryId           String?               @map("category_id")
+  name                 String
+  sku                  String
+  description          String?
+  unit                 String                @default("UNI")
+  stock                Int                   @default(0)
+  minStock             Int                   @default(0) @map("min_stock")
+  cost                 Float                 @default(0)
+  price                Float
+  isActive             Boolean               @default(true) @map("is_active")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  category             ProductCategory?      @relation(fields: [categoryId], references: [id])
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  quoteItems           QuoteItem[]
   purchaseRequestItems PurchaseRequestItem[]
 
   @@unique([companyId, sku])
@@ -346,46 +347,46 @@ model ProductCategory {
 }
 
 model Ticket {
-  id               String          @id @default(cuid())
-  ticketNumber     String          @unique @map("ticket_number") // Número autogenerado
-  companyId        String          @map("company_id")
-  clientId         String?         @map("client_id")
-  title            String
-  description      String?         @db.Text
-  type             TicketType      @default(SOPORTE_REMOTO) // Tipo de solicitud
-  status           String          @default("PROCESO1")
-  priority         String?          @default("MEDIA")
-  assignedTo       String?         @map("assigned_to")
-  assignedUsers    String?         @map("assigned_users") // JSON array de IDs de usuarios asignados
-  branch           String?         // Sucursal o área
-  amount           Float?
-  currency         String          @default("USD") // USD o NIO (C$)
-  startDate        DateTime?       @map("start_date")
-  dueDate          DateTime?       @map("due_date")
-  closedAt         DateTime?       @map("closed_at")
-  attachments      String?         // JSON array de URLs de archivos adjuntos
-  
+  id            String     @id @default(cuid())
+  ticketNumber  String     @unique @map("ticket_number") // Número autogenerado
+  companyId     String     @map("company_id")
+  clientId      String?    @map("client_id")
+  title         String
+  description   String?    @db.Text
+  type          TicketType @default(SOPORTE_REMOTO) // Tipo de solicitud
+  status        String     @default("PROCESO1")
+  priority      String?    @default("MEDIA")
+  assignedTo    String?    @map("assigned_to")
+  assignedUsers String?    @map("assigned_users") // JSON array de IDs de usuarios asignados
+  branch        String? // Sucursal o área
+  amount        Float?
+  currency      String     @default("USD") // USD o NIO (C$)
+  startDate     DateTime?  @map("start_date")
+  dueDate       DateTime?  @map("due_date")
+  closedAt      DateTime?  @map("closed_at")
+  attachments   String? // JSON array de URLs de archivos adjuntos
+
   // Información técnica
-  equipmentType    String?         @map("equipment_type") // DVR, NVR, cámara IP, analógica
-  equipmentBrand   String?         @map("equipment_brand")
-  equipmentModel   String?         @map("equipment_model")
-  serialNumber     String?         @map("serial_number")
-  installationDate DateTime?       @map("installation_date")
-  installedBy      String?         @map("installed_by") // ID del técnico que instaló
-  evidence         String?         // JSON array de URLs de fotos/videos
-  
+  equipmentType    String?   @map("equipment_type") // DVR, NVR, cámara IP, analógica
+  equipmentBrand   String?   @map("equipment_brand")
+  equipmentModel   String?   @map("equipment_model")
+  serialNumber     String?   @map("serial_number")
+  installationDate DateTime? @map("installation_date")
+  installedBy      String?   @map("installed_by") // ID del técnico que instaló
+  evidence         String? // JSON array de URLs de fotos/videos
+
   // Métricas
-  responseTime     Int?            @map("response_time") // Tiempo de respuesta en minutos
-  resolutionTime   Int?            @map("resolution_time") // Tiempo de resolución en minutos
-  reopenedCount    Int             @default(0) @map("reopened_count") // Veces que se reabrió
-  
-  createdBy        String          @map("created_by")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  
-  client           Client?         @relation(fields: [clientId], references: [id])
-  company          Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  comments         TicketComment[]
+  responseTime   Int? @map("response_time") // Tiempo de respuesta en minutos
+  resolutionTime Int? @map("resolution_time") // Tiempo de resolución en minutos
+  reopenedCount  Int  @default(0) @map("reopened_count") // Veces que se reabrió
+
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client   Client?         @relation(fields: [clientId], references: [id])
+  company  Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  comments TicketComment[]
 
   @@index([companyId])
   @@index([status])
@@ -527,33 +528,33 @@ model MarketingCampaign {
 }
 
 model Employee {
-  id                    String   @id @default(cuid())
-  companyId             String   @map("company_id")
-  employeeCode          String   @unique @map("employee_code")
-  fullName              String   @map("full_name")
-  email                 String?
-  phone                 String?
-  position              String
-  department            String
-  startDate             DateTime @map("start_date")
-  salary                Float
-  contractType          String   @map("contract_type")
-  bankName              String?  @map("bank_name")
-  accountNumber         String?  @map("account_number")
-  address               String?
-  birthDate             DateTime? @map("birth_date")
-  emergencyContact      String?  @map("emergency_contact")
-  emergencyPhone        String?  @map("emergency_phone")
-  socialSecurityNumber  String?  @map("social_security_number")
-  bloodType             String?  @map("blood_type")
-  educationLevel        String?  @map("education_level")
-  benefits              String?  @db.Text
-  status                String   @default("ACTIVO")
-  photo                 String?
-  notes                 String?  @db.Text
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-  company               Company  @relation("CompanyEmployees", fields: [companyId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(cuid())
+  companyId            String    @map("company_id")
+  employeeCode         String    @unique @map("employee_code")
+  fullName             String    @map("full_name")
+  email                String?
+  phone                String?
+  position             String
+  department           String
+  startDate            DateTime  @map("start_date")
+  salary               Float
+  contractType         String    @map("contract_type")
+  bankName             String?   @map("bank_name")
+  accountNumber        String?   @map("account_number")
+  address              String?
+  birthDate            DateTime? @map("birth_date")
+  emergencyContact     String?   @map("emergency_contact")
+  emergencyPhone       String?   @map("emergency_phone")
+  socialSecurityNumber String?   @map("social_security_number")
+  bloodType            String?   @map("blood_type")
+  educationLevel       String?   @map("education_level")
+  benefits             String?   @db.Text
+  status               String    @default("ACTIVO")
+  photo                String?
+  notes                String?   @db.Text
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  company              Company   @relation("CompanyEmployees", fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([status])
@@ -584,29 +585,35 @@ model Payroll {
 }
 
 model PurchaseRequest {
-  id                String                  @id @default(cuid())
-  requestNumber     String                  @unique @map("request_number") // Autogenerado
-  companyId         String                  @map("company_id")
-  requestDate       DateTime                @default(now()) @map("request_date")
-  requestingArea    String                  @map("requesting_area") // Área solicitante
-  requestedBy       String                  @map("requested_by") // ID del usuario solicitante
-  requestType       PurchaseRequestType     @default(REPOSICION) @map("request_type")
-  priority          PurchaseRequestPriority @default(MEDIA)
-  status            PurchaseRequestStatus   @default(PENDIENTE)
-  approvedBy        String?                 @map("approved_by") // ID del usuario que aprobó
-  approvedAt        DateTime?               @map("approved_at")
-  rejectedReason    String?                 @map("rejected_reason")
-  purchasedAt       DateTime?               @map("purchased_at")
-  receivedAt        DateTime?               @map("received_at")
-  expenseId         String?                 @map("expense_id")
-  notes             String?                 @db.Text
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
-  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  expense           Expense?                @relation("ExpensePurchaseRequests", fields: [expenseId], references: [id], onUpdate: NoAction)
-  items             PurchaseRequestItem[]
+  id               String                  @id @default(cuid())
+  requestNumber    String                  @unique @map("request_number") // Autogenerado
+  companyId        String                  @map("company_id")
+  departmentId     String?                 @map("department_id")
+  requestDate      DateTime                @default(now()) @map("request_date")
+  requestingArea   String                  @map("requesting_area") // Área solicitante
+  requestedBy      String                  @map("requested_by") // ID del usuario solicitante
+  requestType      PurchaseRequestType     @default(REPOSICION) @map("request_type")
+  priority         PurchaseRequestPriority @default(MEDIA)
+  status           PurchaseRequestStatus   @default(PENDIENTE)
+  approvedBy       String?                 @map("approved_by") // ID del usuario que aprobó
+  approvedAt       DateTime?               @map("approved_at")
+  rejectedReason   String?                 @map("rejected_reason")
+  quotationUrl     String?                 @map("quotation_url") // URL de cotización subida
+  purchaseOrderUrl String?                 @map("purchase_order_url") // URL de OC subida
+  evidenceUrl      String?                 @map("evidence_url") // URL de evidencia de recepción
+  purchasedAt      DateTime?               @map("purchased_at")
+  receivedAt       DateTime?               @map("received_at")
+  expenseId        String?                 @map("expense_id")
+  notes            String?                 @db.Text
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  company          Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department       Department?             @relation("DepartmentRequests", fields: [departmentId], references: [id], onDelete: SetNull)
+  expense          Expense?                @relation("ExpensePurchaseRequests", fields: [expenseId], references: [id], onUpdate: NoAction)
+  items            PurchaseRequestItem[]
 
   @@index([companyId])
+  @@index([departmentId])
   @@index([status])
   @@index([priority])
   @@index([requestType])
@@ -618,13 +625,13 @@ model PurchaseRequestItem {
   id                String          @id @default(cuid())
   purchaseRequestId String          @map("purchase_request_id")
   productId         String?         @map("product_id") // Referencia al producto del inventario
-  sku               String?         // Código SKU
+  sku               String? // Código SKU
   productName       String          @map("product_name")
   category          String?
   currentStock      Int?            @map("current_stock")
   minimumStock      Int?            @map("minimum_stock")
   requestedQuantity Int             @map("requested_quantity")
-  reason            String?         // Motivo: Agotado, Alta demanda, Proyecto
+  reason            String? // Motivo: Agotado, Alta demanda, Proyecto
   lastSaleDate      DateTime?       @map("last_sale_date")
   monthlyAverage    Float?          @map("monthly_average") // Promedio de ventas mensuales
   unitCost          Float?          @map("unit_cost")
@@ -788,24 +795,52 @@ enum ClientType {
 }
 
 model Template {
-  id          String        @id @default(cuid())
-  name        String
-  type        TemplateType
-  fileUrl     String?
-  content     String?      @db.Text
-  module      String       // cotizacion, factura, inventario, contrato, etc
-  isActive    Boolean      @default(true)
-  companyId   String
-  company    Company     @relation(fields: [companyId], references: [id])
-  createdBy   String
-  user       User        @relation(fields: [createdBy], references: [id])
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id        String       @id @default(cuid())
+  name      String
+  type      TemplateType
+  fileUrl   String?
+  content   String?      @db.Text
+  module    String // cotizacion, factura, inventario, contrato, etc
+  isActive  Boolean      @default(true)
+  companyId String
+  company   Company      @relation(fields: [companyId], references: [id])
+  createdBy String
+  user      User         @relation(fields: [createdBy], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@map("templates")
 }
 
 enum TemplateType {
-  EDITABLE    // Plantilla editable en el sistema
-  STATIC     // Archivo estatico (PDF/XLSX)
+  EDITABLE // Plantilla editable en el sistema
+  STATIC // Archivo estatico (PDF/XLSX)
+}
+
+model Department {
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  companyId        String            @map("company_id")
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  userDepartments  UserDepartment[]
+  purchaseRequests PurchaseRequest[] @relation("DepartmentRequests")
+
+  @@map("departments")
+}
+
+model UserDepartment {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  departmentId String     @map("department_id")
+  role         String?
+  isApprover   Boolean    @default(false) @map("is_approver")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@map("user_departments")
 }

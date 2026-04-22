@@ -63,6 +63,13 @@ export default function GastosPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set())
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [bulkEditData, setBulkEditData] = useState({
+    status: '',
+    category: '',
+    method: '',
+  })
 
   const handleDownloadTemplate = () => {
     const templateData = [

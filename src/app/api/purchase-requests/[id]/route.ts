@@ -38,7 +38,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
     const body = await req.json()
-    const { status, rejectedReason, notes } = body
+    const { status, rejectedReason, notes, quotationUrl, purchaseOrderUrl, evidenceUrl, departmentId } = body
 
     const currentRequest = await prisma.purchaseRequest.findUnique({
       where: { id: params.id },
@@ -47,7 +47,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     if (!currentRequest) return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
 
-    const updateData: any = { status }
+    const updateData: any = {}
+    if (status) updateData.status = status
+    if (quotationUrl !== undefined) updateData.quotationUrl = quotationUrl
+    if (purchaseOrderUrl !== undefined) updateData.purchaseOrderUrl = purchaseOrderUrl
+    if (evidenceUrl !== undefined) updateData.evidenceUrl = evidenceUrl
+    if (departmentId !== undefined) updateData.departmentId = departmentId
     if (status === 'APROBADA') {
       updateData.approvedBy = (decoded as any).id
       updateData.approvedAt = new Date()
