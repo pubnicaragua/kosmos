@@ -20,14 +20,64 @@
     "storagePath": "training/Ingresos - Kosmos CRM.mp4"
   },
   {
-    "filename": "Módulo de Gastos.mp4",
-    "title": "Módulo de Gastos - Kosmos CRM",
-    "description": "Video de capacitación del módulo de gastos. Descubre cómo registrar gastos operativos, categorizar expenses, adjuntar comprobantes, configurar proveedores, generar reportes de gastos mensuales, analizar tendencias de gastos, y optimizar el control financiero de tu empresa.",
+    "filename": "Módulo de Gastos v2.mp4",
+    "title": "Módulo de Gastos v2 - Kosmos CRM",
+    "description": "Tutorial actualizado del módulo de gastos con las nuevas funcionalidades. Aprende a registrar gastos con múltiples categorías, utilizar la selección masiva de gastos, aplicar edición en lote para actualizar estado y categoría de múltiples gastos simultáneamente, eliminar gastos en masa, adjuntar comprobantes digitales, filtrar por proveedor y método de pago, exportar reportes financieros detallados, y analizar el flujo de caja de tu empresa con gráficas interactivas.",
     "category": "gastos",
-    "duration": "10:15",
-    "size": "25.0 MB",
-    "url": "/videos/Módulo de Gastos.mp4",
-    "storagePath": "training/Módulo de Gastos.mp4"
+    "duration": "14:20",
+    "size": "32.5 MB",
+    "url": "/videos/Módulo de Gastos v2.mp4",
+    "storagePath": "training/Módulo de Gastos v2.mp4"
+  },
+  {
+    "filename": "Módulo de Cotizaciones.mp4",
+    "title": "Módulo de Cotizaciones - Kosmos CRM",
+    "description": "Capacitación completa del módulo de cotizaciones y ventas. Descubre cómo crear cotizaciones profesionales con productos del inventario, calcular automáticamente subtotales e IVA, aplicar descuentos con aprobación, configurar métodos de pago y términos de entrega, enviar cotizaciones por email y WhatsApp, convertir cotizaciones en ventas confirmadas, dar seguimiento al pipeline de ventas, generar reportes de conversión, y exportar cotizaciones en formato PDF con el logo de tu empresa.",
+    "category": "cotizaciones",
+    "duration": "16:45",
+    "size": "38.2 MB",
+    "url": "/videos/Módulo de Cotizaciones.mp4",
+    "storagePath": "training/Módulo de Cotizaciones.mp4"
+  },
+  {
+    "filename": "Módulo de Marketing.mp4",
+    "title": "Módulo de Marketing - Kosmos CRM",
+    "description": "Tutorial completo del módulo de marketing digital. Aprende a crear y gestionar campañas de marketing multicanal (redes sociales, email, publicidad digital, contenido, eventos), definir presupuestos y controlar gastos en tiempo real, registrar métricas de rendimiento (impresiones, clics, conversiones, ROI), subir evidencias de campañas (imágenes, videos, PDFs), solicitar aprobación de campañas, analizar el desempeño con gráficas interactivas, exportar reportes de marketing en Excel y PDF, y optimizar tus estrategias con datos reales.",
+    "category": "marketing",
+    "duration": "15:30",
+    "size": "35.8 MB",
+    "url": "/videos/Módulo de Marketing.mp4",
+    "storagePath": "training/Módulo de Marketing.mp4"
+  },
+  {
+    "filename": "Módulo de Solicitud de Compras v2.mp4",
+    "title": "Módulo de Solicitud de Compras v2 - Kosmos CRM",
+    "description": "Tutorial actualizado del módulo de solicitudes de compras con workflow completo de aprobación. Aprende a crear solicitudes de compra basadas en stock mínimo, asignar departamentos y aprobadores, establecer prioridades (alta, media, baja), aprobar o rechazar solicitudes con justificación, subir cotizaciones de proveedores, generar órdenes de compra automáticas, adjuntar evidencia de recepción de productos, actualizar inventario automáticamente al recibir mercancía, crear gastos vinculados a compras, imprimir órdenes de compra, y generar reportes de gestión de compras por departamento.",
+    "category": "compras",
+    "duration": "18:15",
+    "size": "42.1 MB",
+    "url": "/videos/Módulo de Solicitud de Compras v2.mp4",
+    "storagePath": "training/Módulo de Solicitud de Compras v2.mp4"
+  },
+  {
+    "filename": "Módulo de Recursos Humanos.mp4",
+    "title": "Módulo de Recursos Humanos - Kosmos CRM",
+    "description": "Capacitación completa del módulo de recursos humanos y gestión de personal. Descubre cómo registrar empleados con información completa (datos personales, contacto de emergencia, tipo de sangre, nivel educativo), importar empleados masivamente desde Excel, gestionar contratos laborales (indefinido, temporal, por proyecto), calcular nóminas automáticamente, registrar beneficios y deducciones, configurar cuentas bancarias para pagos, generar reportes de planilla, exportar datos de empleados, crear gastos de nómina automáticos, y mantener un historial completo del personal de tu empresa.",
+    "category": "rrhh",
+    "duration": "17:40",
+    "size": "40.3 MB",
+    "url": "/videos/Módulo de Recursos Humanos.mp4",
+    "storagePath": "training/Módulo de Recursos Humanos.mp4"
+  },
+  {
+    "filename": "Módulo de Ajustes - Plantillas.mp4",
+    "title": "Módulo de Ajustes - Plantillas - Kosmos CRM",
+    "description": "Tutorial del módulo de ajustes y configuración de plantillas personalizadas. Aprende a acceder al módulo de ajustes del sistema, configurar plantillas de cotizaciones con tu logo y datos empresariales, personalizar plantillas de facturas con términos y condiciones, crear departamentos de la empresa, asignar usuarios a departamentos con roles específicos, designar aprobadores para solicitudes de compra, configurar roles y permisos de usuarios, gestionar múltiples empresas desde una sola cuenta, y personalizar la experiencia del CRM según las necesidades de tu organización.",
+    "category": "ajustes",
+    "duration": "13:25",
+    "size": "29.7 MB",
+    "url": "/videos/Módulo de Ajustes - Plantillas.mp4",
+    "storagePath": "training/Módulo de Ajustes - Plantillas.mp4"
   },
   {
     "filename": "Notificaciones y Sistema Operativo.mp4",
@@ -38,15 +88,5 @@
     "size": "25.7 MB",
     "url": "/videos/Notificaciones y Sistema Operativo.mp4",
     "storagePath": "training/Notificaciones y Sistema Operativo.mp4"
-  },
-  {
-    "filename": "Solicitudes de Compras.mp4",
-    "title": "Solicitudes de Compras - Kosmos CRM",
-    "description": "Tutorial completo del módulo de solicitudes de compras. Aprende a crear solicitudes de compra, aprobar/rechazar solicitudes, gestionar proveedores, controlar inventario mínimo, generar órdenes de compra, recibir mercancía, actualizar stock automáticamente, y generar reportes de compras.",
-    "category": "compras",
-    "duration": "11:45",
-    "size": "18.4 MB",
-    "url": "/videos/Solicitudes de Compras.mp4",
-    "storagePath": "training/Solicitudes de Compras.mp4"
   }
 ]
