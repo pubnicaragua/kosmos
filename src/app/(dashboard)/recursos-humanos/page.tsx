@@ -390,6 +390,29 @@ const handleDownloadTemplate = () => {
     return colors[status] || 'bg-gray-100 text-gray-700'
   }
 
+  const filteredEmployees = employees.filter(emp =>
+    emp.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ')
+    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}` : name.substring(0, 2)
+  }
+
+  if (!activeCompany) {
+    return (
+      <div className="p-8">
+        <Card className="p-8 text-center">
+          <Building2 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <p className="text-gray-500">Selecciona una empresa para gestionar recursos humanos</p>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -397,7 +420,7 @@ const handleDownloadTemplate = () => {
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Recursos Humanos</h1>
           <p className="text-sm text-slate-500 mt-1 flex items-center gap-2 font-medium">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            Gestión de Nómina Corporativa • {payrolls.length} Registros
+            Gestión de Empleados y Nómina • {activeTab === 'employees' ? employees.length : payrolls.length} Registros
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -405,32 +428,67 @@ const handleDownloadTemplate = () => {
             <Download className="w-4 h-4 mr-2" />
             PLANTILLA
           </Button>
-          <label htmlFor="payroll-import" className="cursor-pointer">
-            <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold pointer-events-none">
-              <Upload className="w-4 h-4 mr-2" />
-              IMPORTAR
+          {activeTab === 'employees' ? (
+            <Button onClick={() => handleOpenEmployeeModal()} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
+              <Plus className="w-4 h-4 mr-2" />
+              NUEVO EMPLEADO
             </Button>
-            <input 
-              id="payroll-import" 
-              type="file" 
-              className="hidden" 
-              onChange={handleImportXLSX} 
-              accept=".xlsx,.xls" 
-            />
-          </label>
-          <Button onClick={() => setShowPayrollModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
-            <Upload className="w-4 h-4 mr-2" />
-            NUEVA PLANILLA
-          </Button>
+          ) : (
+            <>
+              <label htmlFor="payroll-import" className="cursor-pointer">
+                <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold pointer-events-none">
+                  <Upload className="w-4 h-4 mr-2" />
+                  IMPORTAR
+                </Button>
+                <input 
+                  id="payroll-import" 
+                  type="file" 
+                  className="hidden" 
+                  onChange={handleImportXLSX} 
+                  accept=".xlsx,.xls" 
+                />
+              </label>
+              <Button onClick={() => setShowPayrollModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
+                <Upload className="w-4 h-4 mr-2" />
+                NUEVA PLANILLA
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Buscador */}
+      {/* Tabs */}
       <div className="flex items-center gap-4">
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('employees')}
+            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${
+              activeTab === 'employees'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            EMPLEADOS ({employees.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('payrolls')}
+            className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${
+              activeTab === 'payrolls'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            PLANILLAS ({payrolls.length})
+          </button>
+        </div>
+
+        {/* Buscador */}
         <div className="relative flex-1 max-w-md">
           <input
             type="text"
-            placeholder="Buscar por período, archivo, notas..."
+            placeholder={activeTab === 'employees' ? 'Buscar empleado...' : 'Buscar planilla...'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -443,8 +501,71 @@ const handleDownloadTemplate = () => {
 
       {loading ? (
         <Card>
-          <p className="text-center text-gray-500 py-8">Cargando planillas...</p>
+          <p className="text-center text-gray-500 py-8">Cargando...</p>
         </Card>
+      ) : activeTab === 'employees' ? (
+        filteredEmployees.length === 0 ? (
+          <Card>
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500 mb-4">No hay empleados registrados</p>
+              <Button onClick={() => handleOpenEmployeeModal()}>
+                <Plus className="w-4 h-4 mr-2" />
+                CREAR PRIMER EMPLEADO
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredEmployees.map((employee) => (
+              <Card key={employee.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleOpenEmployeeModal(employee)}>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-4">
+                    {employee.photo ? (
+                      <img src={employee.photo} alt={employee.fullName} className="w-16 h-16 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-xl font-bold text-primary">{getInitials(employee.fullName)}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate">{employee.fullName}</h3>
+                      <p className="text-sm text-gray-500 truncate">{employee.employeeCode}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Briefcase className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700 truncate">{employee.position}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Building2 className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700 truncate">{employee.department}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarSign className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-700">C$ {employee.salary.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <Badge className={employee.status === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                      {employee.status}
+                    </Badge>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteEmployee(employee.id)
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       ) : payrolls.filter(p => 
           !searchTerm.trim() || 
           p.period.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -735,6 +856,250 @@ const handleDownloadTemplate = () => {
               </Button>
               <Button onClick={handleConfirmDownloadTemplate} className="flex-1 bg-primary hover:bg-primary-dark">
                 Descargar Plantilla
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Empleado con 20 campos */}
+      {showEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl">
+              <h2 className="text-xl font-bold text-gray-900">{isEditing ? 'Editar Empleado' : 'Nuevo Empleado'}</h2>
+              <button onClick={() => setShowEmployeeModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {/* Foto de perfil */}
+              <div className="flex flex-col items-center gap-4 pb-6 border-b">
+                <div className="relative">
+                  {employeeForm.photo ? (
+                    <img src={employeeForm.photo} alt="Foto" className="w-32 h-32 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center">
+                      <User className="w-16 h-16 text-gray-400" />
+                    </div>
+                  )}
+                  <label className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-primary/90">
+                    <Camera className="w-4 h-4" />
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+                  </label>
+                </div>
+                {uploadingPhoto && <p className="text-sm text-gray-500">Subiendo foto...</p>}
+              </div>
+
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Código de Empleado *"
+                  value={employeeForm.employeeCode}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, employeeCode: e.target.value })}
+                  placeholder="EMP001"
+                  required
+                  disabled={isEditing}
+                />
+                <Input
+                  label="Nombre Completo *"
+                  value={employeeForm.fullName}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, fullName: e.target.value })}
+                  placeholder="Juan Pérez López"
+                  required
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={employeeForm.email}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+                  placeholder="juan@empresa.com"
+                />
+                <Input
+                  label="Teléfono"
+                  value={employeeForm.phone}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })}
+                  placeholder="8888-1234"
+                />
+              </div>
+
+              {/* Información laboral */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Puesto *"
+                  value={employeeForm.position}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, position: e.target.value })}
+                  placeholder="Gerente de Ventas"
+                  required
+                />
+                <Input
+                  label="Departamento *"
+                  value={employeeForm.department}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })}
+                  placeholder="Ventas"
+                  required
+                />
+                <Input
+                  label="Fecha de Ingreso *"
+                  type="date"
+                  value={employeeForm.startDate}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, startDate: e.target.value })}
+                  required
+                />
+                <Input
+                  label="Salario (C$) *"
+                  type="number"
+                  step="0.01"
+                  value={employeeForm.salary}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, salary: e.target.value })}
+                  placeholder="15000.00"
+                  required
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Contrato *</label>
+                  <select
+                    value={employeeForm.contractType}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, contractType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    required
+                  >
+                    <option value="Indefinido">Indefinido</option>
+                    <option value="Temporal">Temporal</option>
+                    <option value="Por Proyecto">Por Proyecto</option>
+                    <option value="Pasantía">Pasantía</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
+                  <select
+                    value={employeeForm.status}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, status: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    required
+                  >
+                    <option value="ACTIVO">Activo</option>
+                    <option value="INACTIVO">Inactivo</option>
+                    <option value="VACACIONES">Vacaciones</option>
+                    <option value="LICENCIA">Licencia</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Información bancaria */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Banco"
+                  value={employeeForm.bankName}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, bankName: e.target.value })}
+                  placeholder="BAC"
+                />
+                <Input
+                  label="Número de Cuenta"
+                  value={employeeForm.accountNumber}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, accountNumber: e.target.value })}
+                  placeholder="1234567890"
+                />
+              </div>
+
+              {/* Información personal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Dirección"
+                  value={employeeForm.address}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, address: e.target.value })}
+                  placeholder="Managua, Nicaragua"
+                />
+                <Input
+                  label="Fecha de Nacimiento"
+                  type="date"
+                  value={employeeForm.birthDate}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, birthDate: e.target.value })}
+                />
+                <Input
+                  label="Contacto de Emergencia"
+                  value={employeeForm.emergencyContact}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, emergencyContact: e.target.value })}
+                  placeholder="María López"
+                />
+                <Input
+                  label="Teléfono de Emergencia"
+                  value={employeeForm.emergencyPhone}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, emergencyPhone: e.target.value })}
+                  placeholder="8888-5678"
+                />
+              </div>
+
+              {/* Información adicional */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input
+                  label="Número de Seguro Social"
+                  value={employeeForm.socialSecurityNumber}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, socialSecurityNumber: e.target.value })}
+                  placeholder="001-123456-0001A"
+                />
+                <Input
+                  label="Tipo de Sangre"
+                  value={employeeForm.bloodType}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, bloodType: e.target.value })}
+                  placeholder="O+"
+                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nivel de Educación</label>
+                  <select
+                    value={employeeForm.educationLevel}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, educationLevel: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option value="Secundaria">Secundaria</option>
+                    <option value="Técnico">Técnico</option>
+                    <option value="Licenciatura">Licenciatura</option>
+                    <option value="Maestría">Maestría</option>
+                    <option value="Doctorado">Doctorado</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Beneficios y notas */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Beneficios</label>
+                  <textarea
+                    value={employeeForm.benefits}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, benefits: e.target.value })}
+                    placeholder="Seguro médico, bonos trimestrales, vehículo empresa..."
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                  <textarea
+                    value={employeeForm.notes}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, notes: e.target.value })}
+                    placeholder="Observaciones adicionales..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white rounded-b-2xl">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowEmployeeModal(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveEmployee}
+                disabled={uploading}
+                className="flex-1"
+              >
+                {uploading ? 'Guardando...' : isEditing ? 'Actualizar Empleado' : 'Crear Empleado'}
               </Button>
             </div>
           </div>
