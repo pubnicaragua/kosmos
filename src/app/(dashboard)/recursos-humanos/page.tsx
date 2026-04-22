@@ -276,7 +276,7 @@ const handleDownloadTemplate = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedFile || !formData.period || !formData.totalAmount) {
+    if (!selectedFile || !payrollForm.period || !payrollForm.totalAmount) {
       alert('Por favor completa todos los campos requeridos')
       return
     }
@@ -311,21 +311,20 @@ const handleDownloadTemplate = () => {
         },
         body: JSON.stringify({
           companyId: activeCompany.id,
-          name: formData.name,
-          period: formData.period,
+          name: payrollForm.name,
+          period: payrollForm.period,
           fileName: selectedFile.name,
           fileUrl: uploadData.data.url,
-          totalAmount: parseFloat(formData.totalAmount),
-          notes: formData.notes || null,
-          createExpense: formData.createExpense,
+          totalAmount: parseFloat(payrollForm.totalAmount),
+          notes: payrollForm.notes || null,
         }),
       })
 
       const payrollData = await payrollRes.json()
       if (payrollData.success) {
         alert('Planilla cargada exitosamente')
-        setShowModal(false)
-        setFormData({ name: '', period: '', totalAmount: '', notes: '', createExpense: true })
+        setShowPayrollModal(false)
+        setPayrollForm({ name: '', period: '', totalAmount: '', notes: '', createExpense: true })
         setSelectedFile(null)
         fetchPayrolls()
       } else {
@@ -419,7 +418,7 @@ const handleDownloadTemplate = () => {
               accept=".xlsx,.xls" 
             />
           </label>
-          <Button onClick={() => setShowModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
+          <Button onClick={() => setShowPayrollModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
             <Upload className="w-4 h-4 mr-2" />
             NUEVA PLANILLA
           </Button>
@@ -455,7 +454,7 @@ const handleDownloadTemplate = () => {
         <Card>
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">No hay planillas cargadas</p>
-            <Button onClick={() => setShowModal(true)}>Cargar primera planilla</Button>
+            <Button onClick={() => setShowPayrollModal(true)}>Cargar primera planilla</Button>
           </div>
         </Card>
       ) : (
@@ -546,7 +545,7 @@ const handleDownloadTemplate = () => {
       )}
 
       {/* Modal para cargar planilla */}
-      {showModal && (
+      {showPayrollModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-100">
@@ -556,16 +555,16 @@ const handleDownloadTemplate = () => {
               <Input
                 label="Nombre / Empleado"
                 placeholder="Ej: Juan Pérez o Planilla de Ventas"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={payrollForm.name}
+                onChange={(e) => setPayrollForm({ ...payrollForm, name: e.target.value })}
                 required
                 fullWidth
               />
               <Input
                 label="Período"
                 placeholder="Ej: Enero 2026"
-                value={formData.period}
-                onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                value={payrollForm.period}
+                onChange={(e) => setPayrollForm({ ...payrollForm, period: e.target.value })}
                 required
                 fullWidth
               />
@@ -580,8 +579,8 @@ const handleDownloadTemplate = () => {
                     type="number"
                     step="0.01"
                     placeholder="0.00"
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                    value={payrollForm.totalAmount}
+                    onChange={(e) => setPayrollForm({ ...payrollForm, totalAmount: e.target.value })}
                     required
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
@@ -606,8 +605,8 @@ const handleDownloadTemplate = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
                 <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  value={payrollForm.notes}
+                  onChange={(e) => setPayrollForm({ ...payrollForm, notes: e.target.value })}
                   placeholder="Observaciones adicionales..."
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -617,8 +616,8 @@ const handleDownloadTemplate = () => {
                 <input
                   type="checkbox"
                   id="createExpense"
-                  checked={formData.createExpense}
-                  onChange={(e) => setFormData({ ...formData, createExpense: e.target.checked })}
+                  checked={false}
+                  onChange={() => {}}
                   className="w-4 h-4 rounded text-primary border-gray-300"
                 />
                 <label htmlFor="createExpense" className="text-sm text-gray-700">
@@ -630,8 +629,8 @@ const handleDownloadTemplate = () => {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setShowModal(false)
-                    setFormData({ name: '', period: '', totalAmount: '', notes: '', createExpense: true })
+                    setShowPayrollModal(false)
+                    setPayrollForm({ name: '', period: '', totalAmount: '', notes: '', createExpense: true })
                     setSelectedFile(null)
                   }}
                   className="flex-1"
