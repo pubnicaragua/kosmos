@@ -470,15 +470,27 @@ export default function InventarioPage() {
                 onChange={(e) => setSelectedTab(e.target.value)}
                 fullWidth
               />
-              <Select
-                label="Categoría"
-                options={[
-                  { value: 'all', label: 'Todas' },
-                  ...categories.map(c => ({ value: c.id, label: c.name }))
-                ]}
-                onChange={() => {}} // Integration with filter can be added here
-                fullWidth
-              />
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Categoría</label>
+                <div className="flex gap-2">
+                  <Select
+                    options={[
+                      { value: 'all', label: 'Todas' },
+                      ...categories.map(c => ({ value: c.id, label: c.name }))
+                    ]}
+                    onChange={() => {}}
+                    fullWidth
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => setShowCategoryModal(true)}
+                    className="whitespace-nowrap"
+                    title="Crear nueva categoría"
+                  >
+                    + Nueva
+                  </Button>
+                </div>
+              </div>
               <Select
                 label="Rango de Precio"
                 options={[
@@ -769,6 +781,44 @@ export default function InventarioPage() {
               </Button>
               <Button onClick={handleConfirmDownloadTemplate} className="flex-1 bg-primary hover:bg-primary-dark">
                 Descargar Plantilla
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de creación de categoría */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Nueva Categoría</h2>
+            </div>
+            <div className="p-6">
+              <Input
+                label="Nombre de la Categoría"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Ej: Electrónica, Alimentos, etc."
+                fullWidth
+              />
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setNewCategoryName('')
+                }} 
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleCreateCategory} 
+                className="flex-1 bg-primary hover:bg-primary-dark"
+              >
+                Crear Categoría
               </Button>
             </div>
           </div>

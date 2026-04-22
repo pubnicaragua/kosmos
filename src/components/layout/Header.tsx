@@ -91,7 +91,7 @@ export function Header() {
   }, [])
 
   const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() || query.trim().length < 2) {
       setSearchResults([])
       setIsSearching(false)
       return
@@ -105,123 +105,82 @@ export function Header() {
     }
 
     try {
-      const results: SearchResult[] = []
-      const lowerQuery = query.toLowerCase()
-
-      // Search clients
-      const clientsRes = await fetch('/api/clients', {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const clientsData = await clientsRes.json()
-      if (clientsData.success) {
-        const clientsList = Array.isArray(clientsData.data) ? clientsData.data : []
-        clientsList
-          .filter((c: any) => 
-            c.name?.toLowerCase().includes(lowerQuery) ||
-            c.email?.toLowerCase().includes(lowerQuery) ||
-            c.phone?.includes(query)
-          )
-          .slice(0, 5)
-          .forEach((c: any) => {
-            results.push({
-              id: c.id,
+      const data = await res.json()
+      
+      if (data.success && data.data.results) {
+        const allResults: SearchResult[] = []
+        const results = data.data.results
+
+        // Add all results from different categories
+        if (results.clientes) {
+          results.clientes.forEach((item: any) => {
+            allResults.push({
+              id: item.id,
               type: 'client',
-              title: c.name,
-              subtitle: c.email || c.phone || '',
-              url: `/clientes?highlight=${c.id}`,
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.link
             })
           })
-      }
+        }
 
-      // Search incomes
-      const incomesRes = await fetch('/api/incomes', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const incomesData = await incomesRes.json()
-      if (incomesData.success) {
-        const incomesList = Array.isArray(incomesData.data)
-          ? incomesData.data
-          : Array.isArray(incomesData.data?.data)
-            ? incomesData.data.data
-            : []
-        incomesList
-          .filter((i: any) => 
-            i.concept?.toLowerCase().includes(lowerQuery) ||
-            i.client?.toLowerCase().includes(lowerQuery) ||
-            i.refNumber?.toLowerCase().includes(lowerQuery)
-          )
-          .slice(0, 3)
-          .forEach((i: any) => {
-            results.push({
-              id: i.id,
-              type: 'income',
-              title: i.concept || i.refNumber || 'Ingreso',
-              subtitle: `$${i.amount?.toLocaleString() || 0} - ${i.client || 'Sin cliente'}`,
-              url: `/ingresos?highlight=${i.id}`,
-            })
-          })
-      }
-
-      // Search opportunities
-      const oppsRes = await fetch('/api/opportunities', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const oppsData = await oppsRes.json()
-      if (oppsData.success) {
-        const opportunitiesList = Array.isArray(oppsData.data)
-          ? oppsData.data
-          : Array.isArray(oppsData.data?.data)
-            ? oppsData.data.data
-            : []
-        opportunitiesList
-          .filter((o: any) => 
-            o.title?.toLowerCase().includes(lowerQuery) ||
-            o.client?.toLowerCase().includes(lowerQuery)
-          )
-          .slice(0, 3)
-          .forEach((o: any) => {
-            results.push({
-              id: o.id,
+        if (results.oportunidades) {
+          results.oportunidades.forEach((item: any) => {
+            allResults.push({
+              id: item.id,
               type: 'opportunity',
-              title: o.title,
-              subtitle: `${o.client || 'Sin cliente'} - $${o.value?.toLocaleString() || 0}`,
-              url: `/pipeline-ventas?highlight=${o.id}`,
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.link
             })
           })
-      }
+        }
 
-      // Search contracts
-      const contractsRes = await fetch('/api/contracts', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const contractsData = await contractsRes.json()
-      if (contractsData.success) {
-        const contractsList = Array.isArray(contractsData.data)
-          ? contractsData.data
-          : Array.isArray(contractsData.data?.data)
-            ? contractsData.data.data
-            : []
-        contractsList
-          .filter((c: any) => 
-            c.title?.toLowerCase().includes(lowerQuery) ||
-            c.clientName?.toLowerCase().includes(lowerQuery) ||
-            c.client?.toLowerCase().includes(lowerQuery)
-          )
-          .slice(0, 3)
-          .forEach((c: any) => {
-            results.push({
-              id: c.id,
+        if (results.ingresos) {
+          results.ingresos.forEach((item: any) => {
+            allResults.push({
+              id: item.id,
+              type: 'income',
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.link
+            })
+          })
+        }
+
+        if (results.gastos) {
+          results.gastos.forEach((item: any) => {
+            allResults.push({
+              id: item.id,
+              type: 'client', // Use client icon for now
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.link
+            })
+          })
+        }
+
+        if (results.cotizaciones) {
+          results.cotizaciones.forEach((item: any) => {
+            allResults.push({
+              id: item.id,
               type: 'contract',
-              title: c.title,
-              subtitle: c.clientName || c.client || 'Sin cliente',
-              url: `/contratos?highlight=${c.id}`,
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.link
             })
           })
-      }
+        }
 
-      setSearchResults(results)
-      setShowResults(true)
-      setSelectedIndex(0)
+        setSearchResults(allResults.slice(0, 20))
+        setShowResults(true)
+        setSelectedIndex(0)
+      } else {
+        setSearchResults([])
+      }
     } catch (err) {
       console.error('Search error:', err)
     } finally {

@@ -68,7 +68,7 @@ export async function POST(req: Request) {
         requestNumber,
         companyId,
         requestingArea,
-        requestedBy: (decoded as any).id,
+        requestedBy: decoded.userId,
         requestType,
         priority,
         notes,

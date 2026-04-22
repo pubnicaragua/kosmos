@@ -7,18 +7,18 @@ import { getCompanyAccess } from '@/lib/company-access'
 
 const marketingUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional().transform(val => val === null ? undefined : val),
   channel: z.enum(['REDES_SOCIALES', 'EMAIL', 'PUBLICIDAD_DIGITAL', 'CONTENIDO', 'EVENTOS', 'OTRO']).optional(),
   status: z.enum(['PLANIFICACION', 'EN_CURSO', 'PAUSADA', 'COMPLETADA', 'CANCELADA']).optional(),
   budget: z.number().optional(),
   spent: z.number().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  targetAudience: z.string().optional(),
-  metrics: z.string().optional(),
-  assignedTo: z.string().optional(),
-  adType: z.string().optional(),
-  evidenceUrl: z.string().optional(),
+  targetAudience: z.string().nullable().optional().transform(val => val === null ? undefined : val),
+  metrics: z.string().nullable().optional().transform(val => val === null ? undefined : val),
+  assignedTo: z.string().nullable().optional().transform(val => val === null ? undefined : val),
+  adType: z.string().nullable().optional().transform(val => val === null ? undefined : val),
+  evidenceUrl: z.string().nullable().optional().transform(val => val === null ? undefined : val),
 })
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {

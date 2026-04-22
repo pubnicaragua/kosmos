@@ -34,17 +34,17 @@ export function exportToExcelWithLogo(options: ExportOptions): void {
   // Crear array de arrays para el contenido
   const rows: any[][] = []
   
-  // Agregar encabezado con info de empresa si está disponible
+  // Agregar encabezado profesional con info de empresa
   if (includeHeader && (companyName || title)) {
-    // Fila con nombre de empresa
+    // Fila con nombre de empresa (estilo header)
     if (companyName) {
-      rows.push([companyName])
+      rows.push([companyName.toUpperCase()])
       rows.push([]) // Fila vacía
     }
     
-    // Fila con título del reporte
+    // Fila con título del reporte (estilo título)
     if (title) {
-      rows.push([title])
+      rows.push([title.toUpperCase()])
       rows.push([]) // Fila vacía
     }
     
@@ -57,11 +57,12 @@ export function exportToExcelWithLogo(options: ExportOptions): void {
       minute: '2-digit'
     })}`])
     rows.push([]) // Fila vacía
+    rows.push([]) // Fila vacía adicional
   }
 
-  // Agregar encabezados de columnas
+  // Agregar encabezados de columnas (en mayúsculas para profesionalismo)
   const headers = Object.keys(data[0])
-  rows.push(headers)
+  rows.push(headers.map(h => h.toUpperCase()))
 
   // Agregar datos
   data.forEach(row => {
@@ -71,9 +72,9 @@ export function exportToExcelWithLogo(options: ExportOptions): void {
   // Crear worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(rows)
 
-  // Ajustar anchos de columna
+  // Ajustar anchos de columna (más generosos)
   const colWidths = headers.map(h => ({
-    wch: Math.max(h.length, ...data.map(row => String(row[h] ?? '').length)) + 2
+    wch: Math.max(h.length + 4, ...data.map(row => String(row[h] ?? '').length + 2))
   }))
   worksheet['!cols'] = colWidths
 

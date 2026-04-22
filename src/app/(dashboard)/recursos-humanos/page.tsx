@@ -1,9 +1,36 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, Upload, FileText } from 'lucide-react'
-import { Card, Button, Input, Badge } from '@/components/ui-kit'
+import { Download, Upload, FileText, Plus, User, Edit2, Trash2, X, Camera, Users, Briefcase, Calendar, DollarSign, Building2, Phone, Mail, MapPin, Heart, GraduationCap, Shield } from 'lucide-react'
+import { Card, Button, Input, Badge, Modal } from '@/components/ui-kit'
 import * as XLSX from 'xlsx'
+
+interface Employee {
+  id: string
+  employeeCode: string
+  fullName: string
+  email: string | null
+  phone: string | null
+  position: string
+  department: string
+  startDate: string
+  salary: number
+  contractType: string
+  bankName: string | null
+  accountNumber: string | null
+  address: string | null
+  birthDate: string | null
+  emergencyContact: string | null
+  emergencyPhone: string | null
+  socialSecurityNumber: string | null
+  bloodType: string | null
+  educationLevel: string | null
+  benefits: string | null
+  status: string
+  photo: string | null
+  notes: string | null
+  createdAt: string
+}
 
 interface Payroll {
   id: string
@@ -23,13 +50,43 @@ interface Payroll {
 }
 
 export default function RecursosHumanosPage() {
+  const [activeTab, setActiveTab] = useState<'employees' | 'payrolls'>('employees')
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [activeCompany, setActiveCompany] = useState<any>(null)
   const [payrolls, setPayrolls] = useState<Payroll[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [showModal, setShowModal] = useState(false)
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false)
+  const [showPayrollModal, setShowPayrollModal] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [employeeForm, setEmployeeForm] = useState({
+    employeeCode: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    position: '',
+    department: '',
+    startDate: '',
+    salary: '',
+    contractType: 'Indefinido',
+    bankName: '',
+    accountNumber: '',
+    address: '',
+    birthDate: '',
+    emergencyContact: '',
+    emergencyPhone: '',
+    socialSecurityNumber: '',
+    bloodType: '',
+    educationLevel: '',
+    benefits: '',
+    status: 'ACTIVO',
+    photo: '',
+    notes: ''
+  })
+  const [payrollForm, setPayrollForm] = useState({
     name: '',
     period: '',
     totalAmount: '',
@@ -38,7 +95,6 @@ export default function RecursosHumanosPage() {
   })
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
-  const [showExportModal, setShowExportModal] = useState(false)
 
   useEffect(() => {
     const company = localStorage.getItem('activeCompany')

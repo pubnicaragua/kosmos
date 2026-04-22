@@ -37,6 +37,7 @@ model Company {
   contracts          Contract[]
   customRoles        CustomRole[]
   documents          Document[]
+  employees          Employee[]          @relation("CompanyEmployees")
   expenses           Expense[]
   incomes            Income[]
   marketingCampaigns MarketingCampaign[]
@@ -523,6 +524,41 @@ model MarketingCampaign {
   @@index([status])
   @@index([channel])
   @@map("marketing_campaigns")
+}
+
+model Employee {
+  id                    String   @id @default(cuid())
+  companyId             String   @map("company_id")
+  employeeCode          String   @unique @map("employee_code")
+  fullName              String   @map("full_name")
+  email                 String?
+  phone                 String?
+  position              String
+  department            String
+  startDate             DateTime @map("start_date")
+  salary                Float
+  contractType          String   @map("contract_type")
+  bankName              String?  @map("bank_name")
+  accountNumber         String?  @map("account_number")
+  address               String?
+  birthDate             DateTime? @map("birth_date")
+  emergencyContact      String?  @map("emergency_contact")
+  emergencyPhone        String?  @map("emergency_phone")
+  socialSecurityNumber  String?  @map("social_security_number")
+  bloodType             String?  @map("blood_type")
+  educationLevel        String?  @map("education_level")
+  benefits              String?  @db.Text
+  status                String   @default("ACTIVO")
+  photo                 String?
+  notes                 String?  @db.Text
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  company               Company  @relation("CompanyEmployees", fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([employeeCode])
+  @@map("employees")
 }
 
 model Payroll {

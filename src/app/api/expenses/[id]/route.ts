@@ -3,6 +3,50 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return apiError('Token no proporcionado', 401)
+    }
+
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return apiError('Token inválido', 401)
+    }
+
+    const expense = await prisma.expense.findUnique({
+      where: { id: params.id },
+      include: {
+        company: { select: { name: true } }
+      }
+    })
+
+    if (!expense) {
+      return apiError('Gasto no encontrado', 404)
+    }
+
+    const userCompany = await prisma.userCompany.findFirst({
+      where: {
+        userId: decoded.userId,
+        companyId: expense.companyId,
+      },
+    })
+
+    if (!userCompany) {
+      return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    return apiSuccess(expense)
+  } catch (error) {
+    console.error('Error fetching expense:', error)
+    return apiError('Error al cargar gasto', 500)
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }

@@ -145,15 +145,17 @@ export async function POST(request: NextRequest) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
 
+    const { currency, ...validExpenseData } = expenseData
+
     const expense = await prisma.expense.create({
       data: {
-        ...expenseData,
-        provider: expenseData.provider || 'General',
-        concept: expenseData.concept || 'Gasto general',
-        category: expenseData.category || 'Otro',
-        method: expenseData.method || 'Efectivo',
+        ...validExpenseData,
+        provider: validExpenseData.provider || 'General',
+        concept: validExpenseData.concept || 'Gasto general',
+        category: validExpenseData.category || 'Otro',
+        method: validExpenseData.method || 'Efectivo',
         companyId,
-        date: expenseData.date ? new Date(expenseData.date) : new Date(),
+        date: validExpenseData.date ? new Date(validExpenseData.date) : new Date(),
       },
     })
 
