@@ -621,6 +621,147 @@ export default function MarketingDetailPage({ params }: { params: { id: string }
             </div>
           </Card>
 
+          {/* Evidencia */}
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Evidencia</h3>
+            {campaign.evidenceUrl ? (
+              <div className="space-y-3">
+                <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                  {campaign.evidenceUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    <img 
+                      src={campaign.evidenceUrl} 
+                      alt="Evidencia" 
+                      className="w-full h-auto"
+                    />
+                  ) : campaign.evidenceUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                    <video 
+                      src={campaign.evidenceUrl} 
+                      controls 
+                      className="w-full h-auto"
+                    />
+                  ) : (
+                    <a 
+                      href={campaign.evidenceUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-4 text-primary hover:bg-gray-50"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      Ver archivo adjunto
+                    </a>
+                  )}
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*,video/*,.pdf,.doc,.docx'
+                    input.onchange = async (e: any) => {
+                      const file = e.target?.files?.[0]
+                      if (!file) return
+                      
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      
+                      try {
+                        const token = localStorage.getItem('accessToken')
+                        const uploadRes = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                          body: formData,
+                        })
+                        const uploadData = await uploadRes.json()
+                        
+                        if (uploadData.success) {
+                          const updateRes = await fetch(`/api/marketing/${params.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ evidenceUrl: uploadData.data.url }),
+                          })
+                          const updateData = await updateRes.json()
+                          
+                          if (updateData.success) {
+                            window.location.reload()
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Error uploading evidence:', error)
+                        alert('Error al subir evidencia')
+                      }
+                    }
+                    input.click()
+                  }}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Cambiar Evidencia
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500 mb-3">No hay evidencia cargada</p>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*,video/*,.pdf,.doc,.docx'
+                    input.onchange = async (e: any) => {
+                      const file = e.target?.files?.[0]
+                      if (!file) return
+                      
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      
+                      try {
+                        const token = localStorage.getItem('accessToken')
+                        const uploadRes = await fetch('/api/upload', {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` },
+                          body: formData,
+                        })
+                        const uploadData = await uploadRes.json()
+                        
+                        if (uploadData.success) {
+                          const updateRes = await fetch(`/api/marketing/${params.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                              Authorization: `Bearer ${token}`,
+                              'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ evidenceUrl: uploadData.data.url }),
+                          })
+                          const updateData = await updateRes.json()
+                          
+                          if (updateData.success) {
+                            window.location.reload()
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Error uploading evidence:', error)
+                        alert('Error al subir evidencia')
+                      }
+                    }
+                    input.click()
+                  }}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Subir Evidencia
+                </Button>
+              </div>
+            )}
+          </Card>
+
           {/* Acciones rápidas */}
           <Card>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
