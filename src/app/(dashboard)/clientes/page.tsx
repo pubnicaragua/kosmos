@@ -1058,9 +1058,33 @@ export default function ClientesPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Archivo Excel
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Archivo Excel
+                      </label>
+                      <button
+                        onClick={async () => {
+                          const XLSX = await import('xlsx')
+                          const template = [
+                            { Nombre: 'Juan Pérez García', Email: 'juan.perez@empresa.com', Telefono: '8888-1234', Empresa: 'Constructora El Sol', RUC: 'J0310000012345', Direccion: 'Managua, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
+                            { Nombre: 'María López Hernández', Email: 'maria.lopez@comercial.com', Telefono: '8777-5678', Empresa: 'Comercial López', RUC: 'J0310000023456', Direccion: 'León, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
+                            { Nombre: 'Carlos Martínez Ruiz', Email: 'carlos@tech.ni', Telefono: '8666-9012', Empresa: 'Tech Solutions NI', RUC: 'J0310000034567', Direccion: 'Granada, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
+                            { Nombre: 'Ana Rodríguez Castro', Email: 'ana.rodriguez@gmail.com', Telefono: '8555-3456', Empresa: '', RUC: '', Direccion: 'Masaya, Nicaragua', Tipo: 'Individual', Estado: 'Activo' },
+                            { Nombre: 'Roberto Sánchez Morales', Email: 'roberto.sanchez@hotmail.com', Telefono: '8444-7890', Empresa: 'Distribuidora Central', RUC: 'J0310000045678', Direccion: 'Estelí, Nicaragua', Tipo: 'Corporativo', Estado: 'Prospecto' }
+                          ]
+                          const wb = XLSX.utils.book_new()
+                          const ws = XLSX.utils.json_to_sheet(template)
+                          XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
+                          XLSX.writeFile(wb, 'plantilla_clientes_kosmos.xlsx')
+                        }}
+                        className="text-sm text-primary hover:underline flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Descargar Plantilla
+                      </button>
+                    </div>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors">
                       <input
                         ref={fileInputRef}

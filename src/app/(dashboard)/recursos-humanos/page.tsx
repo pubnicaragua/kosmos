@@ -58,10 +58,14 @@ export default function RecursosHumanosPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [showPayrollModal, setShowPayrollModal] = useState(false)
+  const [showEmployeeImportModal, setShowEmployeeImportModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [importingEmployees, setImportingEmployees] = useState(false)
+  const [employeeImportFile, setEmployeeImportFile] = useState<File | null>(null)
+  const [createExpenseFromImport, setCreateExpenseFromImport] = useState(true)
   const [employeeForm, setEmployeeForm] = useState({
     employeeCode: '',
     fullName: '',
@@ -297,6 +301,71 @@ export default function RecursosHumanosPage() {
       console.error('Error uploading photo:', err)
     } finally {
       setUploadingPhoto(false)
+    }
+  }
+
+  const handleDownloadEmployeeTemplate = async () => {
+    const XLSX = await import('xlsx')
+    const template = [
+      { Codigo: 'EMP001', Nombre: 'Juan Pérez García', Email: 'juan.perez@empresa.com', Telefono: '8888-1234', Puesto: 'Gerente de Ventas', Departamento: 'Ventas', FechaIngreso: '2024-01-15', Salario: 25000, TipoContrato: 'Indefinido', Banco: 'BAC', NumeroCuenta: '1234567890' },
+      { Codigo: 'EMP002', Nombre: 'María López Hernández', Email: 'maria.lopez@empresa.com', Telefono: '8777-5678', Puesto: 'Contador', Departamento: 'Contabilidad', FechaIngreso: '2024-02-01', Salario: 22000, TipoContrato: 'Indefinido', Banco: 'Banpro', NumeroCuenta: '0987654321' },
+      { Codigo: 'EMP003', Nombre: 'Carlos Martínez Ruiz', Email: 'carlos.martinez@empresa.com', Telefono: '8666-9012', Puesto: 'Técnico de Soporte', Departamento: 'IT', FechaIngreso: '2024-03-10', Salario: 18000, TipoContrato: 'Temporal', Banco: 'BAC', NumeroCuenta: '1122334455' },
+      { Codigo: 'EMP004', Nombre: 'Ana Rodríguez Castro', Email: 'ana.rodriguez@empresa.com', Telefono: '8555-3456', Puesto: 'Asistente Administrativa', Departamento: 'Administración', FechaIngreso: '2024-04-05', Salario: 15000, TipoContrato: 'Indefinido', Banco: 'Banpro', NumeroCuenta: '5566778899' },
+      { Codigo: 'EMP005', Nombre: 'Roberto Sánchez Morales', Email: 'roberto.sanchez@empresa.com', Telefono: '8444-7890', Puesto: 'Vendedor', Departamento: 'Ventas', FechaIngreso: '2024-05-20', Salario: 16000, TipoContrato: 'Por Proyecto', Banco: 'BAC', NumeroCuenta: '9988776655' },
+      { Codigo: 'EMP006', Nombre: 'Laura Fernández Gómez', Email: 'laura.fernandez@empresa.com', Telefono: '8333-2345', Puesto: 'Diseñadora Gráfica', Departamento: 'Marketing', FechaIngreso: '2024-06-15', Salario: 19000, TipoContrato: 'Indefinido', Banco: 'Banpro', NumeroCuenta: '4433221100' },
+      { Codigo: 'EMP007', Nombre: 'Diego Ramírez Torres', Email: 'diego.ramirez@empresa.com', Telefono: '8222-6789', Puesto: 'Desarrollador', Departamento: 'IT', FechaIngreso: '2024-07-01', Salario: 28000, TipoContrato: 'Indefinido', Banco: 'BAC', NumeroCuenta: '7788990011' },
+      { Codigo: 'EMP008', Nombre: 'Patricia Morales Vega', Email: 'patricia.morales@empresa.com', Telefono: '8111-0123', Puesto: 'Recursos Humanos', Departamento: 'RRHH', FechaIngreso: '2024-08-10', Salario: 21000, TipoContrato: 'Indefinido', Banco: 'Banpro', NumeroCuenta: '2233445566' },
+      { Codigo: 'EMP009', Nombre: 'Fernando Castro Díaz', Email: 'fernando.castro@empresa.com', Telefono: '8000-4567', Puesto: 'Supervisor de Producción', Departamento: 'Producción', FechaIngreso: '2024-09-05', Salario: 23000, TipoContrato: 'Indefinido', Banco: 'BAC', NumeroCuenta: '6677889900' },
+      { Codigo: 'EMP010', Nombre: 'Gabriela Ortiz Méndez', Email: 'gabriela.ortiz@empresa.com', Telefono: '7999-8901', Puesto: 'Analista de Datos', Departamento: 'IT', FechaIngreso: '2024-10-01', Salario: 26000, TipoContrato: 'Indefinido', Banco: 'Banpro', NumeroCuenta: '1122334455' }
+    ]
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(template)
+    XLSX.utils.book_append_sheet(wb, ws, 'Empleados')
+    XLSX.writeFile(wb, 'plantilla_empleados_kosmos.xlsx')
+  }
+
+  const handleImportEmployees = async () => {
+    if (!employeeImportFile || !activeCompany?.id) {
+      alert('Por favor selecciona un archivo')
+      return
+    }
+
+    setImportingEmployees(true)
+    try {
+      const XLSX = await import('xlsx')
+      const arrayBuffer = await employeeImportFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+      const employees = XLSX.utils.sheet_to_json(firstSheet)
+
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch('/api/employees/import', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId: activeCompany.id,
+          employees,
+          createExpense: createExpenseFromImport,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        alert(data.data.message || 'Empleados importados exitosamente')
+        setShowEmployeeImportModal(false)
+        setEmployeeImportFile(null)
+        await fetchEmployees()
+      } else {
+        alert(data.error || 'Error al importar empleados')
+      }
+    } catch (err) {
+      console.error('Error importing employees:', err)
+      alert('Error al importar empleados')
+    } finally {
+      setImportingEmployees(false)
     }
   }
 
@@ -599,10 +668,16 @@ const handleDownloadTemplate = () => {
             PLANTILLA
           </Button>
           {activeTab === 'employees' ? (
-            <Button onClick={() => handleOpenEmployeeModal()} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
-              <Plus className="w-4 h-4 mr-2" />
-              NUEVO EMPLEADO
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setShowEmployeeImportModal(true)} className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
+                <Upload className="w-4 h-4 mr-2" />
+                IMPORTAR
+              </Button>
+              <Button onClick={() => handleOpenEmployeeModal()} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
+                <Plus className="w-4 h-4 mr-2" />
+                NUEVO EMPLEADO
+              </Button>
+            </>
           ) : (
             <>
               <label htmlFor="payroll-import" className="cursor-pointer">
@@ -1270,6 +1345,85 @@ const handleDownloadTemplate = () => {
                 className="flex-1"
               >
                 {uploading ? 'Guardando...' : isEditing ? 'Actualizar Empleado' : 'Crear Empleado'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Importación de Empleados */}
+      {showEmployeeImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Importar Empleados desde Excel</h2>
+              <button onClick={() => { setShowEmployeeImportModal(false); setEmployeeImportFile(null) }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Archivo Excel</label>
+                <button onClick={handleDownloadEmployeeTemplate} className="text-sm text-primary hover:underline flex items-center gap-1">
+                  <Download className="w-4 h-4" />
+                  Descargar Plantilla (10 ejemplos)
+                </button>
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setEmployeeImportFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="employee-import-file"
+                />
+                {!employeeImportFile ? (
+                  <label htmlFor="employee-import-file" className="cursor-pointer">
+                    <Upload className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Haz clic para seleccionar archivo</p>
+                    <p className="text-xs text-gray-400 mt-1">Formatos: .xlsx, .xls</p>
+                  </label>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="w-6 h-6 text-primary" />
+                    <span className="text-sm text-gray-700">{employeeImportFile.name}</span>
+                    <button onClick={() => setEmployeeImportFile(null)} className="text-red-500 hover:text-red-700">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="createExpenseFromImport"
+                  checked={createExpenseFromImport}
+                  onChange={(e) => setCreateExpenseFromImport(e.target.checked)}
+                  className="w-4 h-4 rounded text-primary border-gray-300"
+                />
+                <label htmlFor="createExpenseFromImport" className="text-sm text-gray-700">
+                  <span className="font-medium">Crear gasto de nómina automáticamente</span>
+                  <span className="block text-xs text-gray-500 mt-1">
+                    Se creará un gasto por la suma total de salarios importados
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setShowEmployeeImportModal(false); setEmployeeImportFile(null) }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleImportEmployees}
+                disabled={!employeeImportFile || importingEmployees}
+                className="flex-1"
+              >
+                {importingEmployees ? 'Importando...' : 'Importar Empleados'}
               </Button>
             </div>
           </div>

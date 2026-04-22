@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { Edit2, Trash2, Check, X } from 'lucide-react'
 
 interface ExpenseDetail {
   id: string
-  company: string
+  company: { name: string }
   date: string
   refNumber: string
   provider: string
@@ -23,6 +24,8 @@ export default function ExpenseDetailPage() {
   const [expense, setExpense] = useState<ExpenseDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState<Partial<ExpenseDetail>>({})
 
   useEffect(() => {
     const fetchExpense = async () => {
@@ -59,6 +62,89 @@ export default function ExpenseDetailPage() {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amount)
   }
 
+  const handleEdit = () => {
+    setEditForm({
+      provider: expense?.provider,
+      concept: expense?.concept,
+      category: expense?.category,
+      method: expense?.method,
+      amount: expense?.amount,
+      date: expense?.date,
+    })
+    setIsEditing(true)
+  }
+
+  const handleSave = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/expenses/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editForm),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setExpense({ ...expense!, ...editForm })
+        setIsEditing(false)
+        alert('Gasto actualizado')
+      }
+    } catch (err) {
+      alert('Error al actualizar')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('¿Eliminar este gasto?')) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/expenses/${params.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        alert('Gasto eliminado')
+        router.push('/finanzas/gastos')
+      }
+    } catch (err) {
+      alert('Error al eliminar')
+    }
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/expenses/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setExpense({ ...expense!, status: newStatus })
+        alert('Estado actualizado')
+      }
+    } catch (err) {
+      alert('Error al actualizar estado')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -87,16 +173,43 @@ export default function ExpenseDetailPage() {
       </button>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h1 className="text-xl font-semibold text-gray-900">Detalle del Gasto</h1>
-          <p className="text-sm text-gray-500">{expense?.refNumber || 'Sin referencia'}</p>
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Detalle del Gasto</h1>
+            <p className="text-sm text-gray-500">{expense?.refNumber || 'Sin referencia'}</p>
+          </div>
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <>
+                <button onClick={handleEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                  <Edit2 className="w-4 h-4" />
+                  Editar
+                </button>
+                <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Guardar
+                </button>
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+                  <X className="w-4 h-4" />
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase">Empresa</label>
-              <p className="text-gray-900">{expense?.company}</p>
+              <p className="text-gray-900">{expense?.company?.name}</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase">Fecha</label>
@@ -104,7 +217,16 @@ export default function ExpenseDetailPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase">Proveedor</label>
-              <p className="text-gray-900">{expense?.provider}</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editForm.provider || ''}
+                  onChange={(e) => setEditForm({ ...editForm, provider: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              ) : (
+                <p className="text-gray-900">{expense?.provider}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase">Categoría</label>
@@ -116,13 +238,25 @@ export default function ExpenseDetailPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 uppercase">Estado</label>
-              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                expense?.status === 'PAID' ? 'bg-green-100 text-green-800' :
-                expense?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {expense?.status === 'PAID' ? 'Pagado' : expense?.status === 'PENDING' ? 'Pendiente' : 'Anulado'}
-              </span>
+              {isEditing ? (
+                <select
+                  value={expense?.status}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value="PENDING">Pendiente</option>
+                  <option value="PAID">Pagado</option>
+                  <option value="CANCELLED">Anulado</option>
+                </select>
+              ) : (
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                  expense?.status === 'PAID' ? 'bg-green-100 text-green-800' :
+                  expense?.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {expense?.status === 'PAID' ? 'Pagado' : expense?.status === 'PENDING' ? 'Pendiente' : 'Anulado'}
+                </span>
+              )}
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-500 uppercase">Concepto</label>
