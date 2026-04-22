@@ -130,6 +130,152 @@ export default function RecursosHumanosPage() {
     }
   }
 
+  const handleOpenEmployeeModal = (employee?: Employee) => {
+    if (employee) {
+      setSelectedEmployee(employee)
+      setIsEditing(true)
+      setEmployeeForm({
+        employeeCode: employee.employeeCode,
+        fullName: employee.fullName,
+        email: employee.email || '',
+        phone: employee.phone || '',
+        position: employee.position,
+        department: employee.department,
+        startDate: employee.startDate.split('T')[0],
+        salary: employee.salary.toString(),
+        contractType: employee.contractType,
+        bankName: employee.bankName || '',
+        accountNumber: employee.accountNumber || '',
+        address: employee.address || '',
+        birthDate: employee.birthDate ? employee.birthDate.split('T')[0] : '',
+        emergencyContact: employee.emergencyContact || '',
+        emergencyPhone: employee.emergencyPhone || '',
+        socialSecurityNumber: employee.socialSecurityNumber || '',
+        bloodType: employee.bloodType || '',
+        educationLevel: employee.educationLevel || '',
+        benefits: employee.benefits || '',
+        status: employee.status,
+        photo: employee.photo || '',
+        notes: employee.notes || ''
+      })
+    } else {
+      setSelectedEmployee(null)
+      setIsEditing(false)
+      setEmployeeForm({
+        employeeCode: '',
+        fullName: '',
+        email: '',
+        phone: '',
+        position: '',
+        department: '',
+        startDate: '',
+        salary: '',
+        contractType: 'Indefinido',
+        bankName: '',
+        accountNumber: '',
+        address: '',
+        birthDate: '',
+        emergencyContact: '',
+        emergencyPhone: '',
+        socialSecurityNumber: '',
+        bloodType: '',
+        educationLevel: '',
+        benefits: '',
+        status: 'ACTIVO',
+        photo: '',
+        notes: ''
+      })
+    }
+    setShowEmployeeModal(true)
+  }
+
+  const handleSaveEmployee = async () => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !activeCompany?.id) return
+
+    setUploading(true)
+    try {
+      const url = isEditing ? `/api/employees/${selectedEmployee?.id}` : '/api/employees'
+      const method = isEditing ? 'PUT' : 'POST'
+
+      const payload: any = {
+        ...employeeForm,
+        companyId: activeCompany.id,
+        salary: parseFloat(employeeForm.salary) || 0,
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        await fetchEmployees()
+        setShowEmployeeModal(false)
+      } else {
+        alert(data.error || 'Error al guardar empleado')
+      }
+    } catch (err) {
+      console.error('Error saving employee:', err)
+      alert('Error al guardar empleado')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteEmployee = async (id: string) => {
+    if (!confirm('¿Eliminar este empleado?')) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        await fetchEmployees()
+      }
+    } catch (err) {
+      console.error('Error deleting employee:', err)
+    }
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (data.success && data.data?.url) {
+        setEmployeeForm(prev => ({ ...prev, photo: data.data.url }))
+      }
+    } catch (err) {
+      console.error('Error uploading photo:', err)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   const handleSeedTestData = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token || !activeCompany?.id) return
