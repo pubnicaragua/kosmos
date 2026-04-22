@@ -2,11 +2,5 @@
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "functions": {
-    "api/upload.ts": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  }
+  "regions": ["iad1"]
 }
