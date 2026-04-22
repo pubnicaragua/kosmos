@@ -8,10 +8,11 @@ import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SimpleRichTextEditor } from '@/components/ui-kit/SimpleRichTextEditor'
+import { DepartamentosManager } from '@/components/departamentos/DepartamentosManager'
 import { 
   LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
   FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen,
-  Settings, Shield, Upload, Key, Info, ShoppingCart
+  Settings, Shield, Upload, Key, Info, ShoppingCart, Building2
 } from 'lucide-react'
 
 interface UserProfile {
@@ -131,7 +132,7 @@ const INVOICE_TEMPLATE_BASE = `
 </div>
 `
 
-type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles' | 'plantillas'
+type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles' | 'plantillas' | 'departamentos'
 
 export default function AjustesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
@@ -653,6 +654,7 @@ export default function AjustesPage() {
           { key: 'empresa', label: 'Empresa' },
           { key: 'usuarios', label: 'Mis Empresas' },
           { key: 'roles', label: 'Roles & Permisos', icon: Shield },
+          { key: 'departamentos', label: 'Departamentos', icon: Building2 },
           { key: 'plantillas', label: 'Plantillas', icon: FileText },
         ] as { key: Tab; label: string; icon?: any }[]).map(({ key, label, icon }) => (
           <button
@@ -1463,6 +1465,20 @@ export default function AjustesPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {/* TAB: Departamentos */}
+      {activeTab === 'departamentos' && selectedCompanyId && (
+        <DepartamentosManager companyId={selectedCompanyId} />
+      )}
+
+      {activeTab === 'departamentos' && !selectedCompanyId && (
+        <Card>
+          <div className="text-center py-12">
+            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Selecciona una empresa para gestionar sus departamentos</p>
+          </div>
+        </Card>
       )}
 
       {/* MODAL: Previsualización de Plantilla */}

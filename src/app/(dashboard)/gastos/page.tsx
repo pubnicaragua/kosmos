@@ -334,6 +334,98 @@ export default function GastosPage() {
     }
   }
 
+  const handleToggleExpense = (id: string) => {
+    setSelectedExpenses(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const handleToggleAll = () => {
+    if (selectedExpenses.size === expenses.length) {
+      setSelectedExpenses(new Set())
+    } else {
+      setSelectedExpenses(new Set(expenses.map(e => e.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedExpenses.size === 0) return
+    if (!confirm(`¿Eliminar ${selectedExpenses.size} gastos seleccionados?`)) return
+
+    try {
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch('/api/expenses/bulk', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ expenseIds: Array.from(selectedExpenses) }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setSelectedExpenses(new Set())
+        fetchData()
+        alert(`${data.data.count} gastos eliminados exitosamente`)
+      } else {
+        alert(data.error || 'Error al eliminar gastos')
+      }
+    } catch (error) {
+      console.error('Error bulk deleting:', error)
+      alert('Error al eliminar gastos')
+    }
+  }
+
+  const handleBulkEdit = async () => {
+    if (selectedExpenses.size === 0) return
+
+    const updates: any = {}
+    if (bulkEditData.status) updates.status = bulkEditData.status
+    if (bulkEditData.category) updates.category = bulkEditData.category
+    if (bulkEditData.method) updates.method = bulkEditData.method
+
+    if (Object.keys(updates).length === 0) {
+      alert('Selecciona al menos un campo para actualizar')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch('/api/expenses/bulk', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          expenseIds: Array.from(selectedExpenses),
+          updates,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        setSelectedExpenses(new Set())
+        setShowBulkEditModal(false)
+        setBulkEditData({ status: '', category: '', method: '' })
+        fetchData()
+        alert(`${data.data.count} gastos actualizados exitosamente`)
+      } else {
+        alert(data.error || 'Error al actualizar gastos')
+      }
+    } catch (error) {
+      console.error('Error bulk updating:', error)
+      alert('Error al actualizar gastos')
+    }
+  }
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -404,6 +496,22 @@ export default function GastosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona y visualiza el historial de gastos operativos de la empresa.</p>
         </div>
         <div className="flex items-center gap-3">
+          {selectedExpenses.size > 0 && (
+            <>
+              <Button variant="outline" onClick={() => setShowBulkEditModal(true)}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                EDITAR {selectedExpenses.size}
+              </Button>
+              <Button variant="outline" onClick={handleBulkDelete}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                ELIMINAR {selectedExpenses.size}
+              </Button>
+            </>
+          )}
           <select
             value={exportFormat}
             onChange={(e) => setExportFormat(e.target.value as 'xlsx' | 'pdf')}
@@ -618,6 +726,14 @@ export default function GastosPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
+                <th className="py-3 px-4 w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedExpenses.size === expenses.length && expenses.length > 0}
+                    onChange={handleToggleAll}
+                    className="rounded border-gray-300"
+                  />
+                </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">FECHA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROVEEDOR</th>
@@ -632,10 +748,17 @@ export default function GastosPage() {
               {expenses.map((expense) => (
                 <tr 
                   key={expense.id} 
-                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}
+                  className="border-b border-gray-100 hover:bg-gray-50"
                 >
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedExpenses.has(expense.id)}
+                      onChange={() => handleToggleExpense(expense.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     <div className="text-sm font-medium text-gray-900">{expense.company}</div>
                   </td>
                   <td className="py-4 px-4">
@@ -646,19 +769,19 @@ export default function GastosPage() {
                   <td className="py-4 px-4">
                     <div className="text-sm font-medium text-gray-900">{expense.provider}</div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     <div className="text-sm text-gray-600">{expense.concept}</div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     <div className="text-sm text-gray-600">{expense.category}</div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     <div className="text-sm text-gray-600">{expense.method}</div>
                   </td>
-                  <td className="py-4 px-4 text-right">
+                  <td className="py-4 px-4 text-right cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     <div className="text-sm font-semibold text-gray-900">{formatCurrency(expense.amount)}</div>
                   </td>
-                  <td className="py-4 px-4 text-center">
+                  <td className="py-4 px-4 text-center cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
                     {getStatusBadge(expense.status)}
                   </td>
                 </tr>
@@ -900,6 +1023,71 @@ export default function GastosPage() {
           </div>
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setShowImportModal(false)}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Edición Masiva */}
+      <Modal
+        isOpen={showBulkEditModal}
+        onClose={() => setShowBulkEditModal(false)}
+        title={`Editar ${selectedExpenses.size} Gastos`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Los campos que dejes vacíos no se modificarán. Solo se actualizarán los campos que selecciones.
+          </p>
+
+          <Select
+            label="Estado"
+            options={[
+              { value: '', label: 'No modificar' },
+              { value: 'PAID', label: 'Pagado' },
+              { value: 'PENDING', label: 'Pendiente' },
+              { value: 'CANCELLED', label: 'Anulado' },
+            ]}
+            value={bulkEditData.status}
+            onChange={(e) => setBulkEditData({ ...bulkEditData, status: e.target.value })}
+            fullWidth
+          />
+
+          <Select
+            label="Categoría"
+            options={[
+              { value: '', label: 'No modificar' },
+              { value: 'Operaciones', label: 'Operaciones' },
+              { value: 'Nómina', label: 'Nómina' },
+              { value: 'Marketing', label: 'Marketing' },
+              { value: 'Servicios', label: 'Servicios' },
+              { value: 'Compras', label: 'Compras' },
+              { value: 'General', label: 'General' },
+            ]}
+            value={bulkEditData.category}
+            onChange={(e) => setBulkEditData({ ...bulkEditData, category: e.target.value })}
+            fullWidth
+          />
+
+          <Select
+            label="Método de Pago"
+            options={[
+              { value: '', label: 'No modificar' },
+              { value: 'Efectivo', label: 'Efectivo' },
+              { value: 'Transferencia', label: 'Transferencia' },
+              { value: 'Tarjeta', label: 'Tarjeta' },
+              { value: 'Cheque', label: 'Cheque' },
+            ]}
+            value={bulkEditData.method}
+            onChange={(e) => setBulkEditData({ ...bulkEditData, method: e.target.value })}
+            fullWidth
+          />
+
+          <div className="flex gap-2 pt-4">
+            <Button onClick={handleBulkEdit} className="flex-1">
+              Actualizar {selectedExpenses.size} Gastos
+            </Button>
+            <Button variant="outline" onClick={() => setShowBulkEditModal(false)}>
               Cancelar
             </Button>
           </div>
