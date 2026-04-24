@@ -189,10 +189,12 @@ export default function TicketsSoportePage() {
     title: '',
     description: '',
     clientId: '',
-    status: 'PROCESO1',
-    priority: 'MEDIUM',
+    type: 'SOPORTE_REMOTO',
+    status: 'NUEVO',
+    priority: 'MEDIA',
     assignedTo: '',
     assignedUsers: [],
+    branch: '',
     amount: '',
     currency: 'USD',
     startDate: new Date().toISOString().split('T')[0],
@@ -201,6 +203,12 @@ export default function TicketsSoportePage() {
     evidence: [],
     existingAttachments: [],
     existingEvidence: [],
+    equipmentType: '',
+    equipmentBrand: '',
+    equipmentModel: '',
+    serialNumber: '',
+    installationDate: '',
+    installedBy: '',
   })
 
   const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([])
