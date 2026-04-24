@@ -347,23 +347,23 @@ model ProductCategory {
 }
 
 model Ticket {
-  id            String     @id @default(cuid())
-  ticketNumber  String     @unique @map("ticket_number") // Número autogenerado
-  companyId     String     @map("company_id")
-  clientId      String?    @map("client_id")
+  id            String         @id @default(cuid())
+  ticketNumber  String         @unique @map("ticket_number") // Número autogenerado
+  companyId     String         @map("company_id")
+  clientId      String?        @map("client_id")
   title         String
-  description   String?    @db.Text
-  type          TicketType @default(SOPORTE_REMOTO) // Tipo de solicitud
-  status        String     @default("PROCESO1")
-  priority      String?    @default("MEDIA")
-  assignedTo    String?    @map("assigned_to")
-  assignedUsers String?    @map("assigned_users") // JSON array de IDs de usuarios asignados
+  description   String?        @db.Text
+  type          TicketType     @default(SOPORTE_REMOTO) // Tipo de solicitud
+  status        TicketStatus   @default(NUEVO)
+  priority      TicketPriority @default(MEDIA)
+  assignedTo    String?        @map("assigned_to")
+  assignedUsers String?        @map("assigned_users") // JSON array de IDs de usuarios asignados
   branch        String? // Sucursal o área
   amount        Float?
-  currency      String     @default("USD") // USD o NIO (C$)
-  startDate     DateTime?  @map("start_date")
-  dueDate       DateTime?  @map("due_date")
-  closedAt      DateTime?  @map("closed_at")
+  currency      String         @default("USD") // USD o NIO (C$)
+  startDate     DateTime?      @map("start_date")
+  dueDate       DateTime?      @map("due_date")
+  closedAt      DateTime?      @map("closed_at")
   attachments   String? // JSON array de URLs de archivos adjuntos
 
   // Información técnica

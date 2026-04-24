@@ -45,10 +45,12 @@ interface TicketFormData {
   title: string
   description: string
   clientId: string
+  type: string
   status: Ticket['status']
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  priority: 'BAJA' | 'MEDIA' | 'ALTA'
   assignedTo: string
   assignedUsers: string[]
+  branch: string
   amount: string
   currency: 'USD' | 'NIO'
   startDate: string
@@ -57,13 +59,20 @@ interface TicketFormData {
   evidence: File[]
   existingAttachments: string[]
   existingEvidence: string[]
+  // Información técnica
+  equipmentType: string
+  equipmentBrand: string
+  equipmentModel: string
+  serialNumber: string
+  installationDate: string
+  installedBy: string
 }
 
 const DEFAULT_COLUMNS = [
-  { id: 'PROCESO1', label: 'Proceso 1', color: 'border-red-400' },
-  { id: 'PROCESO2', label: 'Proceso 2', color: 'border-blue-400' },
-  { id: 'PROCESO3', label: 'Proceso 3', color: 'border-yellow-400' },
-  { id: 'PROCESO4', label: 'Proceso 4', color: 'border-green-400' },
+  { id: 'NUEVO', label: 'Nuevo', color: 'border-blue-400' },
+  { id: 'ASIGNADO', label: 'Asignado', color: 'border-yellow-400' },
+  { id: 'EN_PROCESO', label: 'En Proceso', color: 'border-orange-400' },
+  { id: 'RESUELTO', label: 'Resuelto', color: 'border-green-400' },
 ]
 
 const STAGE_COLORS = [
@@ -297,18 +306,26 @@ export default function TicketsSoportePage() {
       title: '',
       description: '',
       clientId: '',
-      status: 'PROCESO1',
-      priority: 'MEDIUM',
+      type: 'SOPORTE_REMOTO',
+      status: 'NUEVO',
+      priority: 'MEDIA',
       assignedTo: '',
       assignedUsers: [],
+      branch: '',
       amount: '',
       currency: 'USD',
       startDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: '',
       attachments: [],
       evidence: [],
       existingAttachments: [],
       existingEvidence: [],
+      equipmentType: '',
+      equipmentBrand: '',
+      equipmentModel: '',
+      serialNumber: '',
+      installationDate: '',
+      installedBy: '',
     })
     setEditingTicketId(null)
   }
@@ -338,10 +355,12 @@ export default function TicketsSoportePage() {
       title: ticket.title,
       description: ticket.description || '',
       clientId: ticket.client?.id || '',
+      type: (ticket as any).type || 'SOPORTE_REMOTO',
       status: ticket.status,
-      priority: (ticket.priority as TicketFormData['priority']) || 'MEDIUM',
+      priority: (ticket.priority as TicketFormData['priority']) || 'MEDIA',
       assignedTo: ticket.assignedTo || '',
       assignedUsers: parsedUsers,
+      branch: (ticket as any).branch || '',
       amount: ticket.amount !== null ? String(ticket.amount) : '',
       currency: (ticket.currency as 'USD' | 'NIO') || 'USD',
       startDate: ticket.startDate ? ticket.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -350,6 +369,12 @@ export default function TicketsSoportePage() {
       evidence: [],
       existingAttachments: parsedAttachments,
       existingEvidence: parsedEvidence,
+      equipmentType: (ticket as any).equipmentType || '',
+      equipmentBrand: (ticket as any).equipmentBrand || '',
+      equipmentModel: (ticket as any).equipmentModel || '',
+      serialNumber: (ticket as any).serialNumber || '',
+      installationDate: (ticket as any).installationDate ? (ticket as any).installationDate.split('T')[0] : '',
+      installedBy: (ticket as any).installedBy || '',
     })
     setIsModalOpen(true)
   }
@@ -426,16 +451,24 @@ export default function TicketsSoportePage() {
         title: formData.title,
         description: formData.description || null,
         clientId: formData.clientId || null,
+        type: formData.type,
         status: formData.status,
         priority: formData.priority,
         assignedTo: formData.assignedTo || null,
-        assignedUsers: formData.assignedUsers.length > 0 ? JSON.stringify(formData.assignedUsers) : null,
+        assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
+        branch: formData.branch || null,
         amount: formData.amount ? parseFloat(formData.amount) : null,
         currency: formData.currency,
         startDate: formData.startDate || null,
         dueDate: formData.dueDate || null,
-        attachments: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
-        evidence: evidenceUrls.length > 0 ? JSON.stringify(evidenceUrls) : null,
+        attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
+        evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
+        equipmentType: formData.equipmentType || null,
+        equipmentBrand: formData.equipmentBrand || null,
+        equipmentModel: formData.equipmentModel || null,
+        serialNumber: formData.serialNumber || null,
+        installationDate: formData.installationDate || null,
+        installedBy: formData.installedBy || null,
       }
 
       if (!editingTicketId) {
@@ -928,6 +961,30 @@ export default function TicketsSoportePage() {
           />
           <div className="grid grid-cols-2 gap-4">
             <Select
+              label="Tipo de Solicitud"
+              options={[
+                { value: 'INSTALACION_CAMARAS', label: 'Instalación de Cámaras' },
+                { value: 'SOPORTE_REMOTO', label: 'Soporte Técnico Remoto' },
+                { value: 'SOPORTE_SITIO', label: 'Soporte Técnico en Sitio' },
+                { value: 'GARANTIA', label: 'Garantía' },
+                { value: 'MANTENIMIENTO_PREVENTIVO', label: 'Mantenimiento Preventivo' },
+                { value: 'CONFIGURACION_DVR_NVR', label: 'Configuración DVR/NVR' },
+                { value: 'COTIZACION_TECNICA', label: 'Cotización Técnica' },
+              ]}
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Sucursal o Área"
+              value={formData.branch}
+              onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+              placeholder="Ej: Sucursal Centro, Área Técnica"
+              fullWidth
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
               label="Estado"
               options={columns.map((column) => ({ value: column.id, label: column.label }))}
               value={formData.status}
@@ -937,10 +994,9 @@ export default function TicketsSoportePage() {
             <Select
               label="Prioridad"
               options={[
-                { value: 'LOW', label: 'Baja' },
-                { value: 'MEDIUM', label: 'Media' },
-                { value: 'HIGH', label: 'Alta' },
-                { value: 'URGENT', label: 'Urgente' },
+                { value: 'BAJA', label: 'Baja (Consulta o Mejora)' },
+                { value: 'MEDIA', label: 'Media (Fallo Parcial)' },
+                { value: 'ALTA', label: 'Alta (Sistema No Funciona)' },
               ]}
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value as TicketFormData['priority'] })}
@@ -989,6 +1045,74 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
+
+          {/* Información Técnica */}
+          <div className="border-t pt-4 mt-4">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+              </svg>
+              Información Técnica del Equipo
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Tipo de Equipo"
+                options={[
+                  { value: '', label: 'Seleccionar tipo' },
+                  { value: 'DVR', label: 'DVR (Grabador Digital)' },
+                  { value: 'NVR', label: 'NVR (Grabador de Red)' },
+                  { value: 'CAMARA_IP', label: 'Cámara IP' },
+                  { value: 'CAMARA_ANALOGICA', label: 'Cámara Analógica' },
+                  { value: 'SWITCH_POE', label: 'Switch PoE' },
+                  { value: 'ROUTER', label: 'Router' },
+                  { value: 'OTRO', label: 'Otro Equipo' },
+                ]}
+                value={formData.equipmentType}
+                onChange={(e) => setFormData({ ...formData, equipmentType: e.target.value })}
+                fullWidth
+              />
+              <Input
+                label="Marca del Equipo"
+                value={formData.equipmentBrand}
+                onChange={(e) => setFormData({ ...formData, equipmentBrand: e.target.value })}
+                placeholder="Ej: Hikvision, Dahua, Uniview"
+                fullWidth
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <Input
+                label="Modelo"
+                value={formData.equipmentModel}
+                onChange={(e) => setFormData({ ...formData, equipmentModel: e.target.value })}
+                placeholder="Ej: DS-7608NI-K2"
+                fullWidth
+              />
+              <Input
+                label="Número de Serie"
+                value={formData.serialNumber}
+                onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                placeholder="Ej: 123456789ABC"
+                fullWidth
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <Input
+                label="Fecha de Instalación"
+                type="date"
+                value={formData.installationDate}
+                onChange={(e) => setFormData({ ...formData, installationDate: e.target.value })}
+                fullWidth
+              />
+              <Input
+                label="Instalado Por (Técnico)"
+                value={formData.installedBy}
+                onChange={(e) => setFormData({ ...formData, installedBy: e.target.value })}
+                placeholder="Nombre del técnico"
+                fullWidth
+              />
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">
