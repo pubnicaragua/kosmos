@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
     })
 
     return apiSuccess(employees)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching employees:', error)
-    return apiError('Error al obtener empleados', 500)
+    return apiError(error?.message || 'Error al obtener empleados', 500)
   }
 }
 
@@ -119,8 +119,9 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating employee:', error)
     if (error?.name === 'ZodError') {
-      return apiError('Datos inválidos', 400)
+      const fieldErrors = error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+      return apiError(`Datos inválidos: ${fieldErrors}`, 400)
     }
-    return apiError('Error al crear empleado', 500)
+    return apiError(error?.message || 'Error al crear empleado', 500)
   }
 }

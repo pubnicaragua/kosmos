@@ -132,11 +132,22 @@ export default function InventarioPage() {
     }
   }
 
-  const updateEditField = (productId: string, field: keyof EditingProduct, value: string) => {
-    setEditingRows(prev => ({
-      ...prev,
-      [productId]: { ...prev[productId], [field]: value },
-    }))
+  const updateEditField = (productId: string, field: string, value: string) => {
+    setEditingRows(prev => {
+      const updated = { ...prev[productId], [field]: value }
+      
+      // Auto-calculate margin when cost or price changes
+      if (field === 'cost' || field === 'price') {
+        const cost = field === 'cost' ? parseFloat(value) || 0 : parseFloat(updated.cost) || 0
+        const price = field === 'price' ? parseFloat(value) || 0 : parseFloat(updated.price) || 0
+        if (cost > 0) {
+          const margin = ((price - cost) / cost) * 100
+          updated.netMargin = (Math.round(margin * 100) / 100).toString()
+        }
+      }
+      
+      return { ...prev, [productId]: updated }
+    })
   }
 
   const fetchCompanies = useCallback(async () => {

@@ -134,8 +134,8 @@ export async function POST(request: NextRequest) {
           await prisma.notification.create({
             data: {
               userId: cu.userId,
-              title: 'Nueva Cotización Creada',
-              message: `Cotización ${quoteNumber} para ${quote.client.name}`,
+              title: 'Cotización Requiere Aprobación',
+              message: `Cotización ${quoteNumber} para ${quote.client.name} requiere tu aprobación`,
               type: 'ASSIGNMENT',
               link: `/clientes/cotizacion/${quote.id}`
             }

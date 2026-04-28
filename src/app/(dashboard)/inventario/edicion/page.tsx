@@ -104,6 +104,17 @@ export default function InventarioEdicionPage() {
   const updateRow = (index: number, field: keyof ProductRow, value: string | number) => {
     const updated = [...rows]
     updated[index] = { ...updated[index], [field]: value }
+    
+    // Auto-calculate margin when cost or price changes
+    if (field === 'cost' || field === 'price') {
+      const cost = field === 'cost' ? Number(value) : updated[index].cost
+      const price = field === 'price' ? Number(value) : updated[index].price
+      if (cost > 0) {
+        const margin = ((price - cost) / cost) * 100
+        updated[index].netMargin = Math.round(margin * 100) / 100
+      }
+    }
+    
     setRows(updated)
   }
 
@@ -376,7 +387,7 @@ export default function InventarioEdicionPage() {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRODUCTO</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">UNI/KG</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">UNIDAD</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">CATEGORÍA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">DESC.</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">SKU</th>
@@ -405,7 +416,7 @@ export default function InventarioEdicionPage() {
                       value={row.unit}
                       onChange={(e) => updateRow(index, 'unit', e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, index)}
-                      placeholder="120"
+                      placeholder="UNI/KG/LT"
                       fullWidth
                     />
                   </td>
