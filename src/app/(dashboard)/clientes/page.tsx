@@ -613,7 +613,7 @@ export default function ClientesPage() {
                     className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
                   />
                 </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>
+                {selectedCompany === 'all' && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>}
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
                   <div className="flex flex-col gap-1">
@@ -648,18 +648,20 @@ export default function ClientesPage() {
               {draftRows.map((row) => (
                 <tr key={row.tempId} className="border-b border-blue-100 bg-blue-50/40">
                   <td className="py-2 px-2"></td>
-                  <td className="py-2 px-2">
-                    <select
-                      value={row.companyId}
-                      onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
-                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      {companies.map((company) => (
-                        <option key={company.id} value={company.id}>{company.name}</option>
-                      ))}
-                    </select>
-                  </td>
+                  {selectedCompany === 'all' && (
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.companyId}
+                        onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>{company.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                  )}
                   <td className="py-2 px-2">
                     <input
                       value={row.name}
@@ -784,11 +786,13 @@ export default function ClientesPage() {
                 editingRows[client.id] ? (
                   <tr key={client.id} className="border-b border-blue-100 bg-blue-50/30">
                     <td className="py-2 px-2"></td>
-                    <td className="py-2 px-2">
-                      <div className="text-sm text-gray-700 px-2 py-2">
-                        {client.company?.name || companies.find((c) => c.id === editingRows[client.id].companyId)?.name || 'N/A'}
-                      </div>
-                    </td>
+                    {selectedCompany === 'all' && (
+                      <td className="py-2 px-2">
+                        <div className="text-sm text-gray-700 px-2 py-2">
+                          {client.company?.name || companies.find((c) => c.id === editingRows[client.id].companyId)?.name || 'N/A'}
+                        </div>
+                      </td>
+                    )}
                     <td className="py-2 px-2">
                       <input
                         value={editingRows[client.id].name}
@@ -897,9 +901,11 @@ export default function ClientesPage() {
                         className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
                       />
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
-                    </td>
+                    {selectedCompany === 'all' && (
+                      <td className="py-4 px-4">
+                        <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
+                      </td>
+                    )}
                     <td className="py-4 px-4">
                       <button
                         type="button"

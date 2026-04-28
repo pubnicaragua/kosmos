@@ -734,7 +734,7 @@ export default function GastosPage() {
                     className="rounded border-gray-300"
                   />
                 </th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>
+                {selectedCompany === 'all' && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>}
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">FECHA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROVEEDOR</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CONCEPTO</th>
@@ -758,9 +758,11 @@ export default function GastosPage() {
                       className="rounded border-gray-300"
                     />
                   </td>
-                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
-                    <div className="text-sm font-medium text-gray-900">{expense.company}</div>
-                  </td>
+                  {selectedCompany === 'all' && (
+                    <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                      <div className="text-sm font-medium text-gray-900">{expense.company}</div>
+                    </td>
+                  )}
                   <td className="py-4 px-4">
                     <div className="text-sm text-gray-600">
                       {new Date(expense.date).toLocaleDateString('es-ES')}

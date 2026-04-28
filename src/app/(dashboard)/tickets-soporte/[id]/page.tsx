@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileText, Image as ImageIcon, X, Download, ZoomIn } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileText, Image as ImageIcon, X, Download, ZoomIn, Users, CheckSquare, ListTodo, History, Plus, Check, Trash2, UserPlus } from 'lucide-react'
 import { Card } from '@/components/ui-kit/Card'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Button } from '@/components/ui-kit/Button'
@@ -30,6 +30,52 @@ interface TicketComment {
   createdAt: string
   updatedAt: string
   user: { id: string; name: string; email: string; avatar: string | null }
+}
+
+interface TicketMember {
+  id: string
+  userId: string
+  role: string
+  createdAt: string
+  user: { id: string; name: string; email: string; avatar: string | null }
+}
+
+interface ChecklistItem {
+  id: string
+  content: string
+  isCompleted: boolean
+  completedBy: string | null
+  completedAt: string | null
+  position: number
+}
+
+interface Checklist {
+  id: string
+  title: string
+  position: number
+  items: ChecklistItem[]
+}
+
+interface SubTask {
+  id: string
+  title: string
+  description: string | null
+  assignedTo: string | null
+  status: string
+  priority: string
+  dueDate: string | null
+  completedAt: string | null
+  createdAt: string
+}
+
+interface AuditLog {
+  id: string
+  action: string
+  field: string | null
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
+  user: { id: string; name: string; email: string; avatar: string | null } | null
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -60,6 +106,10 @@ export default function TicketDetailPage() {
   const evidenceInputRef = useRef<HTMLInputElement>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [comments, setComments] = useState<TicketComment[]>([])
+  const [members, setMembers] = useState<TicketMember[]>([])
+  const [checklists, setChecklists] = useState<Checklist[]>([])
+  const [subTasks, setSubTasks] = useState<SubTask[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [sendingComment, setSendingComment] = useState(false)
@@ -69,6 +119,11 @@ export default function TicketDetailPage() {
   const [pendingAttachment, setPendingAttachment] = useState<{ url: string; name: string } | null>(null)
   const [viewingFile, setViewingFile] = useState<{ url: string; name: string } | null>(null)
   const [evidences, setEvidences] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'subtasks' | 'audit'>('comments')
+  const [newChecklistTitle, setNewChecklistTitle] = useState('')
+  const [newSubTaskTitle, setNewSubTaskTitle] = useState('')
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [availableUsers, setAvailableUsers] = useState<Array<{id: string; name: string; email: string}>>([])  
 
   useEffect(() => {
     if (!params.id) return

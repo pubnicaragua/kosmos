@@ -760,11 +760,11 @@ export default function IngresosPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>
+                {selectedCompany === 'all' && <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">EMPRESA</th>}
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">FECHA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">N°REF</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CLIENTE</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">CONCEPTO</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-1/4">CONCEPTO</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">MÉTODO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MONTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN</th>
@@ -776,18 +776,20 @@ export default function IngresosPage() {
             <tbody>
               {draftRows.map((row) => (
                 <tr key={row.tempId} className="border-b border-blue-100 bg-blue-50/40">
-                  <td className="py-2 px-2">
-                    <select
-                      value={row.companyId}
-                      onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
-                      onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
-                      className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
-                    >
-                      {companies.map((company) => (
-                        <option key={company.id} value={company.id}>{company.name}</option>
-                      ))}
-                    </select>
-                  </td>
+                  {selectedCompany === 'all' && (
+                    <td className="py-2 px-2">
+                      <select
+                        value={row.companyId}
+                        onChange={(e) => updateDraftRow(row.tempId, 'companyId', e.target.value)}
+                        onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>{company.name}</option>
+                        ))}
+                      </select>
+                    </td>
+                  )}
                   <td className="py-2 px-2">
                     <input
                       type="date"
@@ -899,18 +901,20 @@ export default function IngresosPage() {
               {incomes.map((income) => (
                 editingRows[income.id] ? (
                   <tr key={income.id} className="border-b border-blue-100 bg-blue-50/30">
-                    <td className="py-2 px-2">
-                      <select
-                        value={editingRows[income.id].companyId}
-                        onChange={(e) => updateEditingRow(income.id, 'companyId', e.target.value)}
-                        onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        {companies.map((company) => (
-                          <option key={company.id} value={company.id}>{company.name}</option>
-                        ))}
-                      </select>
-                    </td>
+                    {selectedCompany === 'all' && (
+                      <td className="py-2 px-2">
+                        <select
+                          value={editingRows[income.id].companyId}
+                          onChange={(e) => updateEditingRow(income.id, 'companyId', e.target.value)}
+                          onKeyDown={(e) => handleRowKeyDown(e, editingRows[income.id], 'update')}
+                          className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm"
+                        >
+                          {companies.map((company) => (
+                            <option key={company.id} value={company.id}>{company.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                    )}
                     <td className="py-2 px-2">
                       <input
                         type="date"
@@ -992,9 +996,11 @@ export default function IngresosPage() {
                   </tr>
                 ) : (
                   <tr key={income.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <div className="text-sm font-medium text-gray-900">{income.company}</div>
-                    </td>
+                    {selectedCompany === 'all' && (
+                      <td className="py-4 px-4">
+                        <div className="text-sm font-medium text-gray-900">{income.company}</div>
+                      </td>
+                    )}
                     <td className="py-4 px-4">
                       <div className="text-sm text-gray-600">
                         {new Date(income.date).toLocaleDateString('es-ES')}
