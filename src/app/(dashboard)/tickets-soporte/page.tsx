@@ -86,6 +86,7 @@ export default function TicketsSoportePage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
+  const [kpis, setKpis] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
@@ -262,13 +263,23 @@ export default function TicketsSoportePage() {
       params.append('startDate', startDate)
       params.append('endDate', endDate)
 
-      const response = await fetch(`/api/tickets?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
+      const [ticketsRes, kpisRes] = await Promise.all([
+        fetch(`/api/tickets?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        }),
+        fetch(`/api/tickets/kpis?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+      ])
 
-      const data = await response.json()
-      if (data.success) {
-        setTickets(data.data)
+      const ticketsData = await ticketsRes.json()
+      const kpisData = await kpisRes.json()
+      
+      if (ticketsData.success) {
+        setTickets(ticketsData.data)
+      }
+      if (kpisData.success) {
+        setKpis(kpisData.data)
       }
     } catch (error) {
       console.error('Error fetching tickets:', error)
@@ -690,6 +701,68 @@ export default function TicketsSoportePage() {
           </Button>
         </div>
       </div>
+
+      {/* KPI Dashboard */}
+      {kpis && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-2xl border border-blue-100 hover:shadow-lg transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-black text-blue-400 uppercase tracking-widest">Tiempo Respuesta</p>
+                <p className="text-3xl font-black text-blue-600">{kpis.avgResponseTime?.toFixed(1) || 0}h</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600">Promedio de respuesta</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-2xl border border-green-100 hover:shadow-lg transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-3 bg-green-100 rounded-xl">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-black text-green-400 uppercase tracking-widest">Tiempo Solución</p>
+                <p className="text-3xl font-black text-green-600">{kpis.avgResolutionTime?.toFixed(1) || 0}h</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600">Promedio de resolución</p>
+          </div>
+          <div className="bg-gradient-to-br from-amber-50 to-white p-6 rounded-2xl border border-amber-100 hover:shadow-lg transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-3 bg-amber-100 rounded-xl">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-black text-amber-400 uppercase tracking-widest">Reabiertos</p>
+                <p className="text-3xl font-black text-amber-600">{kpis.reopenedTickets || 0}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600">Tickets reabiertos</p>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-2xl border border-purple-100 hover:shadow-lg transition-all">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-black text-purple-400 uppercase tracking-widest">Total Tickets</p>
+                <p className="text-3xl font-black text-purple-600">{kpis.totalTickets || 0}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600">Abiertos: {kpis.openTickets || 0} | Cerrados: {kpis.closedTickets || 0}</p>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-md">

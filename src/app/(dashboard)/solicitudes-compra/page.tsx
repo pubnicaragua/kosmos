@@ -25,6 +25,7 @@ export default function SolicitudesCompraPage() {
   const { selectedCompany } = useCompany()
   const [requests, setRequests] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
+  const [kpis, setKpis] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [view, setView] = useState<'kanban' | 'list'>('kanban')
   const [searchTerm, setSearchTerm] = useState('')
@@ -35,20 +36,25 @@ export default function SolicitudesCompraPage() {
 
     try {
       setIsLoading(true)
-      const [reqsRes, statsRes] = await Promise.all([
+      const [reqsRes, statsRes, kpisRes] = await Promise.all([
         fetch(`/api/purchase-requests?companyId=${selectedCompany}`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
         fetch(`/api/purchase-requests/stats?companyId=${selectedCompany}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`/api/purchase-requests/kpis?companyId=${selectedCompany}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ])
       
       const reqsData = await reqsRes.json()
       const statsData = await statsRes.json()
+      const kpisData = await kpisRes.json()
       
       if (reqsData.success) setRequests(reqsData.data)
       if (statsData.success) setStats(statsData.data)
+      if (kpisData.success) setKpis(kpisData.data)
     } catch (err) {
       console.error('Error loading purchase requests:', err)
     } finally {
@@ -69,7 +75,7 @@ export default function SolicitudesCompraPage() {
     const config = STATUS_CONFIG[status]
     const Icon = config.icon
     return (
-      <div className="flex-1 min-w-[280px] md:min-w-[300px] bg-slate-50/50 rounded-2xl p-3 md:p-4 border border-slate-100">
+      <div className="flex-shrink-0 w-[280px] md:w-[320px] bg-slate-50/50 rounded-2xl p-3 md:p-4 border border-slate-100">
         <div className="flex items-center justify-between mb-4 px-2">
           <div className="flex items-center gap-2">
             <div className={`p-1.5 rounded-lg ${config.color.split(' ')[0]} bg-opacity-20`}>
@@ -232,7 +238,7 @@ export default function SolicitudesCompraPage() {
             ))}
           </div>
         ) : view === 'kanban' ? (
-          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[400px]">
+          <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide min-h-[400px] max-w-full">
             {Object.keys(STATUS_CONFIG).map((status) => (
               <KanbanColumn 
                 key={status} 
@@ -291,15 +297,75 @@ export default function SolicitudesCompraPage() {
         )}
       </div>
 
+      {/* KPI Indicators Section */}
+      {kpis && (
+        <div className="mt-12 space-y-6">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Indicadores y Métricas Clave</h2>
+            <div className="h-px flex-1 bg-slate-100" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="p-6 border-slate-100 hover:shadow-lg transition-all bg-gradient-to-br from-red-50 to-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-red-100 rounded-xl">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-red-400 uppercase tracking-widest">Stock Bajo</p>
+                  <p className="text-3xl font-black text-red-600">{kpis.lowStockCount || 0}</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600">Productos bajo stock mínimo</p>
+            </Card>
+            <Card className="p-6 border-slate-100 hover:shadow-lg transition-all bg-gradient-to-br from-blue-50 to-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-blue-100 rounded-xl">
+                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-blue-400 uppercase tracking-widest">Top Vendidos</p>
+                  <p className="text-3xl font-black text-blue-600">{kpis.topProducts?.length || 0}</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600">Productos más vendidos del mes</p>
+            </Card>
+            <Card className="p-6 border-slate-100 hover:shadow-lg transition-all bg-gradient-to-br from-amber-50 to-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-amber-100 rounded-xl">
+                  <Clock className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-amber-400 uppercase tracking-widest">Sin Rotación</p>
+                  <p className="text-3xl font-black text-amber-600">{kpis.noRotationCount || 0}</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600">Productos sin venta en 90 días</p>
+            </Card>
+            <Card className="p-6 border-slate-100 hover:shadow-lg transition-all bg-gradient-to-br from-green-50 to-white">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-green-100 rounded-xl">
+                  <BarChart3 className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-green-400 uppercase tracking-widest">Tiempo Reposición</p>
+                  <p className="text-3xl font-black text-green-600">{kpis.avgReplenishmentDays || 0}</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-600">Días promedio de reposición</p>
+            </Card>
+          </div>
+        </div>
+      )}
+
       {/* Top Products Section */}
-      {stats?.topProducts?.length > 0 && (
+      {kpis?.topProducts?.length > 0 && (
         <div className="mt-12 space-y-6">
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Top 20 Productos Más Vendidos</h2>
             <div className="h-px flex-1 bg-slate-100" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {stats.topProducts.map((p: any, i: number) => (
+            {kpis.topProducts.slice(0, 20).map((p: any, i: number) => (
               <Card key={i} className="p-5 border-slate-100 hover:shadow-lg transition-all border-l-4 border-l-blue-500">
                 <div className="flex justify-between items-start mb-3">
                   <div>

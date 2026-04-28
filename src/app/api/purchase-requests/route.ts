@@ -94,28 +94,43 @@ export async function POST(req: Request) {
       }
     })
 
-    // Notify admins of the company
+    // Notify department approvers and company admins
     try {
-      const companyUsers = await prisma.userCompany.findMany({
+      const notifyUserIds = new Set<string>()
+
+      // Get department approvers if requestingArea is specified
+      if (requestingArea) {
+        const departmentUsers = await prisma.userDepartment.findMany({
+          where: {
+            departmentId: requestingArea,
+            isApprover: true
+          }
+        })
+        departmentUsers.forEach(du => notifyUserIds.add(du.userId))
+      }
+
+      // Also notify company admins
+      const companyAdmins = await prisma.userCompany.findMany({
         where: {
           companyId: companyId,
           role: { in: ['ADMIN', 'SUPER_ADMIN'] }
-        },
-        include: {
-          user: true
         }
       })
+      companyAdmins.forEach(ca => notifyUserIds.add(ca.userId))
 
-      for (const cu of companyUsers) {
-        await prisma.notification.create({
-          data: {
-            userId: cu.userId,
-            title: 'Nueva Solicitud de Compra',
-            message: `Solicitud ${requestNumber} requiere aprobación - Prioridad: ${priority}`,
-            type: 'ASSIGNMENT',
-            link: `/solicitudes-compra/${request.id}`
-          }
-        })
+      // Create notifications for all unique users
+      for (const userId of Array.from(notifyUserIds)) {
+        if (userId !== decoded.userId) {
+          await prisma.notification.create({
+            data: {
+              userId,
+              title: 'Solicitud de Compra Requiere Aprobación',
+              message: `Solicitud ${requestNumber} (${requestType}) - Prioridad ${priority} - Monto estimado: $${items.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0).toFixed(2)}`,
+              type: 'ASSIGNMENT',
+              link: `/solicitudes-compra/${request.id}`
+            }
+          })
+        }
       }
     } catch (notifError) {
       console.error('Error creating notifications:', notifError)

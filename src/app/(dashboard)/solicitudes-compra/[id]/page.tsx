@@ -105,9 +105,20 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const StatusIcon = currentStatusConfig.icon
 
   return (
-    <div className="max-w-7xl mx-auto pb-20">
+    <>
+      <style jsx global>{`
+        @media print {
+          body { margin: 0; padding: 20px; }
+          .no-print { display: none !important; }
+          .print-full-width { max-width: 100% !important; margin: 0 !important; }
+          .print-break-inside-avoid { break-inside: avoid; }
+          .print-page-break { page-break-after: always; }
+          @page { margin: 1.5cm; }
+        }
+      `}</style>
+      <div className="max-w-7xl mx-auto pb-20 print-full-width">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 no-print">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.push('/solicitudes-compra')} className="rounded-full hover:bg-slate-100 p-2">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -163,9 +174,23 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      {/* Print Header */}
+      <div className="hidden print:block mb-8 border-b-2 border-slate-200 pb-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">KOSMOS CRM</h1>
+            <p className="text-sm text-slate-600">Sistema Operativo</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-slate-500 mb-1">Fecha de Impresión</p>
+            <p className="text-sm font-bold text-slate-900">{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 print:grid-cols-1">
         {/* Left Column - Main Info */}
-        <div className="lg:col-span-3 space-y-8">
+        <div className="lg:col-span-3 space-y-8 print:col-span-1">
           <Card className="p-0 border-slate-100 shadow-sm rounded-3xl overflow-hidden">
             <div className="p-8 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
               <div className="flex justify-between items-start">
@@ -271,7 +296,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         </div>
 
         {/* Right Column - Status Timeline & Meta */}
-        <div className="space-y-8">
+        <div className="space-y-8 print:hidden">
           <Card className="p-8 border-slate-100 shadow-sm rounded-3xl">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-8">Estado del Proceso</h3>
             
@@ -374,5 +399,6 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         </div>
       </Modal>
     </div>
+    </>
   )
 }

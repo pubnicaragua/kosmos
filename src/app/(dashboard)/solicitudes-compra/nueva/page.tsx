@@ -26,14 +26,11 @@ interface RequestItem {
   monthlyAverage: number
 }
 
-const AREAS = [
-  { value: 'ADMINISTRACION', label: 'Administración' },
-  { value: 'VENTAS', label: 'Ventas' },
-  { value: 'TECNICA', label: 'Área Técnica' },
-  { value: 'MARKETING', label: 'Marketing' },
-  { value: 'SOPORTE', label: 'Soporte Post-Venta' },
-  { value: 'ALMACEN', label: 'Almacén/Bodega' },
-]
+interface Department {
+  id: string
+  name: string
+  description: string | null
+}
 
 const TYPES = [
   { value: 'REPOSICION', label: 'Reposición de Inventario' },
@@ -45,9 +42,10 @@ export default function NuevaSolicitudPage() {
   const router = useRouter()
   const { selectedCompany } = useCompany()
   const [isSaving, setIsSaving] = useState(false)
+  const [departments, setDepartments] = useState<Department[]>([])
   
   const [formData, setFormData] = useState({
-    requestingArea: 'TECNICA',
+    requestingArea: '',
     requestType: 'REPOSICION',
     priority: 'MEDIA',
     notes: '',
@@ -156,6 +154,31 @@ export default function NuevaSolicitudPage() {
   }
 
   const totalAmount = itemsArray.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0)
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!selectedCompany) return
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch(`/api/departments?companyId=${selectedCompany}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (data.success) {
+          setDepartments(data.data)
+          if (data.data.length > 0 && !formData.requestingArea) {
+            setFormData(prev => ({ ...prev, requestingArea: data.data[0].id }))
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error)
+      }
+    }
+
+    fetchDepartments()
+  }, [selectedCompany])
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -299,7 +322,7 @@ export default function NuevaSolicitudPage() {
               <div className="space-y-2">
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Área Solicitante</label>
                 <Select 
-                  options={AREAS}
+                  options={departments.map(d => ({ value: d.id, label: d.name }))}
                   value={formData.requestingArea}
                   onChange={(e) => setFormData({...formData, requestingArea: e.target.value})}
                   fullWidth

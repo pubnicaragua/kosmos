@@ -67,6 +67,7 @@ export default function RecursosHumanosPage() {
   const [importingEmployees, setImportingEmployees] = useState(false)
   const [employeeImportFile, setEmployeeImportFile] = useState<File | null>(null)
   const [createExpenseFromImport, setCreateExpenseFromImport] = useState(true)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [employeeForm, setEmployeeForm] = useState({
     employeeCode: '',
     fullName: '',
@@ -302,6 +303,70 @@ export default function RecursosHumanosPage() {
       console.error('Error uploading photo:', err)
     } finally {
       setUploadingPhoto(false)
+    }
+  }
+
+  const generateMockEmployee = async () => {
+    if (!activeCompany?.id) {
+      alert('Selecciona una empresa primero')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const mockNames = [
+        'Juan Pérez García', 'María López Hernández', 'Carlos Martínez Ruiz',
+        'Ana Rodríguez Castro', 'Roberto Sánchez Morales', 'Laura Fernández Gómez',
+        'Diego Ramírez Torres', 'Patricia Morales Vega', 'Fernando Castro Díaz',
+        'Gabriela Ortiz Méndez'
+      ]
+      const mockPositions = ['Gerente', 'Contador', 'Técnico', 'Asistente', 'Vendedor', 'Diseñador', 'Desarrollador', 'Analista']
+      const mockDepartments = ['Ventas', 'Contabilidad', 'IT', 'Administración', 'Marketing', 'RRHH', 'Producción']
+      
+      const randomName = mockNames[Math.floor(Math.random() * mockNames.length)]
+      const randomPosition = mockPositions[Math.floor(Math.random() * mockPositions.length)]
+      const randomDepartment = mockDepartments[Math.floor(Math.random() * mockDepartments.length)]
+      const randomSalary = Math.floor(Math.random() * 15000) + 15000
+      const randomCode = `EMP${String(employees.length + 1).padStart(3, '0')}`
+
+      const mockEmployee = {
+        companyId: activeCompany.id,
+        employeeCode: randomCode,
+        fullName: randomName,
+        email: `${randomName.split(' ')[0].toLowerCase()}@empresa.com`,
+        phone: `8${Math.floor(Math.random() * 900 + 100)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+        position: randomPosition,
+        department: randomDepartment,
+        startDate: new Date().toISOString().split('T')[0],
+        salary: randomSalary,
+        contractType: 'Indefinido',
+        bankName: Math.random() > 0.5 ? 'BAC' : 'Banpro',
+        accountNumber: String(Math.floor(Math.random() * 9000000000 + 1000000000)),
+        status: 'ACTIVO'
+      }
+
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(mockEmployee)
+      })
+
+      const data = await res.json()
+      if (data.success) {
+        fetchEmployees()
+        alert(`Empleado ${randomName} generado exitosamente`)
+      } else {
+        alert(data.error || 'Error al generar empleado')
+      }
+    } catch (err) {
+      console.error('Error generating employee:', err)
+      alert('Error al generar empleado')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -715,6 +780,17 @@ const handleDownloadTemplate = () => {
             <Button variant="outline" onClick={handleBulkDelete} className="border-red-200 hover:bg-red-50 text-red-700 font-bold">
               <Trash2 className="w-4 h-4 mr-2" />
               ELIMINAR ({selectedPayrolls.size})
+            </Button>
+          )}
+          {activeTab === 'employees' && (
+            <Button 
+              variant="outline" 
+              onClick={generateMockEmployee}
+              disabled={isGenerating}
+              className="border-green-200 hover:bg-green-50 text-green-700 font-bold"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              {isGenerating ? 'GENERANDO...' : 'GENERAR EMPLEADO'}
             </Button>
           )}
           <Button variant="outline" onClick={handleDownloadTemplate} className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
