@@ -107,7 +107,7 @@ export function NotificationCenter() {
       // Use polling in production
       if (!pollIntervalRef.current) {
         pollNotifications() // Initial load
-        pollIntervalRef.current = setInterval(pollNotifications, 10000) // Poll every 10s
+        pollIntervalRef.current = setInterval(pollNotifications, 5000) // Poll every 5s for faster notifications
       }
       return
     }
@@ -163,7 +163,7 @@ export function NotificationCenter() {
         if (!pollIntervalRef.current) {
           console.log('WebSocket failed, falling back to polling')
           pollNotifications()
-          pollIntervalRef.current = setInterval(pollNotifications, 10000)
+          pollIntervalRef.current = setInterval(pollNotifications, 5000)
         }
       }
 
@@ -174,13 +174,13 @@ export function NotificationCenter() {
         if (!pollIntervalRef.current) {
           console.log('Starting polling fallback')
           pollNotifications()
-          pollIntervalRef.current = setInterval(pollNotifications, 10000)
+          pollIntervalRef.current = setInterval(pollNotifications, 5000)
         }
       }
     } catch (err) {
       console.error('Failed to connect WebSocket:', err)
       // Fallback to polling
-      pollIntervalRef.current = setInterval(pollNotifications, 15000)
+      pollIntervalRef.current = setInterval(pollNotifications, 5000)
     }
   }
 
@@ -202,8 +202,8 @@ export function NotificationCenter() {
     // Try WebSocket first, fallback to polling
     connectWebSocket()
     
-    // Backup polling every 30s in case WebSocket fails
-    pollIntervalRef.current = setInterval(pollNotifications, 30000)
+    // Backup polling every 5s in case WebSocket fails
+    pollIntervalRef.current = setInterval(pollNotifications, 5000)
 
     return () => {
       if (reminderIntervalRef.current) clearInterval(reminderIntervalRef.current)
