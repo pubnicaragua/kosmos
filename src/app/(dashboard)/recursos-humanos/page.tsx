@@ -56,6 +56,7 @@ export default function RecursosHumanosPage() {
   const [payrolls, setPayrolls] = useState<Payroll[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedPayrolls, setSelectedPayrolls] = useState<Set<string>>(new Set())
   const [showEmployeeModal, setShowEmployeeModal] = useState(false)
   const [showPayrollModal, setShowPayrollModal] = useState(false)
   const [showEmployeeImportModal, setShowEmployeeImportModal] = useState(false)
@@ -577,6 +578,53 @@ const handleDownloadTemplate = () => {
     }
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedPayrolls.size === 0) {
+      alert('Selecciona al menos una planilla para eliminar')
+      return
+    }
+
+    if (!confirm(`¿Estás seguro de eliminar ${selectedPayrolls.size} planilla(s)?`)) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      for (const id of Array.from(selectedPayrolls)) {
+        await fetch(`/api/payrolls/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }
+      setSelectedPayrolls(new Set())
+      fetchPayrolls()
+      alert('Planillas eliminadas exitosamente')
+    } catch (err) {
+      console.error('Error deleting payrolls:', err)
+      alert('Error al eliminar planillas')
+    }
+  }
+
+  const togglePayrollSelection = (id: string) => {
+    setSelectedPayrolls(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const toggleAllPayrolls = () => {
+    if (selectedPayrolls.size === payrolls.length) {
+      setSelectedPayrolls(new Set())
+    } else {
+      setSelectedPayrolls(new Set(payrolls.map(p => p.id)))
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta planilla?')) return
 
@@ -663,6 +711,12 @@ const handleDownloadTemplate = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {activeTab === 'payrolls' && selectedPayrolls.size > 0 && (
+            <Button variant="outline" onClick={handleBulkDelete} className="border-red-200 hover:bg-red-50 text-red-700 font-bold">
+              <Trash2 className="w-4 h-4 mr-2" />
+              ELIMINAR ({selectedPayrolls.size})
+            </Button>
+          )}
           <Button variant="outline" onClick={handleDownloadTemplate} className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
             <Download className="w-4 h-4 mr-2" />
             PLANTILLA
@@ -839,6 +893,13 @@ const handleDownloadTemplate = () => {
               
               <div className="flex flex-col h-full">
                 <div className="flex items-start justify-between mb-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedPayrolls.has(payroll.id)}
+                    onChange={() => togglePayrollSelection(payroll.id)}
+                    className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
                   <div className="flex-1">
                     <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight mb-1 truncate">
                       {payroll.name || 'Planilla General'}
