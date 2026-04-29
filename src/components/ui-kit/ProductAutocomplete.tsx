@@ -69,7 +69,9 @@ export function ProductAutocomplete({
   }, [])
 
   const safeProducts = Array.isArray(products) ? products : []
-  const filtered = safeProducts.filter((p) =>
+  // Sort products alphabetically by name
+  const sortedProducts = [...safeProducts].sort((a, b) => a.name.localeCompare(b.name))
+  const filtered = sortedProducts.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.sku.toLowerCase().includes(search.toLowerCase())
   )

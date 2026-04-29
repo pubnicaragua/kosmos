@@ -12,8 +12,8 @@ interface QuoteItem {
   productId: string
   description: string
   quantity: number
-  unitPrice: number
-  discount: number
+  unitPrice: number | string
+  discount: number | string
   tax: number
   total: number
 }
@@ -51,8 +51,10 @@ export default function EditarCotizacionPage() {
   const [quoteNumber, setQuoteNumber] = useState('')
 
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
-    const subtotalValue = item.quantity * item.unitPrice
-    const discountAmount = subtotalValue * (item.discount / 100)
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+    const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
+    const subtotalValue = item.quantity * unitPrice
+    const discountAmount = subtotalValue * (discount / 100)
     const taxableValue = subtotalValue - discountAmount
     const taxAmount = applyTax ? taxableValue * (item.tax / 100) : 0
     return taxableValue + taxAmount
@@ -166,10 +168,17 @@ export default function EditarCotizacionPage() {
     if (items.length > 1) setItems(items.filter((_, i) => i !== index))
   }
 
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const subtotal = items.reduce((sum, item) => {
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+    return sum + item.quantity * unitPrice
+  }, 0)
   const totalDiscount =
     subtotal * (globalDiscount / 100) +
-    items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (item.discount / 100), 0)
+    items.reduce((sum, item) => {
+      const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+      const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
+      return sum + item.quantity * unitPrice * (discount / 100)
+    }, 0)
   const taxableAmount = subtotal - totalDiscount
   const totalTax = taxApplies ? taxableAmount * 0.15 : 0
   const total = taxableAmount + totalTax

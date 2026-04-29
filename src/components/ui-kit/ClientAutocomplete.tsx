@@ -16,6 +16,7 @@ interface ClientAutocompleteProps {
   onSelect?: (client: ClientOption) => void
   placeholder?: string
   className?: string
+  disabled?: boolean
 }
 
 export function ClientAutocomplete({
@@ -25,6 +26,7 @@ export function ClientAutocomplete({
   onSelect,
   placeholder = 'Buscar cliente...',
   className = '',
+  disabled = false,
 }: ClientAutocompleteProps) {
   const [clients, setClients] = useState<ClientOption[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -32,8 +34,18 @@ export function ClientAutocomplete({
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setSearch(value)
-  }, [value])
+    // If value looks like an ID (cuid format), find the client name
+    if (value && clients.length > 0) {
+      const client = clients.find(c => c.id === value)
+      if (client) {
+        setSearch(client.name)
+      } else {
+        setSearch(value)
+      }
+    } else {
+      setSearch(value)
+    }
+  }, [value, clients])
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -67,7 +79,9 @@ export function ClientAutocomplete({
   }, [])
 
   const safeClients = Array.isArray(clients) ? clients : []
-  const filtered = safeClients.filter((c) =>
+  // Sort clients alphabetically by name
+  const sortedClients = [...safeClients].sort((a, b) => a.name.localeCompare(b.name))
+  const filtered = sortedClients.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
     (c.contactName || '').toLowerCase().includes(search.toLowerCase())
@@ -92,7 +106,8 @@ export function ClientAutocomplete({
         }}
         onFocus={() => setIsOpen(true)}
         placeholder={placeholder}
-        className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        disabled={disabled}
+        className={`w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
       />
       {isOpen && filtered.length > 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">

@@ -9,6 +9,7 @@ import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
 import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
+import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
 
@@ -59,6 +60,8 @@ interface TicketFormData {
   evidence: File[]
   existingAttachments: string[]
   existingEvidence: string[]
+  isInternal: boolean
+  hasCharge: boolean
   // Información técnica
   equipmentType: string
   equipmentBrand: string
@@ -204,6 +207,8 @@ export default function TicketsSoportePage() {
     evidence: [],
     existingAttachments: [],
     existingEvidence: [],
+    isInternal: false,
+    hasCharge: false,
     equipmentType: '',
     equipmentBrand: '',
     equipmentModel: '',
@@ -339,6 +344,8 @@ export default function TicketsSoportePage() {
       evidence: [],
       existingAttachments: [],
       existingEvidence: [],
+      isInternal: false,
+      hasCharge: false,
       equipmentType: '',
       equipmentBrand: '',
       equipmentModel: '',
@@ -388,6 +395,8 @@ export default function TicketsSoportePage() {
       evidence: [],
       existingAttachments: parsedAttachments,
       existingEvidence: parsedEvidence,
+      isInternal: (ticket as any).isInternal || false,
+      hasCharge: (ticket as any).hasCharge || false,
       equipmentType: (ticket as any).equipmentType || '',
       equipmentBrand: (ticket as any).equipmentBrand || '',
       equipmentModel: (ticket as any).equipmentModel || '',
@@ -469,7 +478,7 @@ export default function TicketsSoportePage() {
       const payload: any = {
         title: formData.title,
         description: formData.description || null,
-        clientId: formData.clientId || null,
+        clientId: formData.isInternal ? null : (formData.clientId || null),
         type: formData.type,
         status: formData.status,
         priority: formData.priority,
@@ -482,6 +491,8 @@ export default function TicketsSoportePage() {
         dueDate: formData.dueDate || null,
         attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
         evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
+        isInternal: formData.isInternal,
+        hasCharge: formData.hasCharge,
         equipmentType: formData.equipmentType || null,
         equipmentBrand: formData.equipmentBrand || null,
         equipmentModel: formData.equipmentModel || null,
@@ -1030,32 +1041,63 @@ export default function TicketsSoportePage() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             fullWidth
           />
-          <Select
-            label="Cliente"
-            options={[
-              { value: '', label: 'Sin cliente' },
-              ...clients.map((client) => ({ value: client.id, label: client.name })),
-            ]}
-            value={formData.clientId}
-            onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-            fullWidth
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Tipo de Solicitud"
-              options={[
-                { value: 'INSTALACION_CAMARAS', label: 'Instalación de Cámaras' },
-                { value: 'SOPORTE_REMOTO', label: 'Soporte Técnico Remoto' },
-                { value: 'SOPORTE_SITIO', label: 'Soporte Técnico en Sitio' },
-                { value: 'GARANTIA', label: 'Garantía' },
-                { value: 'MANTENIMIENTO_PREVENTIVO', label: 'Mantenimiento Preventivo' },
-                { value: 'CONFIGURACION_DVR_NVR', label: 'Configuración DVR/NVR' },
-                { value: 'COTIZACION_TECNICA', label: 'Cotización Técnica' },
-              ]}
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              fullWidth
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
+            <ClientAutocomplete
+              companyId={selectedCompany}
+              value={formData.clientId}
+              onChange={(value) => setFormData({ ...formData, clientId: value })}
+              placeholder="Buscar cliente..."
+              disabled={formData.isInternal}
             />
+          </div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.isInternal}
+                onChange={(e) => {
+                  setFormData({ ...formData, isInternal: e.target.checked, clientId: e.target.checked ? '' : formData.clientId })
+                }}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              Ticket Interno (sin cliente)
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasCharge}
+                onChange={(e) => setFormData({ ...formData, hasCharge: e.target.checked })}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              Tiene Cobro
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Solicitud</label>
+              <input
+                type="text"
+                list="ticket-types"
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                placeholder="Escriba o seleccione..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                required
+              />
+              <datalist id="ticket-types">
+                <option value="Instalación de Cámaras" />
+                <option value="Soporte Técnico Remoto" />
+                <option value="Soporte Técnico en Sitio" />
+                <option value="Garantía" />
+                <option value="Mantenimiento Preventivo" />
+                <option value="Configuración DVR/NVR" />
+                <option value="Cotización Técnica" />
+                <option value="Reemplazo de Equipo" />
+                <option value="Actualización de Software" />
+                <option value="Capacitación" />
+              </datalist>
+            </div>
             <Input
               label="Sucursal o Área"
               value={formData.branch}

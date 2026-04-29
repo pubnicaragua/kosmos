@@ -87,6 +87,8 @@ const MODULE_LABELS: Record<string, { label: string; icon: any }> = {
   marketing: { label: 'Marketing', icon: Megaphone },
   entregables: { label: 'Entregables', icon: FolderOpen },
   'solicitudes-compra': { label: 'Solicitudes de Compra', icon: ShoppingCart },
+  cotizaciones: { label: 'Cotizaciones', icon: FileText },
+  notificaciones: { label: 'Notificaciones', icon: Info },
   sistema: { label: 'Sistema', icon: Settings },
 }
 
@@ -97,7 +99,7 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   USER: 'bg-gray-100 text-gray-600',
 }
 
-const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','solicitudes-compra','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
+const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','solicitudes-compra','cotizaciones','notificaciones','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
 
 const FALLBACK_PREDEFINED_ROLES: PredefinedRole[] = [
   { name: 'Vendedor', description: 'Acceso a clientes, pipeline y cotizaciones', color: '#10b981', modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
@@ -617,6 +619,27 @@ export default function AjustesPage() {
     } catch (err) { console.error(err) }
   }
 
+  const handleChangeBaseRole = async (userId: string, newRole: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch(`/api/companies/${rolesCompanyId}/users/role`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role: newRole }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        await fetchRolesData(rolesCompanyId)
+      } else {
+        alert(data.error || 'Error al cambiar rol')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error al cambiar rol')
+    }
+  }
+
   const getRoleBadge = (role: string) => {
     const map: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
       SUPER_ADMIN: 'error',
@@ -1070,11 +1093,22 @@ export default function AjustesPage() {
                         {canManageRoles && (
                           <div className="flex flex-col gap-1 flex-shrink-0">
                             <select
+                              value={m.role}
+                              onChange={(e) => handleChangeBaseRole(m.userId, e.target.value)}
+                              className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30 font-semibold"
+                              title="Rol base del usuario"
+                            >
+                              <option value="USER">USER</option>
+                              <option value="ADMIN">ADMIN</option>
+                              <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                            </select>
+                            <select
                               value={m.customRoleId || ''}
                               onChange={(e) => handleAssignRole(m.userId, e.target.value)}
                               className="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              title="Rol personalizado"
                             >
-                              <option value="">Sin rol</option>
+                              <option value="">Sin rol personalizado</option>
                               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
                             <button

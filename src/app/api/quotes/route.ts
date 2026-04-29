@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
     const quotes = await prisma.quote.findMany({
       where,
       include: {
-        client: { select: { name: true, email: true, phone: true } },
+        client: { select: { id: true, name: true, email: true, phone: true } },
+        company: { select: { id: true, name: true } },
+        // createdByUser: { select: { name: true } }, // TODO: Add after migration
         items: { include: { product: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },

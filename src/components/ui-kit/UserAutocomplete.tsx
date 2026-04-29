@@ -69,7 +69,9 @@ export function UserAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filteredUsers = users.filter((u) =>
+  // Sort users alphabetically by name
+  const sortedUsers = [...users].sort((a, b) => a.user.name.localeCompare(b.user.name))
+  const filteredUsers = sortedUsers.filter((u) =>
     u.user.name.toLowerCase().includes(search.toLowerCase()) ||
     u.user.email.toLowerCase().includes(search.toLowerCase())
   )

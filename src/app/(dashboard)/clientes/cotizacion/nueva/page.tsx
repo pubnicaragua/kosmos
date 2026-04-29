@@ -9,8 +9,8 @@ interface QuoteItem {
   productId: string
   description: string
   quantity: number
-  unitPrice: number
-  discount: number
+  unitPrice: number | string
+  discount: number | string
   tax: number
   total: number
 }
@@ -53,12 +53,12 @@ export default function NuevaCotizacionPage() {
   const [internalNotes, setInternalNotes] = useState('')
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<QuoteItem[]>([
-    { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }
+    { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, tax: 15, total: 0 }]
+    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }]
     return items
   }, [items])
 
@@ -67,8 +67,10 @@ export default function NuevaCotizacionPage() {
   const [globalDiscount, setGlobalDiscount] = useState(0)
 
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
-    const subtotalValue = item.quantity * item.unitPrice
-    const discountAmount = subtotalValue * (item.discount / 100)
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+    const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
+    const subtotalValue = item.quantity * unitPrice
+    const discountAmount = subtotalValue * (discount / 100)
     const taxableValue = subtotalValue - discountAmount
     const taxAmount = applyTax ? taxableValue * (item.tax / 100) : 0
     return taxableValue + taxAmount
@@ -192,13 +194,14 @@ useEffect(() => {
   }, [taxApplies])
 
   const addItem = () => {
+    const newTempId = itemsArray.length > 0 ? Math.max(...itemsArray.map(i => i.tempId)) + 1 : 1
     setItems([...itemsArray, {
-      tempId: Date.now(),
+      tempId: newTempId,
       productId: '',
       description: '',
       quantity: 1,
-      unitPrice: 0,
-      discount: 0,
+      unitPrice: '',
+      discount: '',
       tax: 15,
       total: 0
     }])
@@ -229,10 +232,15 @@ useEffect(() => {
     }
   }
 
-  const subtotal = itemsArray.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0)
+  const subtotal = itemsArray.reduce((sum: number, item: any) => {
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+    return sum + (item.quantity * unitPrice)
+  }, 0)
   const totalDiscount = (subtotal * (globalDiscount / 100)) + itemsArray.reduce((sum: number, item: any) => {
-    const itemSubtotal = item.quantity * item.unitPrice
-    return sum + (itemSubtotal * (item.discount / 100))
+    const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
+    const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
+    const itemSubtotal = item.quantity * unitPrice
+    return sum + (itemSubtotal * (discount / 100))
   }, 0)
   const taxableAmount = subtotal - totalDiscount
   // Solo aplicar IVA si taxApplies es true
@@ -270,8 +278,8 @@ useEffect(() => {
             productId: item.productId || undefined,
             description: item.description,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discount: item.discount,
+            unitPrice: typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice,
+            discount: typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount,
             tax: item.tax,
           })),
         }),

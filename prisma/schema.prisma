@@ -21,6 +21,7 @@ model User {
   ticketMembers  TicketMember[]
   userCompanies  UserCompany[]
   templates      Template[]
+  quotesCreated  Quote[]          @relation("QuoteCreatedBy")
 
   @@map("users")
 }
@@ -279,6 +280,7 @@ model Quote {
   items            QuoteItem[]
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser    User          @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
 
   @@index([companyId])
   @@index([clientId])
@@ -360,6 +362,8 @@ model Ticket {
   assignedTo    String?   @map("assigned_to")
   assignedUsers String?   @map("assigned_users") // JSON array de IDs de usuarios asignados
   branch        String? // Sucursal o área
+  isInternal    Boolean   @default(false) @map("is_internal") // Ticket interno (sin cliente)
+  hasCharge     Boolean   @default(false) @map("has_charge") // Indica si tiene cobro
   amount        Float?
   currency      String    @default("USD") // USD o NIO (C$)
   startDate     DateTime? @map("start_date")

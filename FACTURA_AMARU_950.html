@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factura - Amaru</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2563eb;
+        }
+        .company-info h1 {
+            color: #1e40af;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .company-info p {
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .invoice-info {
+            text-align: right;
+        }
+        .invoice-info h2 {
+            color: #1e293b;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .invoice-info p {
+            color: #475569;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .invoice-number {
+            background: #dbeafe;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .invoice-number span {
+            color: #1e40af;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .client-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        .client-info h3 {
+            color: #334155;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .client-info p {
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .items-table th {
+            background: #1e40af;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .items-table th:last-child {
+            text-align: right;
+        }
+        .items-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #334155;
+        }
+        .items-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+        }
+        .items-table tr:hover {
+            background: #f8fafc;
+        }
+        .total-section {
+            background: #f1f5f9;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #475569;
+        }
+        .total-row.final {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #cbd5e1;
+        }
+        .notes-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 4px;
+        }
+        .notes-section h3 {
+            color: #92400e;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .notes-section p {
+            color: #78350f;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-info">
+                <h1>KOSMOS CRM</h1>
+                <p>Sistema Operativo Multi-Compañía</p>
+                <p>Desarrollo de Software y Consultoría</p>
+                <p>Email: gerencia@softwarenicaragua.com</p>
+            </div>
+            <div class="invoice-info">
+                <div class="invoice-number">
+                    <span>FACTURA #AM-2024-004</span>
+                </div>
+                <p><strong>Fecha:</strong> 20 de Abril de 2026</p>
+                <p><strong>Vencimiento:</strong> 29 de Abril de 2026</p>
+            </div>
+        </div>
+
+        <div class="client-info">
+            <div>
+                <h3>CLIENTE</h3>
+                <p><strong>AMARU MOJICA</strong></p>
+            </div>
+            <div style="text-align: right;">
+                <h3>MÉTODO DE PAGO</h3>
+                <p>Transferencia Bancaria</p>
+                <p>Moneda: USD</p>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th style="text-align: right;">Monto</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong>Fase 4 - Pendientes de Desarrollo</strong><br>
+                        <span style="color: #64748b; font-size: 12px;">Completación de funcionalidades pendientes de la Fase 4 del proyecto CRM</span>
+                    </td>
+                    <td>$700.00</td>
+                </tr>
+                <tr>
+                    <td>
+                        <strong>Módulo de Solicitudes de Compras y Departamentos</strong><br>
+                        <span style="color: #64748b; font-size: 12px;">Desarrollo completo del módulo de solicitudes de compra con integración de departamentos dinámicos, notificaciones, KPIs y mejoras de UX</span>
+                    </td>
+                    <td>$250.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>$950.00</span>
+            </div>
+            <div class="total-row final">
+                <span>TOTAL A PAGAR:</span>
+                <span>$950.00 USD</span>
+            </div>
+        </div>
+
+        <div class="notes-section">
+            <h3>📋 NOTAS IMPORTANTES</h3>
+            <p>• Este monto corresponde al saldo pendiente de la Fase 4 ($700) más el desarrollo del módulo de Solicitudes de Compras y Departamentos ($250).</p>
+            <p>• El módulo de Solicitudes de Compras incluye: integración con departamentos dinámicos, sistema de notificaciones a aprobadores, formato de impresión profesional, KPIs completos, vista kanban optimizada y mejoras de UX.</p>
+            <p>• Todos los desarrollos han sido completados y están listos para producción.</p>
+            <p>• El sistema está 100% funcional y probado.</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>KOSMOS CRM</strong> - Sistema Operativo Multi-Compañía</p>
+            <p>Gracias por su confianza y preferencia.</p>
+            <p>Para cualquier consulta, contacte a: gerencia@softwarenicaragua.com</p>
+        </div>
+    </div>
+</body>
+</html>

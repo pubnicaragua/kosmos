@@ -20,11 +20,23 @@ export async function GET(req: Request) {
       where: { companyId },
       include: {
         items: true,
+        department: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json({ success: true, data: requests })
+    // Map to include department name as requestingArea for display
+    const mappedRequests = requests.map(req => ({
+      ...req,
+      requestingArea: req.department?.name || req.requestingArea || 'Sin departamento'
+    }))
+
+    return NextResponse.json({ success: true, data: mappedRequests })
   } catch (error) {
     console.error('Error fetching purchase requests:', error)
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })

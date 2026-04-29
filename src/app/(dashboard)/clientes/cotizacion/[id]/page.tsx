@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
 import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
@@ -137,35 +138,105 @@ export default function DetalleCotizacionPage() {
       return
     }
 
+    // Generate PDF with jsPDF
+    const doc = new jsPDF()
     const sym = quote.currency === 'NIO' ? 'C$' : '$'
-    const itemsText = quote.items.map((it, i) =>
-      `  ${i + 1}. ${it.description} — Cant: ${it.quantity} × ${sym}${it.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })} = ${sym}${it.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-    ).join('\n')
-
-    const subject = `Proforma ${quote.quoteNumber} - ${companyDetails?.name || quote.company?.name || ''}`
+    const companyName = companyDetails?.name || quote.company?.name || ''
+    
+    let y = 20
+    
+    // Header
+    doc.setFontSize(20)
+    doc.text(companyName, 20, y)
+    y += 10
+    doc.setFontSize(16)
+    doc.text(`PROFORMA ${quote.quoteNumber}`, 20, y)
+    y += 15
+    
+    // Client info
+    doc.setFontSize(12)
+    doc.text(`Cliente: ${quote.client.name}`, 20, y)
+    y += 7
+    doc.text(`Email: ${quote.client.email}`, 20, y)
+    y += 7
+    doc.text(`Fecha: ${new Date(quote.createdAt).toLocaleDateString('es-NI')}`, 20, y)
+    y += 7
+    doc.text(`Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`, 20, y)
+    y += 15
+    
+    // Items table
+    doc.setFontSize(10)
+    doc.text('Descripción', 20, y)
+    doc.text('Cant.', 100, y)
+    doc.text('Precio', 130, y)
+    doc.text('Total', 170, y)
+    y += 5
+    doc.line(20, y, 190, y)
+    y += 8
+    
+    quote.items.forEach((item) => {
+      const desc = item.description.substring(0, 40)
+      doc.text(desc, 20, y)
+      doc.text(String(item.quantity), 100, y)
+      doc.text(`${sym}${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      doc.text(`${sym}${item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 170, y)
+      y += 7
+    })
+    
+    y += 5
+    doc.line(20, y, 190, y)
+    y += 10
+    
+    // Totals
+    doc.text(`Subtotal: ${sym}${quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+    y += 7
+    if (quote.discount > 0) {
+      doc.text(`Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      y += 7
+    }
+    if (quote.taxApplies) {
+      doc.text(`IVA (15%): ${sym}${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      y += 7
+    }
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+    y += 15
+    
+    // Notes
+    if (quote.notes) {
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Notas: ${quote.notes}`, 20, y)
+    }
+    
+    // Download PDF
+    const pdfFileName = `Proforma_${quote.quoteNumber}.pdf`
+    doc.save(pdfFileName)
+    
+    // Open email client
+    const subject = `Proforma ${quote.quoteNumber} - ${companyName}`
     const body = [
       `Estimado/a ${quote.client.contactName || quote.client.name},`,
       '',
-      `Adjunto encontrará la proforma No. ${quote.quoteNumber} con el siguiente detalle:`,
+      `Adjunto encontrará la proforma No. ${quote.quoteNumber}.`,
       '',
-      itemsText,
+      `El archivo PDF ha sido descargado automáticamente. Por favor adjúntelo a este correo.`,
       '',
-      quote.discount > 0 ? `Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
-      quote.taxApplies ? `IVA (15%): ${sym}${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
       `TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
       '',
       `Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`,
-      `Forma de pago: ${quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}`,
-      '',
-      quote.notes ? `Notas: ${quote.notes}` : '',
       '',
       'Quedamos atentos a sus comentarios.',
       '',
       `Atentamente,`,
-      companyDetails?.name || '',
+      companyName,
     ].filter(l => l !== null && l !== undefined).join('\n')
 
-    window.open(`mailto:${quote.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
+    setTimeout(() => {
+      window.open(`mailto:${quote.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
+    }, 500)
+    
     setIsSendModalOpen(false)
   }
 
