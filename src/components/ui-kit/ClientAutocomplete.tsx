@@ -49,11 +49,14 @@ export function ClientAutocomplete({
 
   useEffect(() => {
     const fetchClients = async () => {
-      if (!companyId || companyId === 'all') return
+      if (!companyId) return
       const token = localStorage.getItem('accessToken')
       if (!token) return
       try {
-        const res = await fetch(`/api/clients?companyId=${companyId}&limit=200`, {
+        const params = new URLSearchParams()
+        if (companyId !== 'all') params.append('companyId', companyId)
+        params.append('limit', '200')
+        const res = await fetch(`/api/clients?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()
