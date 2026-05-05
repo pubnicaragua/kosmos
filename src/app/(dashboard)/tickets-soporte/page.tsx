@@ -1244,27 +1244,22 @@ export default function TicketsSoportePage() {
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Solicitud</label>
-              <input
-                type="text"
-                list="ticket-types"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                placeholder="Escriba o seleccione..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                required
-              />
-              <datalist id="ticket-types">
-                <option value="INSTALACION_CAMARAS" />
-                <option value="SOPORTE_REMOTO" />
-                <option value="SOPORTE_SITIO" />
-                <option value="GARANTIA" />
-                <option value="MANTENIMIENTO_PREVENTIVO" />
-                <option value="CONFIGURACION_DVR_NVR" />
-                <option value="COTIZACION_TECNICA" />
-              </datalist>
-            </div>
+            <Select
+              label="Tipo de Solicitud"
+              options={[
+                { value: 'INSTALACION_CAMARAS', label: 'Instalación de Cámaras' },
+                { value: 'SOPORTE_REMOTO', label: 'Soporte Técnico Remoto' },
+                { value: 'SOPORTE_SITIO', label: 'Soporte Técnico en Sitio' },
+                { value: 'GARANTIA', label: 'Garantía' },
+                { value: 'MANTENIMIENTO_PREVENTIVO', label: 'Mantenimiento Preventivo' },
+                { value: 'CONFIGURACION_DVR_NVR', label: 'Configuración DVR/NVR' },
+                { value: 'COTIZACION_TECNICA', label: 'Cotización Técnica' },
+              ]}
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              required
+              fullWidth
+            />
             <Input
               label="Sucursal o Área"
               value={formData.branch}

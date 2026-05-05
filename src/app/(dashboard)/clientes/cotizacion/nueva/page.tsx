@@ -130,9 +130,6 @@ useEffect(() => {
         const data = await response.json()
         if (data.success && Array.isArray(data.data)) {
           setClients(data.data)
-          if (data.data.length > 0 && !selectedClient) {
-            setSelectedClient(data.data[0].id)
-          }
         } else {
           setClients([])
         }
