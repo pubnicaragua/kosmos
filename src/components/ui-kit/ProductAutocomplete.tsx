@@ -78,7 +78,7 @@ export function ProductAutocomplete({
 
   const handleSelect = (product: ProductOption) => {
     setSearch(product.name)
-    onChange(product.id)
+    onChange(product.name)
     if (onSelect) onSelect(product)
     setIsOpen(false)
   }

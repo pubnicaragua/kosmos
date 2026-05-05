@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, FormEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -107,6 +107,11 @@ export default function TicketsSoportePage() {
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null)
   const [editingColumnValue, setEditingColumnValue] = useState('')
   const [isAddingColumn, setIsAddingColumn] = useState(false)
+  const [quickAddColumnId, setQuickAddColumnId] = useState<string | null>(null)
+  const [quickAddTitle, setQuickAddTitle] = useState('')
+  const [quickAddClientId, setQuickAddClientId] = useState('')
+  const [quickAddSaving, setQuickAddSaving] = useState(false)
+  const quickAddInputRef = useRef<HTMLInputElement>(null)
 
   const fetchStages = useCallback(async () => {
     if (selectedCompany === 'all') {
@@ -361,6 +366,63 @@ export default function TicketsSoportePage() {
   const openCreateModal = () => {
     resetForm()
     setIsModalOpen(true)
+  }
+
+  const openQuickAdd = (columnId: string) => {
+    setQuickAddColumnId(columnId)
+    setQuickAddTitle('')
+    setQuickAddClientId('')
+    setTimeout(() => quickAddInputRef.current?.focus(), 0)
+  }
+
+  const handleQuickAddSubmit = async (status: string) => {
+    if (!quickAddTitle.trim()) return
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+    const fallbackCompanyId = activeCompany?.id || companies[0]?.id
+    const targetCompanyId = selectedCompany !== 'all' ? selectedCompany : fallbackCompanyId
+    if (!targetCompanyId) {
+      alert('Selecciona una empresa para crear el ticket')
+      return
+    }
+
+    try {
+      setQuickAddSaving(true)
+      const payload = {
+        companyId: targetCompanyId,
+        title: quickAddTitle.trim(),
+        clientId: quickAddClientId || null,
+        type: 'SOPORTE_REMOTO',
+        status,
+        priority: 'MEDIA',
+        isInternal: false,
+        hasCharge: false,
+      }
+      const response = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setQuickAddTitle('')
+        setQuickAddClientId('')
+        setQuickAddColumnId(null)
+        fetchData()
+      } else {
+        alert(data.error || 'Error al crear ticket')
+      }
+    } catch (error) {
+      console.error('Error quick add ticket:', error)
+      alert('Error al crear ticket')
+    } finally {
+      setQuickAddSaving(false)
+    }
   }
 
   const openEditModal = (ticket: Ticket) => {
@@ -994,14 +1056,7 @@ export default function TicketsSoportePage() {
                 <div className="flex items-center justify-between">
                   <div className="text-xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
                   <button
-                    onClick={() => {
-                      setFormData({
-                        ...formData,
-                        status: column.id as any,
-                      })
-                      setIsModalOpen(true)
-                      setEditingTicketId(null)
-                    }}
+                    onClick={() => openQuickAdd(column.id)}
                     className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
                     title="Crear ticket aquí"
                   >
@@ -1015,6 +1070,50 @@ export default function TicketsSoportePage() {
               <div className={`p-3 space-y-4 min-h-[400px] max-h-[calc(100vh-450px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 transition-colors duration-300 ${
                 isDropTarget ? 'bg-primary/5' : ''
               }`}>
+                {quickAddColumnId === column.id && (
+                  <div className="bg-white border border-primary/30 rounded-xl p-3 shadow-sm">
+                    <input
+                      ref={quickAddInputRef}
+                      value={quickAddTitle}
+                      onChange={(e) => setQuickAddTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleQuickAddSubmit(column.id)
+                        if (e.key === 'Escape') setQuickAddColumnId(null)
+                      }}
+                      placeholder="Título del ticket..."
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <div className="mt-2">
+                      <ClientAutocomplete
+                        companyId={selectedCompany}
+                        value={quickAddClientId}
+                        onChange={(value) => setQuickAddClientId(value)}
+                        placeholder="Cliente (opcional)"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span className="text-[10px] text-gray-400">Enter = guardar • Esc = cancelar</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddColumnId(null)}
+                          className="text-xs font-bold text-gray-500 hover:text-gray-700"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAddSubmit(column.id)}
+                          className="text-xs font-bold text-primary hover:text-primary-dark"
+                          disabled={quickAddSaving}
+                        >
+                          {quickAddSaving ? 'Guardando...' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {columnTickets.length === 0 && !isDragTarget ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
                     <svg className="w-10 h-10 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1244,22 +1343,27 @@ export default function TicketsSoportePage() {
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Tipo de Solicitud"
-              options={[
-                { value: 'INSTALACION_CAMARAS', label: 'Instalación de Cámaras' },
-                { value: 'SOPORTE_REMOTO', label: 'Soporte Técnico Remoto' },
-                { value: 'SOPORTE_SITIO', label: 'Soporte Técnico en Sitio' },
-                { value: 'GARANTIA', label: 'Garantía' },
-                { value: 'MANTENIMIENTO_PREVENTIVO', label: 'Mantenimiento Preventivo' },
-                { value: 'CONFIGURACION_DVR_NVR', label: 'Configuración DVR/NVR' },
-                { value: 'COTIZACION_TECNICA', label: 'Cotización Técnica' },
-              ]}
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              required
-              fullWidth
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Solicitud</label>
+              <input
+                type="text"
+                list="ticket-types"
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                placeholder="Escriba o seleccione..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                required
+              />
+              <datalist id="ticket-types">
+                <option value="INSTALACION_CAMARAS" />
+                <option value="SOPORTE_REMOTO" />
+                <option value="SOPORTE_SITIO" />
+                <option value="GARANTIA" />
+                <option value="MANTENIMIENTO_PREVENTIVO" />
+                <option value="CONFIGURACION_DVR_NVR" />
+                <option value="COTIZACION_TECNICA" />
+              </datalist>
+            </div>
             <Input
               label="Sucursal o Área"
               value={formData.branch}
@@ -1288,8 +1392,16 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
+          <UserAutocomplete
+            label="Usuario Asignado (puede escribir cualquiera)"
+            companyId={selectedCompany !== 'all' ? selectedCompany : (companies[0]?.id || '')}
+            value={formData.assignedTo}
+            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
+            placeholder="Buscar o escribir nombre"
+            fullWidth
+          />
           <MultiUserSelector
-            label="Usuarios Asignados"
+            label="Usuarios Asignados (opcional)"
             companyId={selectedCompany !== 'all' ? selectedCompany : (companies[0]?.id || '')}
             selectedUserIds={formData.assignedUsers}
             onChange={(ids) => setFormData({ ...formData, assignedUsers: ids })}
@@ -1437,8 +1549,26 @@ export default function TicketsSoportePage() {
                 className="block w-full text-[11px] text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
               />
               {formData.attachments.length > 0 && (
-                <div className="mt-2 text-[10px] text-primary font-bold">
-                  +{formData.attachments.length} archivo(s) nuevo(s) por subir
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.attachments.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="group relative">
+                      <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700">
+                        {file.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({
+                          ...formData,
+                          attachments: formData.attachments.filter((_, i) => i !== idx)
+                        })}
+                        className="absolute -top-1 -right-1 bg-error text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1480,8 +1610,26 @@ export default function TicketsSoportePage() {
                 className="block w-full text-[11px] text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
               />
               {formData.evidence.length > 0 && (
-                <div className="mt-2 text-[10px] text-primary font-bold">
-                  +{formData.evidence.length} evidencia(s) nueva(s) por subir
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {formData.evidence.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="group relative">
+                      <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700">
+                        {file.name}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({
+                          ...formData,
+                          evidence: formData.evidence.filter((_, i) => i !== idx)
+                        })}
+                        className="absolute -top-1 -right-1 bg-error text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

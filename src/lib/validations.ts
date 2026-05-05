@@ -196,15 +196,7 @@ export const ticketSchema = z.object({
   title: z.string().min(1, 'Título requerido'),
   description: z.string().optional(),
   clientId: z.string().optional(),
-  type: z.enum([
-    'INSTALACION_CAMARAS',
-    'SOPORTE_REMOTO',
-    'SOPORTE_SITIO',
-    'GARANTIA',
-    'MANTENIMIENTO_PREVENTIVO',
-    'CONFIGURACION_DVR_NVR',
-    'COTIZACION_TECNICA'
-  ]).optional(),
+  type: z.string().max(120, 'Tipo de solicitud muy largo').optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
   assignedTo: z.string().optional(),

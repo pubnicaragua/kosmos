@@ -5,8 +5,8 @@
  */
 
 const API_URL = process.env.API_URL || 'http://localhost:3000'
-const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@test.com'
-const TEST_PASSWORD = process.env.TEST_PASSWORD || 'test123'
+const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@kosmoscrm.com'
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'admin123'
 
 let token = ''
 let companyId = ''
