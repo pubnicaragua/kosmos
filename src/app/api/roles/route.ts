@@ -7,6 +7,7 @@ import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 const MODULES = [
   'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
   'pipeline-ventas', 'documentos', 'contratos', 'inventario',
+  'solicitudes-compra', 'cotizaciones', 'notificaciones',
   'tickets-soporte', 'marketing', 'entregables', 'recursos-humanos', 'sistema',
 ]
 

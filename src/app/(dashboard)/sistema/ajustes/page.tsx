@@ -652,7 +652,7 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
-  const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.find((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
+  const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.some((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
 
   if (isLoading) {
     return (

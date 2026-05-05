@@ -209,6 +209,16 @@ useEffect(() => {
 
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
     const updated = [...itemsArray]
+    
+    // Validate stock when updating quantity
+    if (field === 'quantity' && updated[index].productId) {
+      const product = safeProducts.find((p: any) => p.id === updated[index].productId)
+      if (product && product.stock !== undefined && product.stock < value) {
+        alert(`Stock insuficiente. Disponible: ${product.stock}`)
+        return
+      }
+    }
+    
     updated[index] = { ...updated[index], [field]: value }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
@@ -216,14 +226,16 @@ useEffect(() => {
 
   const selectProduct = (index: number, product: any) => {
     if (!product) return
-    updateItem(index, 'productId', product.id)
-    updateItem(index, 'description', product.name)
-    updateItem(index, 'unitPrice', product.price || 0)
-    // Show stock info if available
-    if (product.stock !== undefined) {
-      const stockInfo = product.stock > 0 ? ` (Stock: ${product.stock})` : ' (Sin stock)'
-      updateItem(index, 'description', product.name + stockInfo)
+    const updated = [...itemsArray]
+    const stockInfo = product.stock !== undefined ? (product.stock > 0 ? ` (Stock: ${product.stock})` : ' (Sin stock)') : ''
+    updated[index] = {
+      ...updated[index],
+      productId: product.id,
+      description: product.name + stockInfo,
+      unitPrice: product.price || 0,
     }
+    updated[index].total = recalculateItemTotal(updated[index], taxApplies)
+    setItems(updated)
   }
 
   const deleteItem = (index: number) => {

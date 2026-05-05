@@ -29,6 +29,7 @@ interface Ticket {
   client: { id: string; name: string } | null
   assignedTo: string | null
   assignedUsers: string | null
+  hasCharge?: boolean
 }
 
 interface Company {
@@ -99,6 +100,7 @@ export default function TicketsSoportePage() {
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [searchPreviewTicket, setSearchPreviewTicket] = useState<Ticket | null>(null)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [columns, setColumns] = useState(DEFAULT_COLUMNS)
@@ -692,6 +694,64 @@ export default function TicketsSoportePage() {
           <p className="text-sm text-gray-500 mt-1">Gestión visual de oportunidades activas y priorización de cierre.</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Search with preview */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Buscar tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-64 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
+            />
+            {searchTerm && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                {tickets.filter(t => 
+                  t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  t.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
+                ).slice(0, 5).map(ticket => (
+                  <div
+                    key={ticket.id}
+                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    onMouseEnter={() => setSearchPreviewTicket(ticket)}
+                    onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
+                  >
+                    <div className="font-medium text-sm text-gray-900">{ticket.title}</div>
+                    <div className="text-xs text-gray-500">{ticket.client?.name || 'Sin cliente'}</div>
+                  </div>
+                ))}
+                {tickets.filter(t => 
+                  t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  t.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
+                ).length === 0 && (
+                  <div className="p-3 text-sm text-gray-500">No se encontraron resultados</div>
+                )}
+              </div>
+            )}
+            {/* Preview modal */}
+            {searchPreviewTicket && (
+              <div className="absolute top-full left-0 mt-2 ml-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50 w-80 p-4">
+                <h4 className="font-bold text-sm mb-2">{searchPreviewTicket.title}</h4>
+                <p className="text-xs text-gray-600 mb-2 line-clamp-3">{searchPreviewTicket.description || 'Sin descripción'}</p>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="bg-gray-100 px-2 py-1 rounded">{searchPreviewTicket.status}</span>
+                  <span className="bg-gray-100 px-2 py-1 rounded">{searchPreviewTicket.priority}</span>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {searchPreviewTicket.client?.name || 'Sin cliente'}
+                </div>
+                <button
+                  onClick={() => setSearchPreviewTicket(null)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
           <Button variant="outline" onClick={handleExport} title="Reporte detallado de todas las incidencias">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -931,6 +991,28 @@ export default function TicketsSoportePage() {
                       <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2 leading-tight">{ticket.title}</h4>
                       <p className="text-[11px] text-gray-500 mb-2 truncate font-medium">{ticket.client?.name || 'Venta General'}</p>
                       
+                      {/* Image preview if attachments exist */}
+                      {ticket.attachments && (
+                        <div className="mb-2 relative rounded-lg overflow-hidden bg-gray-100 h-20">
+                          {(() => {
+                            try {
+                              const images = JSON.parse(ticket.attachments)
+                              if (Array.isArray(images) && images.length > 0) {
+                                const firstImage = images[0]
+                                return (
+                                  <img 
+                                    src={firstImage} 
+                                    alt="Attachment preview" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                )
+                              }
+                            } catch { /* ignore */ }
+                            return null
+                          })()}
+                        </div>
+                      )}
+                      
                       <div className="flex items-center gap-4 mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100">
                         {ticket.startDate && (
                           <div className="flex flex-col">
@@ -946,10 +1028,18 @@ export default function TicketsSoportePage() {
                         )}
                       </div>
                       <div className="flex justify-between items-end mt-4 pt-3 border-t border-slate-50">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase">Monto</span>
-                          <span className="text-sm font-bold text-gray-900">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount?.toLocaleString() || '0'}</span>
-                        </div>
+                        {ticket.hasCharge !== false && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase">Monto</span>
+                            <span className="text-sm font-bold text-gray-900">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount?.toLocaleString() || '0'}</span>
+                          </div>
+                        )}
+                        {ticket.hasCharge === false && (
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase">Cobro</span>
+                            <span className="text-sm font-bold text-gray-500">Sin cobro</span>
+                          </div>
+                        )}
                         <div className="flex items-center -space-x-2">
                            {/* Mostrar avatares de usuarios asignados */}
                            {(() => {
