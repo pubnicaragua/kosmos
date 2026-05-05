@@ -132,6 +132,7 @@ export default function TicketsSoportePage() {
   const [quickAddClientId, setQuickAddClientId] = useState('')
   const [quickAddSaving, setQuickAddSaving] = useState(false)
   const quickAddInputRef = useRef<HTMLInputElement>(null)
+  const [companyUsersById, setCompanyUsersById] = useState<Record<string, string>>({})
 
   const fetchStages = useCallback(async () => {
     if (selectedCompany === 'all') {
@@ -153,6 +154,33 @@ export default function TicketsSoportePage() {
       }
     } catch {
       setColumns(DEFAULT_COLUMNS)
+    }
+  }, [selectedCompany])
+
+  const fetchCompanyUsers = useCallback(async () => {
+    if (selectedCompany === 'all') {
+      setCompanyUsersById({})
+      return
+    }
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/companies/${selectedCompany}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        const map: Record<string, string> = {}
+        ;(data.data || []).forEach((member: any) => {
+          if (member?.userId && member?.user?.name) {
+            map[member.userId] = member.user.name
+          }
+        })
+        setCompanyUsersById(map)
+      }
+    } catch (error) {
+      console.error('Error fetching company users:', error)
     }
   }, [selectedCompany])
 
@@ -377,6 +405,10 @@ export default function TicketsSoportePage() {
   useEffect(() => {
     fetchClients()
   }, [fetchClients])
+
+  useEffect(() => {
+    fetchCompanyUsers()
+  }, [fetchCompanyUsers])
 
   const resetForm = () => {
     setFormData({
@@ -1272,33 +1304,38 @@ export default function TicketsSoportePage() {
                             <span className="text-sm font-bold text-gray-500">Sin cobro</span>
                           </div>
                         )}
-                        <div className="flex items-center -space-x-2">
-                           {/* Mostrar avatares de usuarios asignados */}
-                           {(() => {
-                             try {
-                               const userIds = ticket.assignedUsers ? JSON.parse(ticket.assignedUsers) : []
-                               if (Array.isArray(userIds) && userIds.length > 0) {
-                                 return userIds.slice(0, 3).map((id: string, idx: number) => (
-                                   <div 
-                                     key={id} 
-                                     className="w-7 h-7 rounded-full bg-primary text-white border-2 border-white flex items-center justify-center text-[10px] font-bold shadow-sm"
-                                     title={`ID: ${id}`}
-                                   >
-                                     U{idx + 1}
-                                   </div>
-                                 ))
-                               }
-                             } catch { /* ignore */ }
-                             
-                             if (ticket.assignedTo) {
-                               return (
-                                 <div className="w-7 h-7 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center text-[10px] font-bold text-primary ring-1 ring-primary/5" title={ticket.assignedTo}>
-                                   {ticket.assignedTo.charAt(0).toUpperCase()}
-                                 </div>
-                               )
-                             }
-                             return null
-                           })()}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {/* Mostrar usuarios asignados */}
+                          {(() => {
+                            let assignedNames: string[] = []
+                            try {
+                              const userIds = ticket.assignedUsers ? JSON.parse(ticket.assignedUsers) : []
+                              if (Array.isArray(userIds) && userIds.length > 0) {
+                                assignedNames = userIds
+                                  .map((id: string) => companyUsersById[id])
+                                  .filter(Boolean)
+                              }
+                            } catch { /* ignore */ }
+
+                            if (assignedNames.length === 0 && ticket.assignedTo) {
+                              assignedNames = ticket.assignedTo
+                                .split(',')
+                                .map((name) => name.trim())
+                                .filter(Boolean)
+                            }
+
+                            if (assignedNames.length === 0) return null
+
+                            return assignedNames.slice(0, 3).map((name) => (
+                              <span
+                                key={name}
+                                title={name}
+                                className="px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold uppercase tracking-wide max-w-[120px] truncate"
+                              >
+                                {name}
+                              </span>
+                            ))
+                          })()}
                         </div>
                       </div>
                     </div>

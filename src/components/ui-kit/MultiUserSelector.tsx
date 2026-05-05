@@ -107,7 +107,7 @@ export function MultiUserSelector({
       <div className="relative">
         <div 
           className="min-h-[42px] p-1.5 flex flex-wrap gap-2 bg-white border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent transition-all cursor-text shadow-sm"
-          onClick={() => setIsOpen(true)}
+          onClick={() => setIsOpen((prev) => !prev)}
         >
           {selectedUsers.map((u) => (
             <div 
@@ -136,6 +136,12 @@ export function MultiUserSelector({
             onChange={(e) => {
               setSearch(e.target.value)
               setIsOpen(true)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                setIsOpen(false)
+              }
             }}
             onFocus={() => setIsOpen(true)}
           />
@@ -181,20 +187,29 @@ export function MultiUserSelector({
                 })
               )}
             </div>
-            {selectedUserIds.length > 0 && (
-              <div className="p-2 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-between items-center">
-                <span className="text-[10px] font-bold text-gray-400 px-2 uppercase tracking-widest">
-                  {selectedUserIds.length} Asignados
-                </span>
-                <button 
+            <div className="p-2 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-between items-center">
+              <span className="text-[10px] font-bold text-gray-400 px-2 uppercase tracking-widest">
+                {selectedUserIds.length} Asignados
+              </span>
+              <div className="flex items-center gap-2">
+                {selectedUserIds.length > 0 && (
+                  <button 
+                    type="button"
+                    onClick={() => onChange([])}
+                    className="text-[10px] font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors uppercase tracking-widest"
+                  >
+                    Limpiar
+                  </button>
+                )}
+                <button
                   type="button"
-                  onClick={() => onChange([])}
-                  className="text-[10px] font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors uppercase tracking-widest"
+                  onClick={() => setIsOpen(false)}
+                  className="text-[10px] font-bold text-gray-600 hover:bg-gray-200/60 px-2 py-1 rounded transition-colors uppercase tracking-widest"
                 >
-                  Limpiar
+                  Listo
                 </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
