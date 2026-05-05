@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -84,6 +84,26 @@ const STAGE_COLORS = [
   'border-green-400', 'border-purple-400', 'border-pink-400', 
   'border-orange-400', 'border-teal-400', 'border-indigo-400'
 ]
+
+const IMAGE_PREVIEW_REGEX = /\.(png|jpe?g|gif|webp)(\?|#|$)/i
+
+const parseMediaList = (value?: string | null) => {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+const getTicketMediaUrls = (ticket: Ticket) => {
+  return [...parseMediaList(ticket.attachments), ...parseMediaList(ticket.evidence)]
+}
+
+const getTicketPreviewImage = (ticket: Ticket) => {
+  return getTicketMediaUrls(ticket).find((url) => IMAGE_PREVIEW_REGEX.test(url))
+}
 
 export default function TicketsSoportePage() {
   const router = useRouter()
@@ -225,6 +245,32 @@ export default function TicketsSoportePage() {
   })
 
   const [uploadedEvidenceUrls, setUploadedEvidenceUrls] = useState<string[]>([])
+
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+  const searchResults = useMemo(() => {
+    if (!normalizedSearchTerm) return []
+    return tickets
+      .filter(t =>
+        t.title.toLowerCase().includes(normalizedSearchTerm) ||
+        t.description?.toLowerCase().includes(normalizedSearchTerm) ||
+        t.client?.name.toLowerCase().includes(normalizedSearchTerm)
+      )
+      .slice(0, 8)
+  }, [normalizedSearchTerm, tickets])
+
+  useEffect(() => {
+    if (!normalizedSearchTerm) {
+      if (searchPreviewTicket) setSearchPreviewTicket(null)
+      return
+    }
+    if (searchResults.length === 0) {
+      if (searchPreviewTicket) setSearchPreviewTicket(null)
+      return
+    }
+    if (!searchPreviewTicket || !searchResults.some(t => t.id === searchPreviewTicket.id)) {
+      setSearchPreviewTicket(searchResults[0])
+    }
+  }, [normalizedSearchTerm, searchResults, searchPreviewTicket])
 
   const getPeriodRange = (period: string) => {
     const endDate = new Date()
@@ -765,113 +811,126 @@ export default function TicketsSoportePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-64 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
             />
-            {searchTerm && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                {tickets.filter(t => 
-                  t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  t.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
-                ).slice(0, 5).map(ticket => (
-                  <div
-                    key={ticket.id}
-                    className="p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors"
-                    onMouseEnter={() => setSearchPreviewTicket(ticket)}
-                    onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
-                  >
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="font-semibold text-sm text-gray-900">{ticket.title}</div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        ticket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
-                        ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                        ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-600'
-                      }`}>
-                        {ticket.priority === 'URGENT' ? 'Urgente' : ticket.priority === 'HIGH' ? 'Alta' : ticket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 mb-1">{ticket.client?.name || 'Sin cliente'}</div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{ticket.status}</span>
-                      {ticket.amount && ticket.hasCharge !== false && (
-                        <span className="text-gray-600 font-medium">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
-                      )}
-                    </div>
+            {normalizedSearchTerm && (
+              <div className="absolute top-full left-0 mt-2 w-[680px] bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+                <div className="flex max-h-[420px]">
+                  <div className="w-80 border-r border-gray-100 overflow-y-auto">
+                    {searchResults.length > 0 ? (
+                      searchResults.map(ticket => {
+                        const previewImage = getTicketPreviewImage(ticket)
+                        const mediaCount = getTicketMediaUrls(ticket).length
+                        const isActive = searchPreviewTicket?.id === ticket.id
+
+                        return (
+                          <button
+                            key={ticket.id}
+                            type="button"
+                            onMouseEnter={() => setSearchPreviewTicket(ticket)}
+                            onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
+                            className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
+                              isActive ? 'bg-slate-50' : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex gap-3">
+                              <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-400 font-bold">
+                                {previewImage ? (
+                                  <img src={previewImage} alt={ticket.title} className="h-full w-full object-cover" />
+                                ) : mediaCount > 0 ? (
+                                  <span>ARCHIVO</span>
+                                ) : (
+                                  <span>SIN</span>
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="text-sm font-semibold text-gray-900 line-clamp-2">{ticket.title}</div>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                    ticket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                                    ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                                    ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {ticket.priority === 'URGENT' ? 'Urgente' : ticket.priority === 'HIGH' ? 'Alta' : ticket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-gray-500">{ticket.client?.name || 'Sin cliente'}</div>
+                                <div className="mt-1 flex items-center gap-2 text-[10px]">
+                                  <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{ticket.status}</span>
+                                  {ticket.amount && ticket.hasCharge !== false && (
+                                    <span className="text-gray-600 font-medium">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <div className="p-4 text-sm text-gray-500">No se encontraron resultados</div>
+                    )}
                   </div>
-                ))}
-                {tickets.filter(t => 
-                  t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  t.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length === 0 && (
-                  <div className="p-3 text-sm text-gray-500">No se encontraron resultados</div>
-                )}
-              </div>
-            )}
-            {/* Preview modal */}
-            {searchPreviewTicket && (
-              <div className="absolute top-full left-0 mt-2 ml-64 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 w-96 p-5">
-                <button
-                  onClick={() => setSearchPreviewTicket(null)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-                <div className="mb-3">
-                  <div className="flex items-start gap-2 mb-2">
-                    <h4 className="font-bold text-base text-gray-900 flex-1">{searchPreviewTicket.title}</h4>
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${
-                      searchPreviewTicket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
-                      searchPreviewTicket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
-                      searchPreviewTicket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>
-                      {searchPreviewTicket.priority === 'URGENT' ? 'Urgente' : searchPreviewTicket.priority === 'HIGH' ? 'Alta' : searchPreviewTicket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-3">{searchPreviewTicket.description || 'Sin descripción'}</p>
-                </div>
-                {searchPreviewTicket.attachments && (() => {
-                  try {
-                    const images = JSON.parse(searchPreviewTicket.attachments)
-                    if (Array.isArray(images) && images.length > 0) {
-                      return (
-                        <div className="mb-3 rounded-lg overflow-hidden">
-                          <img src={images[0]} alt="Preview" className="w-full h-32 object-cover" />
+                  <div className="flex-1 p-4">
+                    {searchPreviewTicket ? (
+                      <div className="space-y-3">
+                        <div className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Vista previa</div>
+                        <div className="rounded-xl overflow-hidden bg-gray-100 h-44 flex items-center justify-center">
+                          {(() => {
+                            const previewImage = getTicketPreviewImage(searchPreviewTicket)
+                            const mediaCount = getTicketMediaUrls(searchPreviewTicket).length
+                            if (previewImage) {
+                              return <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                            }
+                            if (mediaCount > 0) {
+                              return <span className="text-xs text-gray-500 font-semibold">Sin vista previa</span>
+                            }
+                            return <span className="text-xs text-gray-400 font-semibold">Sin adjuntos</span>
+                          })()}
                         </div>
-                      )
-                    }
-                  } catch { /* ignore */ }
-                  return null
-                })()}
-                <div className="space-y-2 mb-3">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-semibold text-gray-500">Cliente:</span>
-                    <span className="text-gray-900">{searchPreviewTicket.client?.name || 'Sin cliente'}</span>
+                        <div className="flex items-start gap-2">
+                          <h4 className="font-bold text-base text-gray-900 flex-1">{searchPreviewTicket.title}</h4>
+                          <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${
+                            searchPreviewTicket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                            searchPreviewTicket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                            searchPreviewTicket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {searchPreviewTicket.priority === 'URGENT' ? 'Urgente' : searchPreviewTicket.priority === 'HIGH' ? 'Alta' : searchPreviewTicket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-3">{searchPreviewTicket.description || 'Sin descripción'}</p>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-500">Cliente:</span>
+                            <span className="text-gray-900">{searchPreviewTicket.client?.name || 'Sin cliente'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-500">Estado:</span>
+                            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{searchPreviewTicket.status}</span>
+                          </div>
+                          {searchPreviewTicket.amount && searchPreviewTicket.hasCharge !== false && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-500">Monto:</span>
+                              <span className="text-gray-900 font-bold">{searchPreviewTicket.currency === 'NIO' ? 'C$' : '$'}{searchPreviewTicket.amount.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {searchPreviewTicket.startDate && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-500">Inicio:</span>
+                              <span className="text-gray-900">{new Date(searchPreviewTicket.startDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {searchPreviewTicket.dueDate && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-gray-500">Entrega:</span>
+                              <span className="text-primary font-semibold">{new Date(searchPreviewTicket.dueDate).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400">Selecciona un ticket</div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-semibold text-gray-500">Estado:</span>
-                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{searchPreviewTicket.status}</span>
-                  </div>
-                  {searchPreviewTicket.amount && searchPreviewTicket.hasCharge !== false && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-semibold text-gray-500">Monto:</span>
-                      <span className="text-gray-900 font-bold">{searchPreviewTicket.currency === 'NIO' ? 'C$' : '$'}{searchPreviewTicket.amount.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {searchPreviewTicket.startDate && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-semibold text-gray-500">Inicio:</span>
-                      <span className="text-gray-900">{new Date(searchPreviewTicket.startDate).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {searchPreviewTicket.dueDate && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="font-semibold text-gray-500">Entrega:</span>
-                      <span className="text-primary font-semibold">{new Date(searchPreviewTicket.dueDate).toLocaleDateString()}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -1124,6 +1183,8 @@ export default function TicketsSoportePage() {
                 ) : (
                   columnTickets.map((ticket, index) => {
                     const isDragging = draggedTicket === ticket.id
+                    const previewImage = getTicketPreviewImage(ticket)
+                    const mediaCount = getTicketMediaUrls(ticket).length
                     
                     return (
                       <div
@@ -1170,25 +1231,17 @@ export default function TicketsSoportePage() {
                       <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2 leading-tight">{ticket.title}</h4>
                       <p className="text-[11px] text-gray-500 mb-2 truncate font-medium">{ticket.client?.name || 'Venta General'}</p>
                       
-                      {/* Image preview if attachments exist */}
-                      {ticket.attachments && (
-                        <div className="mb-2 relative rounded-lg overflow-hidden bg-gray-100 h-20">
-                          {(() => {
-                            try {
-                              const images = JSON.parse(ticket.attachments)
-                              if (Array.isArray(images) && images.length > 0) {
-                                const firstImage = images[0]
-                                return (
-                                  <img 
-                                    src={firstImage} 
-                                    alt="Attachment preview" 
-                                    className="w-full h-full object-cover"
-                                  />
-                                )
-                              }
-                            } catch { /* ignore */ }
-                            return null
-                          })()}
+                      {(previewImage || mediaCount > 0) && (
+                        <div className="mb-2 relative rounded-lg overflow-hidden bg-gray-100 h-20 flex items-center justify-center">
+                          {previewImage ? (
+                            <img
+                              src={previewImage}
+                              alt="Attachment preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-gray-400 font-semibold">SIN VISTA PREVIA</span>
+                          )}
                         </div>
                       )}
                       
