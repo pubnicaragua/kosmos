@@ -712,12 +712,28 @@ export default function TicketsSoportePage() {
                 ).slice(0, 5).map(ticket => (
                   <div
                     key={ticket.id}
-                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    className="p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors"
                     onMouseEnter={() => setSearchPreviewTicket(ticket)}
                     onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
                   >
-                    <div className="font-medium text-sm text-gray-900">{ticket.title}</div>
-                    <div className="text-xs text-gray-500">{ticket.client?.name || 'Sin cliente'}</div>
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="font-semibold text-sm text-gray-900">{ticket.title}</div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        ticket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                        ticket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                        ticket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {ticket.priority === 'URGENT' ? 'Urgente' : ticket.priority === 'HIGH' ? 'Alta' : ticket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mb-1">{ticket.client?.name || 'Sin cliente'}</div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{ticket.status}</span>
+                      {ticket.amount && ticket.hasCharge !== false && (
+                        <span className="text-gray-600 font-medium">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
                 {tickets.filter(t => 
@@ -731,24 +747,70 @@ export default function TicketsSoportePage() {
             )}
             {/* Preview modal */}
             {searchPreviewTicket && (
-              <div className="absolute top-full left-0 mt-2 ml-64 bg-white rounded-lg shadow-xl border border-gray-200 z-50 w-80 p-4">
-                <h4 className="font-bold text-sm mb-2">{searchPreviewTicket.title}</h4>
-                <p className="text-xs text-gray-600 mb-2 line-clamp-3">{searchPreviewTicket.description || 'Sin descripción'}</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="bg-gray-100 px-2 py-1 rounded">{searchPreviewTicket.status}</span>
-                  <span className="bg-gray-100 px-2 py-1 rounded">{searchPreviewTicket.priority}</span>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  {searchPreviewTicket.client?.name || 'Sin cliente'}
-                </div>
+              <div className="absolute top-full left-0 mt-2 ml-64 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 w-96 p-5">
                 <button
                   onClick={() => setSearchPreviewTicket(null)}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+                <div className="mb-3">
+                  <div className="flex items-start gap-2 mb-2">
+                    <h4 className="font-bold text-base text-gray-900 flex-1">{searchPreviewTicket.title}</h4>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${
+                      searchPreviewTicket.priority === 'URGENT' ? 'bg-red-100 text-red-700' :
+                      searchPreviewTicket.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                      searchPreviewTicket.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {searchPreviewTicket.priority === 'URGENT' ? 'Urgente' : searchPreviewTicket.priority === 'HIGH' ? 'Alta' : searchPreviewTicket.priority === 'MEDIUM' ? 'Media' : 'Baja'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-3">{searchPreviewTicket.description || 'Sin descripción'}</p>
+                </div>
+                {searchPreviewTicket.attachments && (() => {
+                  try {
+                    const images = JSON.parse(searchPreviewTicket.attachments)
+                    if (Array.isArray(images) && images.length > 0) {
+                      return (
+                        <div className="mb-3 rounded-lg overflow-hidden">
+                          <img src={images[0]} alt="Preview" className="w-full h-32 object-cover" />
+                        </div>
+                      )
+                    }
+                  } catch { /* ignore */ }
+                  return null
+                })()}
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-semibold text-gray-500">Cliente:</span>
+                    <span className="text-gray-900">{searchPreviewTicket.client?.name || 'Sin cliente'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-semibold text-gray-500">Estado:</span>
+                    <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{searchPreviewTicket.status}</span>
+                  </div>
+                  {searchPreviewTicket.amount && searchPreviewTicket.hasCharge !== false && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-semibold text-gray-500">Monto:</span>
+                      <span className="text-gray-900 font-bold">{searchPreviewTicket.currency === 'NIO' ? 'C$' : '$'}{searchPreviewTicket.amount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {searchPreviewTicket.startDate && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-semibold text-gray-500">Inicio:</span>
+                      <span className="text-gray-900">{new Date(searchPreviewTicket.startDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {searchPreviewTicket.dueDate && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-semibold text-gray-500">Entrega:</span>
+                      <span className="text-primary font-semibold">{new Date(searchPreviewTicket.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1194,16 +1256,13 @@ export default function TicketsSoportePage() {
                 required
               />
               <datalist id="ticket-types">
-                <option value="Instalación de Cámaras" />
-                <option value="Soporte Técnico Remoto" />
-                <option value="Soporte Técnico en Sitio" />
-                <option value="Garantía" />
-                <option value="Mantenimiento Preventivo" />
-                <option value="Configuración DVR/NVR" />
-                <option value="Cotización Técnica" />
-                <option value="Reemplazo de Equipo" />
-                <option value="Actualización de Software" />
-                <option value="Capacitación" />
+                <option value="INSTALACION_CAMARAS" />
+                <option value="SOPORTE_REMOTO" />
+                <option value="SOPORTE_SITIO" />
+                <option value="GARANTIA" />
+                <option value="MANTENIMIENTO_PREVENTIVO" />
+                <option value="CONFIGURACION_DVR_NVR" />
+                <option value="COTIZACION_TECNICA" />
               </datalist>
             </div>
             <Input
@@ -1240,26 +1299,28 @@ export default function TicketsSoportePage() {
             selectedUserIds={formData.assignedUsers}
             onChange={(ids) => setFormData({ ...formData, assignedUsers: ids })}
           />
-          <div className="grid grid-cols-3 gap-4">
-            <Input
-              label="Monto"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              fullWidth
-            />
-            <Select
-              label="Moneda"
-              options={[
-                { value: 'USD', label: '$ USD' },
-                { value: 'NIO', label: 'C$ NIO' },
-              ]}
-              value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
-              fullWidth
-            />
-          </div>
+          {formData.hasCharge && (
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="Monto"
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                fullWidth
+              />
+              <Select
+                label="Moneda"
+                options={[
+                  { value: 'USD', label: '$ USD' },
+                  { value: 'NIO', label: 'C$ NIO' },
+                ]}
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
+                fullWidth
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Fecha de inicio"
