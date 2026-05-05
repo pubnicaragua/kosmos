@@ -929,7 +929,25 @@ export default function TicketsSoportePage() {
                   )}
                   <span className="text-sm font-medium px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{columnTickets.length}</span>
                 </div>
-                <div className="text-xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-xl font-bold text-gray-900">${totalAmount.toLocaleString()}</div>
+                  <button
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        status: column.id as any,
+                      })
+                      setIsModalOpen(true)
+                      setEditingTicketId(null)
+                    }}
+                    className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
+                    title="Crear ticket aquí"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <div className={`p-3 space-y-4 min-h-[400px] max-h-[calc(100vh-450px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 transition-colors duration-300 ${
