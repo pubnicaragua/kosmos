@@ -18,6 +18,8 @@ interface ProductAutocompleteProps {
   onSelect?: (product: ProductOption) => void
   placeholder?: string
   className?: string
+  inputClassName?: string
+  dropdownClassName?: string
 }
 
 export function ProductAutocomplete({
@@ -27,6 +29,8 @@ export function ProductAutocomplete({
   onSelect,
   placeholder = 'Buscar producto o SKU...',
   className = '',
+  inputClassName = '',
+  dropdownClassName = '',
 }: ProductAutocompleteProps) {
   const [products, setProducts] = useState<ProductOption[]>([])
   const [isOpen, setIsOpen] = useState(false)
@@ -95,25 +99,25 @@ export function ProductAutocomplete({
         }}
         onFocus={() => setIsOpen(true)}
         placeholder={placeholder}
-        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+        className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${inputClassName}`}
       />
       {isOpen && filtered.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+        <div className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-72 overflow-y-auto ${dropdownClassName}`}>
           {filtered.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => handleSelect(p)}
-              className="w-full px-3 py-2 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-slate-50 flex flex-col border-b border-gray-100 last:border-b-0 transition-colors"
             >
               <div className="flex justify-between items-start">
-                <span className="text-sm font-bold text-slate-800">{p.name}</span>
-                <span className="text-xs font-black text-primary">${p.price.toLocaleString()}</span>
+                <span className="text-sm font-bold text-slate-800 leading-tight pr-2">{p.name}</span>
+                <span className="text-xs font-black text-primary whitespace-nowrap">${p.price.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">SKU: {p.sku}</span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.stock > 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                  STOCK: {p.stock}
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-tight">SKU: {p.sku}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  Stock {p.stock}
                 </span>
               </div>
             </button>

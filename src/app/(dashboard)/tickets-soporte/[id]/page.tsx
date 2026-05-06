@@ -16,6 +16,8 @@ interface Ticket {
   amount: number | null
   dueDate: string | null
   assignedTo: string | null
+  assignedUsers?: string | null
+  createdBy?: string | null
   createdAt: string
   updatedAt: string
   evidence: string | null
@@ -99,6 +101,18 @@ const PRIORITY_LABELS: Record<string, string> = {
   URGENT: 'Urgente',
 }
 
+const parseAssignedUserIds = (value?: string | null) => {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const isAdminRole = (role?: string | null) => role === 'SUPER_ADMIN' || role === 'ADMIN'
+
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -124,6 +138,79 @@ export default function TicketDetailPage() {
   const [newSubTaskTitle, setNewSubTaskTitle] = useState('')
   const [showAddMember, setShowAddMember] = useState(false)
   const [availableUsers, setAvailableUsers] = useState<Array<{id: string; name: string; email: string}>>([])  
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadSession = () => {
+      try {
+        const storedUser = localStorage.getItem('user')
+        const storedCompany = localStorage.getItem('activeCompany')
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser)
+          setCurrentUserId(parsedUser?.id || null)
+          setCurrentUserName(parsedUser?.name || null)
+        }
+        if (storedCompany) {
+          const parsedCompany = JSON.parse(storedCompany)
+          setCurrentUserRole(parsedCompany?.role || null)
+        }
+      } catch {
+        setCurrentUserId(null)
+        setCurrentUserName(null)
+        setCurrentUserRole(null)
+      }
+    }
+
+    loadSession()
+    const handleStorageChange = (event: StorageEvent) => {
+      if (!event.key || event.key === 'user' || event.key === 'activeCompany') {
+        loadSession()
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  const canDeleteTicket = (target: Ticket) => {
+    if (isAdminRole(currentUserRole)) return true
+    if (!currentUserId) return false
+    const assignedUserIds = parseAssignedUserIds(target.assignedUsers)
+    if (assignedUserIds.includes(currentUserId)) return true
+    if (currentUserName && target.assignedTo) {
+      const assignedNames = target.assignedTo
+        .split(',')
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+      if (assignedNames.includes(currentUserName.trim().toLowerCase())) return true
+    }
+    if (target.createdBy === currentUserId) {
+      return target.status !== 'ASIGNADO' && target.status !== 'EN_PROCESO'
+    }
+    return false
+  }
+
+  const handleDeleteTicket = async () => {
+    if (!ticket) return
+    if (!window.confirm('¿Eliminar este ticket?')) return
+    try {
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+      const res = await fetch(`/api/tickets/${ticket.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        router.push('/tickets-soporte')
+        return
+      }
+      const data = await res.json()
+      alert(data?.message || data?.error || 'Error al eliminar ticket')
+    } catch {
+      alert('Error al eliminar ticket')
+    }
+  }
 
   useEffect(() => {
     if (!params.id) return
@@ -390,21 +477,32 @@ export default function TicketDetailPage() {
             <p className="text-sm text-gray-500">{ticket.company.name}</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            const el = document.getElementById('ticket-print')
-            if (el) el.style.display = 'block'
-            window.print()
-            setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
-          title="Imprimir ticket"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-          </svg>
-          IMPRIMIR
-        </button>
+        <div className="flex items-center gap-2">
+          {ticket && canDeleteTicket(ticket) && (
+            <button
+              onClick={handleDeleteTicket}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 text-red-600 rounded-lg hover:bg-red-100 text-sm font-medium transition-colors"
+              title="Eliminar ticket"
+            >
+              <Trash2 className="w-4 h-4" /> ELIMINAR
+            </button>
+          )}
+          <button
+            onClick={() => {
+              const el = document.getElementById('ticket-print')
+              if (el) el.style.display = 'block'
+              window.print()
+              setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium transition-colors"
+            title="Imprimir ticket"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            IMPRIMIR
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -573,9 +671,9 @@ export default function TicketDetailPage() {
                   return (
                     <div key={i} className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                       {isVid ? (
-                        <video src={url} className="w-full h-full object-cover" />
+                        <video src={url} className="w-full h-full object-contain" />
                       ) : (
-                        <img src={url} alt="evidencia" className="w-full h-full object-cover" />
+                        <img src={url} alt="evidencia" className="w-full h-full object-contain" />
                       )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button 

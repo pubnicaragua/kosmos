@@ -395,7 +395,9 @@ useEffect(() => {
                             onChange={(val) => updateItem(index, 'description', val)}
                             onSelect={(prod) => selectProduct(index, prod as any)}
                             placeholder="Buscar producto o SKU..."
-                            className="mb-1"
+                            className="mb-1 min-w-[320px]"
+                            inputClassName="text-sm font-semibold"
+                            dropdownClassName="w-[520px] md:w-[640px]"
                           />
                           {selectedProduct ? (
                             <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">

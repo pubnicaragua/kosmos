@@ -28,6 +28,7 @@ interface Ticket {
   client: { id: string; name: string } | null
   assignedTo: string | null
   assignedUsers: string | null
+  createdBy?: string | null
   hasCharge?: boolean
 }
 
@@ -107,6 +108,26 @@ const splitDateTime = (value?: string | null) => {
   }
 }
 
+const parseAssignedUserIds = (value?: string | null) => {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const isAdminRole = (role?: string | null) => role === 'SUPER_ADMIN' || role === 'ADMIN'
+
+const getTicketStageFlags = (status: string) => {
+  const normalized = status?.toUpperCase()?.replace('_', ' ') || ''
+  const isFinal = normalized === 'RESUELTO' || normalized === 'CERRADO'
+  const isInProgress = normalized === 'EN PROCESO'
+  const isPending = !isFinal && !isInProgress
+  return { isPending, isInProgress, isFinal }
+}
+
 const getTicketMediaUrls = (ticket: Ticket) => {
   return [...parseMediaList(ticket.attachments), ...parseMediaList(ticket.evidence)]
 }
@@ -128,7 +149,6 @@ export default function TicketsSoportePage() {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
   const [dragOverCardId, setDragOverCardId] = useState<string | null>(null)
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [searchPreviewTicket, setSearchPreviewTicket] = useState<Ticket | null>(null)
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null)
@@ -143,6 +163,9 @@ export default function TicketsSoportePage() {
   const [quickAddSaving, setQuickAddSaving] = useState(false)
   const quickAddInputRef = useRef<HTMLInputElement>(null)
   const [companyUsersById, setCompanyUsersById] = useState<Record<string, string>>({})
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null)
 
   const fetchStages = useCallback(async () => {
     if (selectedCompany === 'all') {
@@ -197,6 +220,37 @@ export default function TicketsSoportePage() {
   useEffect(() => {
     fetchStages()
   }, [fetchStages])
+
+  useEffect(() => {
+    const loadSession = () => {
+      try {
+        const storedUser = localStorage.getItem('user')
+        const storedCompany = localStorage.getItem('activeCompany')
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser)
+          setCurrentUserId(parsedUser?.id || null)
+          setCurrentUserName(parsedUser?.name || null)
+        }
+        if (storedCompany) {
+          const parsedCompany = JSON.parse(storedCompany)
+          setCurrentUserRole(parsedCompany?.role || null)
+        }
+      } catch {
+        setCurrentUserId(null)
+        setCurrentUserName(null)
+        setCurrentUserRole(null)
+      }
+    }
+
+    loadSession()
+    const handleStorageChange = (event: StorageEvent) => {
+      if (!event.key || event.key === 'user' || event.key === 'activeCompany') {
+        loadSession()
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   const saveColumnLabel = async (colId: string) => {
     const updated = columns.map(c => 
@@ -568,21 +622,6 @@ export default function TicketsSoportePage() {
     setIsModalOpen(true)
   }
 
-  const openSelectedTicketForEdit = () => {
-    if (!selectedTicketId) {
-      alert('Selecciona un ticket para editar')
-      return
-    }
-
-    const targetTicket = tickets.find((ticket) => ticket.id === selectedTicketId)
-    if (!targetTicket) {
-      alert('Ticket no encontrado')
-      return
-    }
-
-    openEditModal(targetTicket)
-  }
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('accessToken')
@@ -759,6 +798,27 @@ export default function TicketsSoportePage() {
     return tickets.filter(t => t.status === status)
   }
 
+  const canDeleteTicket = useCallback(
+    (ticket: Ticket) => {
+      if (isAdminRole(currentUserRole)) return true
+      if (!currentUserId) return false
+      const assignedUserIds = parseAssignedUserIds(ticket.assignedUsers)
+      if (assignedUserIds.includes(currentUserId)) return true
+      if (currentUserName && ticket.assignedTo) {
+        const assignedNames = ticket.assignedTo
+          .split(',')
+          .map((name) => name.trim().toLowerCase())
+          .filter(Boolean)
+        if (assignedNames.includes(currentUserName.trim().toLowerCase())) return true
+      }
+      if (ticket.createdBy === currentUserId) {
+        return ticket.status !== 'ASIGNADO' && ticket.status !== 'EN_PROCESO'
+      }
+      return false
+    },
+    [currentUserId, currentUserName, currentUserRole]
+  )
+
   const getTotalAmount = (status: string) => {
     return getTicketsByStatus(status).reduce((sum, t) => sum + (t.amount || 0), 0)
   }
@@ -898,7 +958,7 @@ export default function TicketsSoportePage() {
                             <div className="flex gap-3">
                               <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center text-[10px] text-gray-400 font-bold">
                                 {previewImage ? (
-                                  <img src={previewImage} alt={ticket.title} className="h-full w-full object-cover" />
+                                  <img src={previewImage} alt={ticket.title} className="h-full w-full object-contain" />
                                 ) : mediaCount > 0 ? (
                                   <span>ARCHIVO</span>
                                 ) : (
@@ -920,9 +980,6 @@ export default function TicketsSoportePage() {
                                 <div className="text-[11px] text-gray-500">{ticket.client?.name || 'Sin cliente'}</div>
                                 <div className="mt-1 flex items-center gap-2 text-[10px]">
                                   <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{ticket.status}</span>
-                                  {ticket.amount && ticket.hasCharge !== false && (
-                                    <span className="text-gray-600 font-medium">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount.toLocaleString()}</span>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -942,7 +999,7 @@ export default function TicketsSoportePage() {
                             const previewImage = getTicketPreviewImage(searchPreviewTicket)
                             const mediaCount = getTicketMediaUrls(searchPreviewTicket).length
                             if (previewImage) {
-                              return <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                              return <img src={previewImage} alt="Preview" className="w-full h-full object-contain" />
                             }
                             if (mediaCount > 0) {
                               return <span className="text-xs text-gray-500 font-semibold">Sin vista previa</span>
@@ -971,12 +1028,6 @@ export default function TicketsSoportePage() {
                             <span className="font-semibold text-gray-500">Estado:</span>
                             <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{searchPreviewTicket.status}</span>
                           </div>
-                          {searchPreviewTicket.amount && searchPreviewTicket.hasCharge !== false && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-500">Monto:</span>
-                              <span className="text-gray-900 font-bold">{searchPreviewTicket.currency === 'NIO' ? 'C$' : '$'}{searchPreviewTicket.amount.toLocaleString()}</span>
-                            </div>
-                          )}
                           {searchPreviewTicket.startDate && (
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-gray-500">Inicio:</span>
@@ -1004,12 +1055,6 @@ export default function TicketsSoportePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             REPORTE INCIDENCIA
-          </Button>
-          <Button variant="outline" onClick={openSelectedTicketForEdit}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            EDITAR
           </Button>
           <Button onClick={openCreateModal}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1249,6 +1294,7 @@ export default function TicketsSoportePage() {
                     const isDragging = draggedTicket === ticket.id
                     const previewImage = getTicketPreviewImage(ticket)
                     const mediaCount = getTicketMediaUrls(ticket).length
+                    const statusFlags = getTicketStageFlags(ticket.status)
                     
                     return (
                       <div
@@ -1279,18 +1325,21 @@ export default function TicketsSoportePage() {
                             </span>
                           )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditModal(ticket)
-                          }}
-                          className="text-gray-400 hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
+                        {canDeleteTicket(ticket) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDelete(ticket.id)
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Eliminar ticket"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2 leading-tight">{ticket.title}</h4>
                       <p className="text-[11px] text-gray-500 mb-2 truncate font-medium">{ticket.client?.name || 'Venta General'}</p>
@@ -1301,7 +1350,7 @@ export default function TicketsSoportePage() {
                             <img
                               src={previewImage}
                               alt="Attachment preview"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain"
                             />
                           ) : (
                             <span className="text-[10px] text-gray-400 font-semibold">SIN VISTA PREVIA</span>
@@ -1323,19 +1372,21 @@ export default function TicketsSoportePage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex justify-between items-end mt-4 pt-3 border-t border-slate-50">
-                        {ticket.hasCharge !== false && (
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">Monto</span>
-                            <span className="text-sm font-bold text-gray-900">{ticket.currency === 'NIO' ? 'C$' : '$'}{ticket.amount?.toLocaleString() || '0'}</span>
+                      <div className="mt-4 pt-3 border-t border-slate-50 flex flex-col gap-3">
+                        <div className="flex items-center gap-3 text-[10px] font-bold">
+                          <div className="flex items-center gap-1">
+                            <span className={`h-2 w-2 rounded-full ${statusFlags.isPending ? 'bg-gray-500' : 'bg-gray-200'}`} />
+                            <span className={statusFlags.isPending ? 'text-gray-700' : 'text-gray-400'}>Pendiente</span>
                           </div>
-                        )}
-                        {ticket.hasCharge === false && (
-                          <div className="flex flex-col">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase">Cobro</span>
-                            <span className="text-sm font-bold text-gray-500">Sin cobro</span>
+                          <div className="flex items-center gap-1">
+                            <span className={`h-2 w-2 rounded-full ${statusFlags.isInProgress ? 'bg-amber-500' : 'bg-gray-200'}`} />
+                            <span className={statusFlags.isInProgress ? 'text-amber-700' : 'text-gray-400'}>En proceso</span>
                           </div>
-                        )}
+                          <div className="flex items-center gap-1">
+                            <span className={`h-2 w-2 rounded-full ${statusFlags.isFinal ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+                            <span className={statusFlags.isFinal ? 'text-emerald-700' : 'text-gray-400'}>Finalizado</span>
+                          </div>
+                        </div>
                         <div className="flex flex-wrap items-center gap-1">
                           {/* Mostrar usuarios asignados */}
                           {(() => {
@@ -1458,44 +1509,6 @@ export default function TicketsSoportePage() {
               />
               Ticket Interno (sin cliente)
             </label>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasCharge}
-                onChange={(e) => setFormData({ ...formData, hasCharge: e.target.checked })}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              Tiene Cobro
-            </label>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Solicitud</label>
-              <input
-                type="text"
-                list="ticket-types"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                placeholder="Escriba o seleccione..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                required
-              />
-              <datalist id="ticket-types">
-                <option value="INSTALACION_CAMARAS" />
-                <option value="SOPORTE_SITIO" />
-                <option value="GARANTIA" />
-                <option value="MANTENIMIENTO_PREVENTIVO" />
-                <option value="CONFIGURACION_DVR_NVR" />
-                <option value="COTIZACION_TECNICA" />
-              </datalist>
-            </div>
-            <Input
-              label="Sucursal o Área"
-              value={formData.branch}
-              onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-              placeholder="Ej: Sucursal Centro, Área Técnica"
-              fullWidth
-            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -1523,28 +1536,6 @@ export default function TicketsSoportePage() {
             selectedUserIds={formData.assignedUsers}
             onChange={(ids) => setFormData({ ...formData, assignedUsers: ids })}
           />
-          {formData.hasCharge && (
-            <div className="grid grid-cols-3 gap-4">
-              <Input
-                label="Monto"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                fullWidth
-              />
-              <Select
-                label="Moneda"
-                options={[
-                  { value: 'USD', label: '$ USD' },
-                  { value: 'NIO', label: 'C$ NIO' },
-                ]}
-                value={formData.currency}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'USD' | 'NIO' })}
-                fullWidth
-              />
-            </div>
-          )}
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Fecha de inicio"
@@ -1588,7 +1579,7 @@ export default function TicketsSoportePage() {
               <Select
                 label="Tipo de Equipo"
                 options={[
-                  { value: '', label: 'Seleccionar tipo' },
+                  { value: '', label: 'Seleccionar tipo', disabled: true, hidden: true },
                   { value: 'DVR', label: 'DVR (Grabador Digital)' },
                   { value: 'NVR', label: 'NVR (Grabador de Red)' },
                   { value: 'CAMARA_IP', label: 'Cámara IP' },

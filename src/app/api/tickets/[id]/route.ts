@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (
       !isAdminForUpdate &&
       ticket.createdBy === decoded.userId &&
-      (ticket.status === 'ASIGNADO' || ticket.status === 'EN PROCESO')
+      (ticket.status === 'ASIGNADO' || ticket.status === 'EN_PROCESO')
     ) {
       return apiError('No puedes editar este ticket en su estado actual', 403)
     }
@@ -244,7 +244,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (
       !isAdminForDelete &&
       ticket.createdBy === decoded.userId &&
-      (ticket.status === 'ASIGNADO' || ticket.status === 'EN PROCESO')
+      (ticket.status === 'ASIGNADO' || ticket.status === 'EN_PROCESO')
     ) {
       return apiError('No puedes eliminar este ticket en su estado actual', 403)
     }
