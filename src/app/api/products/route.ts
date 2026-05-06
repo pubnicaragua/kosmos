@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const categoryId = searchParams.get('categoryId')
+    const categoryType = searchParams.get('categoryType')
     const stockFilter = searchParams.get('stockFilter')
     const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1', 10)
@@ -41,6 +42,15 @@ export async function GET(request: NextRequest) {
     const where: any = {}
     where.companyId = companyId || { in: companyIds }
     if (categoryId) where.categoryId = categoryId
+    if (!categoryId && categoryType === 'service') {
+      where.category = {
+        is: { name: { contains: 'servicio', mode: 'insensitive' } },
+      }
+    } else if (!categoryId && categoryType === 'product') {
+      where.NOT = {
+        category: { is: { name: { contains: 'servicio', mode: 'insensitive' } } },
+      }
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },

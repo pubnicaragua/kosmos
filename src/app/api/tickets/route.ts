@@ -6,6 +6,9 @@ import { ticketSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
+const isAdminRole = (role: string | null | undefined) =>
+  role === 'SUPER_ADMIN' || role === 'ADMIN'
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -21,21 +24,50 @@ export async function GET(request: NextRequest) {
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')
 
-    const { companyIds } = await getAccessibleCompanies(decoded.userId)
+    const { companyIds, isSuperAdmin } = await getAccessibleCompanies(decoded.userId)
     if (companyId && !companyIds.includes(companyId)) {
       return apiError('No tienes acceso a esta empresa', 403)
     }
+
+    let isAdmin = isSuperAdmin
+    if (companyId) {
+      const access = await getCompanyAccess(decoded.userId, companyId)
+      isAdmin = isAdminRole(access.effectiveRole)
+    }
+
+    const currentUser = !isAdmin
+      ? await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          select: { id: true, name: true },
+        })
+      : null
 
     const where: any = {}
     where.companyId = companyId || { in: companyIds }
     if (status) where.status = status
     
+    const andFilters: any[] = []
+
     // Búsqueda general por título o descripción
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+      andFilters.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ],
+      })
+    }
+
+    if (!isAdmin) {
+      const assignmentFilters: any[] = [
+        { assignedUsers: { contains: `"${decoded.userId}"` } },
       ]
+      if (currentUser?.name) {
+        assignmentFilters.push({
+          assignedTo: { contains: currentUser.name, mode: 'insensitive' },
+        })
+      }
+      andFilters.push({ OR: assignmentFilters })
     }
     if (startDateParam || endDateParam) {
       where.createdAt = {}
@@ -49,6 +81,10 @@ export async function GET(request: NextRequest) {
         endDate.setHours(23, 59, 59, 999)
         where.createdAt.lte = endDate
       }
+    }
+
+    if (andFilters.length > 0) {
+      where.AND = andFilters
     }
 
     const tickets = await prisma.ticket.findMany({

@@ -893,7 +893,7 @@ export default function ClientesPage() {
                   </tr>
                 ) : (
                   <tr key={client.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-2 text-center">
+                    <td className="py-2 px-2 text-center">
                       <input
                         type="checkbox"
                         checked={selectedClients.has(client.id)}
@@ -902,11 +902,11 @@ export default function ClientesPage() {
                       />
                     </td>
                     {selectedCompany === 'all' && (
-                      <td className="py-4 px-4">
+                      <td className="py-2 px-4">
                         <div className="text-sm font-medium text-gray-900">{client.company?.name || 'N/A'}</div>
                       </td>
                     )}
-                    <td className="py-4 px-4">
+                    <td className="py-2 px-4">
                       <button
                         type="button"
                         onClick={() => router.push(`/clientes/${client.id}`)}
@@ -916,16 +916,16 @@ export default function ClientesPage() {
                         {client.name}
                       </button>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 px-4">
                       <div className="text-sm text-gray-600 space-y-1">
                         <div>{client.address || '-'}</div>
                         <div>{[client.city, client.country].filter(Boolean).join(', ') || 'N/A'}</div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 px-4">
                       <div className="text-sm text-gray-600">{client.ruc || client.cedula || 'N/A'}</div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 px-4">
                       <div className="text-sm text-gray-600 space-y-1">
                         <div>{client.contactName || '-'}</div>
                         <div>{client.email || '-'}</div>
@@ -947,8 +947,8 @@ export default function ClientesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-center">{getStatusBadge(client.status)}</td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 px-4 text-center">{getStatusBadge(client.status)}</td>
+                    <td className="py-2 px-4">
                       <div className="flex items-center justify-center gap-2">
                         <Button size="sm" variant="outline" onClick={() => startEditingRow(client)}>
                           Editar

@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
-import { UserAutocomplete } from '@/components/ui-kit/UserAutocomplete'
 import { ClientAutocomplete } from '@/components/ui-kit/ClientAutocomplete'
 import { MultiUserSelector } from '@/components/ui-kit/MultiUserSelector'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
@@ -56,7 +55,9 @@ interface TicketFormData {
   amount: string
   currency: 'USD' | 'NIO'
   startDate: string
+  startTime: string
   dueDate: string
+  dueTime: string
   attachments: File[]
   evidence: File[]
   existingAttachments: string[]
@@ -94,6 +95,15 @@ const parseMediaList = (value?: string | null) => {
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
   } catch {
     return []
+  }
+}
+
+const splitDateTime = (value?: string | null) => {
+  if (!value) return { date: '', time: '' }
+  const [datePart, timePart] = value.split('T')
+  return {
+    date: datePart || '',
+    time: timePart ? timePart.slice(0, 5) : '',
   }
 }
 
@@ -248,7 +258,7 @@ export default function TicketsSoportePage() {
     title: '',
     description: '',
     clientId: '',
-    type: 'SOPORTE_REMOTO',
+    type: 'SOPORTE_SITIO',
     status: 'NUEVO',
     priority: 'MEDIA',
     assignedTo: '',
@@ -257,7 +267,9 @@ export default function TicketsSoportePage() {
     amount: '',
     currency: 'USD',
     startDate: new Date().toISOString().split('T')[0],
+    startTime: '',
     dueDate: '',
+    dueTime: '',
     attachments: [],
     evidence: [],
     existingAttachments: [],
@@ -415,7 +427,7 @@ export default function TicketsSoportePage() {
       title: '',
       description: '',
       clientId: '',
-      type: 'SOPORTE_REMOTO',
+      type: 'SOPORTE_SITIO',
       status: 'NUEVO',
       priority: 'MEDIA',
       assignedTo: '',
@@ -424,7 +436,9 @@ export default function TicketsSoportePage() {
       amount: '',
       currency: 'USD',
       startDate: new Date().toISOString().split('T')[0],
+      startTime: '',
       dueDate: '',
+      dueTime: '',
       attachments: [],
       evidence: [],
       existingAttachments: [],
@@ -472,7 +486,7 @@ export default function TicketsSoportePage() {
         companyId: targetCompanyId,
         title: quickAddTitle.trim(),
         clientId: quickAddClientId || null,
-        type: 'SOPORTE_REMOTO',
+        type: 'SOPORTE_SITIO',
         status,
         priority: 'MEDIA',
         isInternal: false,
@@ -519,11 +533,14 @@ export default function TicketsSoportePage() {
       if (ticket.evidence) parsedEvidence = JSON.parse(ticket.evidence)
     } catch { /* ignore */ }
 
+    const startDateParts = splitDateTime(ticket.startDate)
+    const dueDateParts = splitDateTime(ticket.dueDate)
+
     setFormData({
       title: ticket.title,
       description: ticket.description || '',
       clientId: ticket.client?.id || '',
-      type: (ticket as any).type || 'SOPORTE_REMOTO',
+      type: (ticket as any).type || 'SOPORTE_SITIO',
       status: ticket.status,
       priority: (ticket.priority as TicketFormData['priority']) || 'MEDIA',
       assignedTo: ticket.assignedTo || '',
@@ -531,8 +548,10 @@ export default function TicketsSoportePage() {
       branch: (ticket as any).branch || '',
       amount: ticket.amount !== null ? String(ticket.amount) : '',
       currency: (ticket.currency as 'USD' | 'NIO') || 'USD',
-      startDate: ticket.startDate ? ticket.startDate.split('T')[0] : new Date().toISOString().split('T')[0],
-      dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
+      startDate: startDateParts.date || new Date().toISOString().split('T')[0],
+      startTime: startDateParts.time,
+      dueDate: dueDateParts.date,
+      dueTime: dueDateParts.time,
       attachments: [],
       evidence: [],
       existingAttachments: parsedAttachments,
@@ -617,6 +636,19 @@ export default function TicketsSoportePage() {
         }
       }
 
+      const buildDateTime = (dateValue: string, timeValue: string) => {
+        if (!dateValue) return null
+        if (!timeValue) return dateValue
+        return `${dateValue}T${timeValue}`
+      }
+
+      const startDateValue = buildDateTime(formData.startDate, formData.startTime)
+      const dueDateValue = buildDateTime(formData.dueDate, formData.dueTime)
+      const assignedNamesFromIds = formData.assignedUsers
+        .map((id) => companyUsersById[id])
+        .filter(Boolean)
+        .join(', ')
+
       const payload: any = {
         title: formData.title,
         description: formData.description || null,
@@ -624,13 +656,13 @@ export default function TicketsSoportePage() {
         type: formData.type,
         status: formData.status,
         priority: formData.priority,
-        assignedTo: formData.assignedTo || null,
+        assignedTo: assignedNamesFromIds || formData.assignedTo || null,
         assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
         branch: formData.branch || null,
         amount: formData.amount ? parseFloat(formData.amount) : null,
         currency: formData.currency,
-        startDate: formData.startDate || null,
-        dueDate: formData.dueDate || null,
+        startDate: startDateValue,
+        dueDate: dueDateValue,
         attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
         evidence: evidenceUrls.length > 0 ? evidenceUrls : null,
         isInternal: formData.isInternal,
@@ -1394,12 +1426,16 @@ export default function TicketsSoportePage() {
             required
             fullWidth
           />
-          <Input
-            label="Descripción"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            fullWidth
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={6}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="Describe el problema, pasos y contexto..."
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
             <ClientAutocomplete
@@ -1446,7 +1482,6 @@ export default function TicketsSoportePage() {
               />
               <datalist id="ticket-types">
                 <option value="INSTALACION_CAMARAS" />
-                <option value="SOPORTE_REMOTO" />
                 <option value="SOPORTE_SITIO" />
                 <option value="GARANTIA" />
                 <option value="MANTENIMIENTO_PREVENTIVO" />
@@ -1482,16 +1517,8 @@ export default function TicketsSoportePage() {
               fullWidth
             />
           </div>
-          <UserAutocomplete
-            label="Usuario Asignado (puede escribir cualquiera)"
-            companyId={selectedCompany !== 'all' ? selectedCompany : (companies[0]?.id || '')}
-            value={formData.assignedTo}
-            onChange={(value) => setFormData({ ...formData, assignedTo: value })}
-            placeholder="Buscar o escribir nombre"
-            fullWidth
-          />
           <MultiUserSelector
-            label="Usuarios Asignados (opcional)"
+            label="Usuarios asignados"
             companyId={selectedCompany !== 'all' ? selectedCompany : (companies[0]?.id || '')}
             selectedUserIds={formData.assignedUsers}
             onChange={(ids) => setFormData({ ...formData, assignedUsers: ids })}
@@ -1527,10 +1554,24 @@ export default function TicketsSoportePage() {
               fullWidth
             />
             <Input
+              label="Hora de inicio"
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+              fullWidth
+            />
+            <Input
               label="Fecha límite"
               type="date"
               value={formData.dueDate}
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              fullWidth
+            />
+            <Input
+              label="Hora límite"
+              type="time"
+              value={formData.dueTime}
+              onChange={(e) => setFormData({ ...formData, dueTime: e.target.value })}
               fullWidth
             />
           </div>

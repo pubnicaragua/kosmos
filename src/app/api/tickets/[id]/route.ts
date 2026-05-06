@@ -5,6 +5,34 @@ import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
+const isAdminRole = (role: string | null | undefined) =>
+  role === 'SUPER_ADMIN' || role === 'ADMIN'
+
+const parseAssignedUsers = (value?: string | null) => {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const isUserAssigned = (
+  ticket: { assignedUsers: string | null; assignedTo: string | null },
+  userId: string,
+  userName?: string | null
+) => {
+  const assignedUserIds = parseAssignedUsers(ticket.assignedUsers)
+  if (assignedUserIds.includes(userId)) return true
+  if (!userName) return false
+  return (ticket.assignedTo || '')
+    .split(',')
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(userName.trim().toLowerCase())
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -25,6 +53,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const access = await getCompanyAccess(decoded.userId, ticket.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const isAdmin = isAdminRole(access.effectiveRole)
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { name: true },
+    })
+
+    if (!isAdmin && !isUserAssigned(ticket, decoded.userId, currentUser?.name)) {
+      return apiError('No tienes acceso a este ticket', 403)
+    }
 
     return apiSuccess(ticket)
   } catch (error) {
@@ -47,6 +85,39 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const access = await getCompanyAccess(decoded.userId, ticket.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const isAdminForUpdate = isAdminRole(access.effectiveRole)
+    const currentUserForUpdate = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { name: true },
+    })
+
+    if (!isAdminForUpdate && !isUserAssigned(ticket, decoded.userId, currentUserForUpdate?.name)) {
+      return apiError('No tienes acceso a este ticket', 403)
+    }
+
+    if (
+      !isAdminForUpdate &&
+      ticket.createdBy === decoded.userId &&
+      (ticket.status === 'ASIGNADO' || ticket.status === 'EN PROCESO')
+    ) {
+      return apiError('No puedes editar este ticket en su estado actual', 403)
+    }
+
+    const nextAssignedUsers = Array.isArray(body.assignedUsers)
+      ? body.assignedUsers
+      : parseAssignedUsers(ticket.assignedUsers)
+    const prevAssignedUsers = parseAssignedUsers(ticket.assignedUsers)
+    const assignedUsersChanged =
+      Array.isArray(body.assignedUsers) &&
+      (prevAssignedUsers.length !== nextAssignedUsers.length ||
+        prevAssignedUsers.some((id) => !nextAssignedUsers.includes(id)))
+    const assignedToChanged =
+      typeof body.assignedTo !== 'undefined' && body.assignedTo !== ticket.assignedTo
+
+    if ((assignedUsersChanged || assignedToChanged) && ticket.status !== 'NUEVO') {
+      return apiError('Solo puedes reasignar tickets en estado NUEVO', 403)
+    }
 
     // Calcular métricas de tiempo
     const now = new Date()
@@ -159,6 +230,24 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const access = await getCompanyAccess(decoded.userId, ticket.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const isAdminForDelete = isAdminRole(access.effectiveRole)
+    const currentUserForDelete = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { name: true },
+    })
+
+    if (!isAdminForDelete && !isUserAssigned(ticket, decoded.userId, currentUserForDelete?.name)) {
+      return apiError('No tienes acceso a este ticket', 403)
+    }
+
+    if (
+      !isAdminForDelete &&
+      ticket.createdBy === decoded.userId &&
+      (ticket.status === 'ASIGNADO' || ticket.status === 'EN PROCESO')
+    ) {
+      return apiError('No puedes eliminar este ticket en su estado actual', 403)
+    }
 
     await prisma.ticket.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Ticket eliminado' })

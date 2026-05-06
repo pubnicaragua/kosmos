@@ -38,6 +38,12 @@ const STOCK_TABS = [
   { id: 'low', label: 'MENOR STOCK' },
 ]
 
+const CATEGORY_TABS = [
+  { id: 'all', label: 'TODO' },
+  { id: 'product', label: 'PRODUCTOS' },
+  { id: 'service', label: 'SERVICIOS' },
+]
+
 interface EditingProduct {
   name: string
   sku: string
@@ -59,6 +65,7 @@ export default function InventarioPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedTab, setSelectedTab] = useState('all')
+  const [categoryType, setCategoryType] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -230,6 +237,7 @@ export default function InventarioPage() {
       const params = new URLSearchParams()
       if (selectedCompany !== 'all') params.append('companyId', selectedCompany)
       if (selectedTab !== 'all') params.append('stockFilter', selectedTab)
+      if (categoryType !== 'all') params.append('categoryType', categoryType)
       if (searchTerm.trim()) params.append('search', searchTerm.trim())
       params.append('page', currentPage.toString())
       params.append('limit', itemsPerPage.toString())
@@ -249,7 +257,7 @@ export default function InventarioPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedCompany, selectedTab, searchTerm, currentPage, itemsPerPage])
+  }, [selectedCompany, selectedTab, categoryType, searchTerm, currentPage, itemsPerPage])
 
   useEffect(() => {
     fetchCompanies()
@@ -262,7 +270,7 @@ export default function InventarioPage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedCompany, selectedTab, searchTerm])
+  }, [selectedCompany, selectedTab, categoryType, searchTerm])
 
   const showingFrom = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
   const showingTo = totalItems === 0 ? 0 : Math.min(currentPage * itemsPerPage, totalItems)
@@ -437,6 +445,20 @@ export default function InventarioPage() {
               {tab.label}
             </button>
           ))}
+          <div className="h-6 w-px bg-gray-200" />
+          {CATEGORY_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setCategoryType(tab.id)}
+              className={`px-3 py-2 rounded-full text-xs font-semibold tracking-wide transition-colors ${
+                categoryType === tab.id
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
           <div className="ml-auto flex items-center gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
@@ -452,6 +474,7 @@ export default function InventarioPage() {
             <button 
               onClick={() => {
                 setSelectedTab('all')
+                setCategoryType('all')
                 setSearchTerm('')
                 setShowFilters(false)
               }}

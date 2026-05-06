@@ -224,11 +224,10 @@ useEffect(() => {
   const selectProduct = (index: number, product: any) => {
     if (!product) return
     const updated = [...itemsArray]
-    const stockInfo = product.stock !== undefined ? (product.stock > 0 ? ` (Stock: ${product.stock})` : ' (Sin stock)') : ''
     updated[index] = {
       ...updated[index],
       productId: product.id,
-      description: product.name + stockInfo,
+      description: product.name,
       unitPrice: product.price || 0,
     }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
@@ -383,7 +382,9 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {itemsArray.map((item: any, index: number) => (
+                  {itemsArray.map((item: any, index: number) => {
+                    const selectedProduct = safeProducts.find((product) => product.id === item.productId)
+                    return (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-3 px-2">
@@ -393,8 +394,20 @@ useEffect(() => {
                             value={item.description}
                             onChange={(val) => updateItem(index, 'description', val)}
                             onSelect={(prod) => selectProduct(index, prod as any)}
+                            placeholder="Buscar producto o SKU..."
                             className="mb-1"
                           />
+                          {selectedProduct ? (
+                            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
+                              <span className="uppercase tracking-wide">SKU:</span>
+                              <span className="font-mono text-slate-700">{selectedProduct.sku}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedProduct.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                Stock {selectedProduct.stock}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-slate-400">Puedes buscar por nombre o SKU</div>
+                          )}
                         </div>
                       </td>
                       <td className="py-2 px-2">
@@ -439,7 +452,8 @@ useEffect(() => {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
