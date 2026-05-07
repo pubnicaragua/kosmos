@@ -37,6 +37,8 @@ export default function InventarioEdicionPage() {
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [companies, setCompanies] = useState<Company[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const [rows, setRows] = useState<ProductRow[]>([
     { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, isNew: true },
   ])
@@ -75,6 +77,46 @@ export default function InventarioEdicionPage() {
       console.error('Error fetching categories:', error)
     }
   }, [selectedCompany])
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert('Ingresa un nombre para la categoría')
+      return
+    }
+    if (selectedCompany === 'all') {
+      alert('Selecciona una empresa primero')
+      return
+    }
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/product-categories', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          companyId: selectedCompany,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setCategories((prev) => [...prev, data.data])
+        setShowCategoryModal(false)
+        setNewCategoryName('')
+      } else {
+        alert(data.error || 'Error al crear categoría')
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      alert('Error al crear categoría')
+    }
+  }
 
   useEffect(() => {
     fetchCompanies()
@@ -421,17 +463,29 @@ export default function InventarioEdicionPage() {
                     />
                   </td>
                   <td className="py-3 px-4">
-                    <select
-                      value={row.categoryId}
-                      onChange={(e) => updateRow(index, 'categoryId', e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                    >
-                      <option value="">Categoría...</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={row.categoryId}
+                        onChange={(e) => updateRow(index, 'categoryId', e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                      >
+                        <option value="">Categoría...</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryModal(true)}
+                        className="p-2 border border-gray-200 rounded-lg text-primary hover:bg-primary/5"
+                        title="Agregar categoría"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                   <td className="py-3 px-4">
                     <Input
@@ -521,6 +575,39 @@ export default function InventarioEdicionPage() {
           </div>
         </div>
       </div>
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Nueva Categoría</h2>
+            </div>
+            <div className="p-6">
+              <Input
+                label="Nombre de la Categoría"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Ej: Electrónica, Alimentos, etc."
+                fullWidth
+              />
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setNewCategoryName('')
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateCategory} className="flex-1 bg-primary hover:bg-primary-dark">
+                Crear Categoría
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

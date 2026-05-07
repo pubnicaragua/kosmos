@@ -39,7 +39,7 @@ const STOCK_TABS = [
 ]
 
 const CATEGORY_TABS = [
-  { id: 'all', label: 'TODO' },
+  { id: 'all', label: 'TODOS PRODUCTOS/SERVICIOS' },
   { id: 'product', label: 'PRODUCTOS' },
   { id: 'service', label: 'SERVICIOS' },
 ]
@@ -202,7 +202,7 @@ export default function InventarioPage() {
     if (!token) return
 
     try {
-      const response = await fetch('/api/categories', {
+      const response = await fetch('/api/product-categories', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

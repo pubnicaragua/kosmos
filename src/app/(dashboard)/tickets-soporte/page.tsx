@@ -1579,7 +1579,7 @@ export default function TicketsSoportePage() {
               <Select
                 label="Tipo de Equipo"
                 options={[
-                  { value: '', label: 'Seleccionar tipo', disabled: true, hidden: true },
+                  { value: '', label: 'Sin especificar' },
                   { value: 'DVR', label: 'DVR (Grabador Digital)' },
                   { value: 'NVR', label: 'NVR (Grabador de Red)' },
                   { value: 'CAMARA_IP', label: 'Cámara IP' },
