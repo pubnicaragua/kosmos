@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo, FormEvent } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -138,6 +139,7 @@ const getTicketPreviewImage = (ticket: Ticket) => {
 
 export default function TicketsSoportePage() {
   const router = useRouter()
+  const permissions = useModulePermissions('tickets-soporte')
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
@@ -1050,18 +1052,22 @@ export default function TicketsSoportePage() {
               </div>
             )}
           </div>
-          <Button variant="outline" onClick={handleExport} title="Reporte detallado de todas las incidencias">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            REPORTE INCIDENCIA
-          </Button>
-          <Button onClick={openCreateModal}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            AÑADIR
-          </Button>
+          {permissions.canExport && (
+            <Button variant="outline" onClick={handleExport} title="Reporte detallado de todas las incidencias">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              REPORTE INCIDENCIA
+            </Button>
+          )}
+          {permissions.canCreate && (
+            <Button onClick={openCreateModal}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              AÑADIR
+            </Button>
+          )}
         </div>
       </div>
 

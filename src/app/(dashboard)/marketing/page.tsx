@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -88,6 +89,7 @@ interface Company {
 
 export default function MarketingPage() {
   const router = useRouter()
+  const permissions = useModulePermissions('marketing')
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -284,10 +286,12 @@ export default function MarketingPage() {
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="w-52"
           />
-          <Button onClick={() => router.push('/marketing/nueva')}>
-            <Plus className="w-5 h-5 mr-2" />
-            NUEVA CAMPAÑA
-          </Button>
+          {permissions.canCreate && (
+            <Button onClick={() => router.push('/marketing/nueva')}>
+              <Plus className="w-5 h-5 mr-2" />
+              NUEVA CAMPAÑA
+            </Button>
+          )}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 import { Input } from '@/components/ui-kit/Input'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface Product {
   id: string
@@ -61,6 +62,7 @@ interface EditingProduct {
 
 export default function InventarioPage() {
   const router = useRouter()
+  const permissions = useModulePermissions('inventario')
   const [products, setProducts] = useState<Product[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -756,10 +758,12 @@ export default function InventarioPage() {
                       <div className="text-sm text-gray-600">{product.promotion || '-'}</div>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <button onClick={() => startEditing(product)}
-                        className="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-opacity">
-                        Editar
-                      </button>
+                      {permissions.canEdit && (
+                        <button onClick={() => startEditing(product)}
+                          className="opacity-0 group-hover:opacity-100 px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-opacity">
+                          Editar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )

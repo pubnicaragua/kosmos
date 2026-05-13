@@ -70,32 +70,25 @@ export async function getModuleAccess(
     }
   }
 
-  // If user has customRole, use its permissions
+  // If user has customRole, check if module has specific permissions
   if (userCompany.customRole) {
     const perm = userCompany.customRole.permissions.find((p) => p.module === module)
     
-    // If module not found in permissions, deny all access
-    if (!perm) {
+    // If module found in permissions, use those specific permissions
+    if (perm) {
       return {
-        canAccess: false,
-        canView: false,
-        canCreate: false,
-        canEdit: false,
-        canDelete: false,
-        canExport: false,
+        canAccess: true,
+        canView: Boolean(perm.canView),
+        canCreate: Boolean(perm.canCreate),
+        canEdit: Boolean(perm.canEdit),
+        canDelete: Boolean(perm.canDelete),
+        canExport: Boolean(perm.canExport),
         restrictedByCustomRole: true,
       }
     }
-
-    return {
-      canAccess: true,
-      canView: Boolean(perm.canView),
-      canCreate: Boolean(perm.canCreate),
-      canEdit: Boolean(perm.canEdit),
-      canDelete: Boolean(perm.canDelete),
-      canExport: Boolean(perm.canExport),
-      restrictedByCustomRole: true,
-    }
+    
+    // Module not in customRole permissions - fallback to role-based permissions
+    // This allows customRole to only restrict specific modules, not all modules
   }
 
   // No customRole - use default permissions based on role

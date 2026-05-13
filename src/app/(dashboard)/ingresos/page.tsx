@@ -9,6 +9,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SkeletonTable, SkeletonKPI } from '@/components/ui-kit/Skeleton'
 import { exportWithCompanyHeader } from '@/lib/export-utils'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 const FILTERS_STORAGE_KEY = 'ingresosFilters'
 
@@ -66,6 +67,7 @@ interface IncomeSummary {
 }
 
 export default function IngresosPage() {
+  const permissions = useModulePermissions('ingresos')
   const [incomes, setIncomes] = useState<Income[]>([])
   const [summary, setSummary] = useState<IncomeSummary | null>(null)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
@@ -610,24 +612,28 @@ export default function IngresosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestión de facturación y entradas de dinero</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={addInlineRow}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            AGREGAR FILA
-          </Button>
+          {permissions.canCreate && (
+            <Button variant="outline" onClick={addInlineRow}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              AGREGAR FILA
+            </Button>
+          )}
           <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             {isImporting ? 'IMPORTANDO...' : 'IMPORTAR INGRESOS'}
           </Button>
-          <Button onClick={handleExport} disabled={isExporting}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {isExporting ? 'EXPORTANDO...' : 'EXPORTAR INGRESOS'}
-          </Button>
+          {permissions.canExport && (
+            <Button onClick={handleExport} disabled={isExporting}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {isExporting ? 'EXPORTANDO...' : 'EXPORTAR INGRESOS'}
+            </Button>
+          )}
         </div>
       </div>
 

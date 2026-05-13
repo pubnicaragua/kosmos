@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { 
   ShoppingCart, Plus, Filter, Search, MoreVertical, 
   Clock, CheckCircle2, XCircle, Package, Truck, 
@@ -30,6 +31,7 @@ const getInitials = (name?: string | null) => {
 
 export default function SolicitudesCompraPage() {
   const { selectedCompany } = useCompany()
+  const permissions = useModulePermissions('solicitudes-compra')
   const [requests, setRequests] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [kpis, setKpis] = useState<any>(null)
@@ -150,12 +152,14 @@ export default function SolicitudesCompraPage() {
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Solicitudes de Compra</h1>
             <p className="text-slate-500 text-sm mt-1 font-medium">Gestión estratégica de suministros y reposición de inventario.</p>
           </div>
-          <Link href="/solicitudes-compra/nueva">
-            <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl font-bold gap-2">
-              <Plus className="w-5 h-5" />
-              NUEVA SOLICITUD
-            </Button>
-          </Link>
+          {permissions.canCreate && (
+            <Link href="/solicitudes-compra/nueva">
+              <Button className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 rounded-xl font-bold gap-2">
+                <Plus className="w-5 h-5" />
+                NUEVA SOLICITUD
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui-kit/Badge'
 import { Input } from '@/components/ui-kit/Input'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nicaragua-validators'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface Client {
   id: string
@@ -70,10 +71,11 @@ interface ClientRowDraft {
 }
 
 function ClientesPageContent() {
-  const [itemsPerPage, setItemsPerPage] = useState(25)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const permissions = useModulePermissions('clientes')
   const editClientId = searchParams.get('edit')
+  const [itemsPerPage, setItemsPerPage] = useState(25)
   const [clients, setClients] = useState<Client[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -594,7 +596,7 @@ function ClientesPageContent() {
           <p className="text-sm text-gray-500 mt-1">Administra tu base de clientes, visualice estados y gestiona contactos.</p>
         </div>
         <div className="flex items-center gap-3">
-          {selectedClients.size > 0 && (
+          {selectedClients.size > 0 && permissions.canDelete && (
             <Button variant="outline" onClick={handleBulkDelete} className="bg-red-50 text-red-600 border-red-300 hover:bg-red-100">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -602,24 +604,28 @@ function ClientesPageContent() {
               ELIMINAR ({selectedClients.size})
             </Button>
           )}
-          <Button onClick={addInlineRow}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            AGREGAR FILA
-          </Button>
-          <Button onClick={() => setShowImportModal(true)}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            IMPORTAR
-          </Button>
-          <Button onClick={() => router.push('/clientes/nuevo')}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            NUEVO CLIENTE
-          </Button>
+          {permissions.canCreate && (
+            <>
+              <Button onClick={addInlineRow}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                AGREGAR FILA
+              </Button>
+              <Button onClick={() => setShowImportModal(true)}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                IMPORTAR
+              </Button>
+              <Button onClick={() => router.push('/clientes/nuevo')}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                NUEVO CLIENTE
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

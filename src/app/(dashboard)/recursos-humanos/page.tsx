@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { Download, Upload, FileText, Plus, User, Edit2, Trash2, X, Camera, Users, Briefcase, Calendar, DollarSign, Building2, Phone, Mail, MapPin, Heart, GraduationCap, Shield } from 'lucide-react'
 import { Card, Button, Input, Badge, Modal } from '@/components/ui-kit'
 import * as XLSX from 'xlsx'
@@ -50,6 +51,7 @@ interface Payroll {
 }
 
 export default function RecursosHumanosPage() {
+  const permissions = useModulePermissions('empleados')
   const [activeTab, setActiveTab] = useState<'employees' | 'payrolls'>('employees')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activeCompany, setActiveCompany] = useState<any>(null)
@@ -776,7 +778,7 @@ const handleDownloadTemplate = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {activeTab === 'payrolls' && selectedPayrolls.size > 0 && (
+          {activeTab === 'payrolls' && selectedPayrolls.size > 0 && permissions.canDelete && (
             <Button variant="outline" onClick={handleBulkDelete} className="border-red-200 hover:bg-red-50 text-red-700 font-bold">
               <Trash2 className="w-4 h-4 mr-2" />
               ELIMINAR ({selectedPayrolls.size})
@@ -799,14 +801,18 @@ const handleDownloadTemplate = () => {
           </Button>
           {activeTab === 'employees' ? (
             <>
-              <Button variant="outline" onClick={() => setShowEmployeeImportModal(true)} className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
-                <Upload className="w-4 h-4 mr-2" />
-                IMPORTAR
-              </Button>
-              <Button onClick={() => handleOpenEmployeeModal()} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
-                <Plus className="w-4 h-4 mr-2" />
-                NUEVO EMPLEADO
-              </Button>
+              {permissions.canCreate && (
+                <>
+                  <Button variant="outline" onClick={() => setShowEmployeeImportModal(true)} className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
+                    <Upload className="w-4 h-4 mr-2" />
+                    IMPORTAR
+                  </Button>
+                  <Button onClick={() => handleOpenEmployeeModal()} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
+                    <Plus className="w-4 h-4 mr-2" />
+                    NUEVO EMPLEADO
+                  </Button>
+                </>
+              )}
             </>
           ) : (
             <>

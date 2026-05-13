@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { KPICard } from '@/components/common/KPICard'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -59,6 +60,7 @@ const STATUS_TABS = [
 ]
 
 export default function ActividadesPage() {
+  const permissions = useModulePermissions('actividades')
   const [activities, setActivities] = useState<Activity[]>([])
   const [summary, setSummary] = useState<ActivitySummary | null>(null)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
@@ -433,18 +435,22 @@ export default function ActividadesPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona llamadas, reuniones, cotizaciones y otras actividades.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={addInlineRow}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            AGREGAR FILA
-          </Button>
-          <Button variant="outline" onClick={handleExport} disabled={isExporting}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {isExporting ? 'EXPORTANDO...' : 'EXPORTAR'}
-          </Button>
+          {permissions.canCreate && (
+            <Button variant="outline" onClick={addInlineRow}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              AGREGAR FILA
+            </Button>
+          )}
+          {permissions.canExport && (
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {isExporting ? 'EXPORTANDO...' : 'EXPORTAR'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -713,8 +719,8 @@ export default function ActividadesPage() {
                     <td className="py-4 px-3 text-center">{getStatusBadge(activity.status)}</td>
                     <td className="py-4 px-3">
                       <div className="flex items-center justify-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => startEditingRow(activity)}>Editar</Button>
-                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => deleteActivity(activity.id)}>Eliminar</Button>
+                        {permissions.canEdit && <Button size="sm" variant="outline" onClick={() => startEditingRow(activity)}>Editar</Button>}
+                        {permissions.canDelete && <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => deleteActivity(activity.id)}>Eliminar</Button>}
                       </div>
                     </td>
                   </tr>

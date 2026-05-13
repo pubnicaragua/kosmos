@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, FormEvent, useCallback } from 'react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
@@ -93,6 +94,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; dot: strin
 }
 
 export default function PipelineVentasPage() {
+  const permissions = useModulePermissions('pipeline-ventas')
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -520,18 +522,22 @@ export default function PipelineVentasPage() {
           onChange={(e) => setSelectedPriority(e.target.value)}
           className="w-48"
         />
-        <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          EXPORTAR
-        </Button>
-        <Button onClick={openCreateModal} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          AÑADIR
-        </Button>
+        {permissions.canExport && (
+          <Button variant="outline" onClick={handleExport} className="flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            EXPORTAR
+          </Button>
+        )}
+        {permissions.canCreate && (
+          <Button onClick={openCreateModal} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            AÑADIR
+          </Button>
+        )}
       </div>
 
       {/* Stage summary row - aligned with columns */}
