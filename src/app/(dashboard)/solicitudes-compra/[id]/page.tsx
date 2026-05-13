@@ -28,7 +28,12 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [quotationUrl, setQuotationUrl] = useState('')
+  const [purchaseOrderUrl, setPurchaseOrderUrl] = useState('')
+  const [evidenceUrl, setEvidenceUrl] = useState('')
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   const fetchRequest = useCallback(async () => {
@@ -43,6 +48,9 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       const data = await res.json()
       if (data.success) {
         setRequest(data.data)
+        setQuotationUrl(data.data.quotationUrl || '')
+        setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
+        setEvidenceUrl(data.data.evidenceUrl || '')
       } else {
         alert(data.error || 'Error al cargar detalle')
         router.push('/solicitudes-compra')
@@ -68,7 +76,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
     }
   }, [fetchRequest])
 
-  const updateStatus = async (newStatus: string) => {
+  const updateStatus = async (newStatus: string, extraPayload: Record<string, unknown> = {}) => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
@@ -82,13 +90,19 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         },
         body: JSON.stringify({ 
           status: newStatus,
-          rejectedReason: newStatus === 'RECHAZADA' ? rejectReason : undefined
+          rejectedReason: newStatus === 'RECHAZADA' ? rejectReason : undefined,
+          ...extraPayload,
         })
       })
       const data = await res.json()
       if (data.success) {
         setRequest(data.data)
         setIsRejectModalOpen(false)
+        setIsPurchaseModalOpen(false)
+        setIsReceiveModalOpen(false)
+        setQuotationUrl(data.data.quotationUrl || '')
+        setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
+        setEvidenceUrl(data.data.evidenceUrl || '')
       } else {
         alert(data.error || 'Error al actualizar estado')
       }
@@ -166,18 +180,18 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               </Button>
             </>
           )}
-          {request.status === 'APROBADA' && (
+          {request.status === 'APROBADA' && canApprove && (
             <Button 
-              onClick={() => updateStatus('COMPRADO')}
+              onClick={() => setIsPurchaseModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl px-8 shadow-lg shadow-indigo-100"
               disabled={isUpdating}
             >
               MARCAR COMO COMPRADO
             </Button>
           )}
-          {request.status === 'COMPRADO' && (
+          {request.status === 'COMPRADO' && canApprove && (
             <Button 
-              onClick={() => updateStatus('RECIBIDO')}
+              onClick={() => setIsReceiveModalOpen(true)}
               className="bg-green-600 hover:bg-green-700 font-bold rounded-xl px-8 shadow-lg shadow-green-100"
               disabled={isUpdating}
             >
@@ -236,7 +250,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   </div>
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Solicitante</p>
-                    <p className="font-bold text-slate-800">{request.requestedByName || request.requestedBy || 'N/A'}</p>
+                    <p className="font-bold text-slate-800">{request.requestedByName || 'N/A'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -304,6 +318,29 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   <p className="text-sm text-slate-600 font-medium leading-relaxed">{request.notes}</p>
                 </div>
               )}
+
+              {(request.purchaseOrderUrl || request.quotationUrl || request.evidenceUrl) && (
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Soportes</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {request.purchaseOrderUrl && (
+                      <a href={request.purchaseOrderUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1">
+                        Comprobante compra <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {request.quotationUrl && (
+                      <a href={request.quotationUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1">
+                        Cotización <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {request.evidenceUrl && (
+                      <a href={request.evidenceUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-green-600 hover:text-green-700 inline-flex items-center gap-1">
+                        Evidencia recepción <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -345,10 +382,14 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                 <div>
                   <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Compra Ejecutada</p>
                   {request.expenseId ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-indigo-600 font-bold">Ver Gasto</span>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/finanzas/gastos/${request.expenseId}`)}
+                      className="flex items-center gap-2 mt-1 text-[10px] text-indigo-600 font-bold hover:text-indigo-700"
+                    >
+                      Ver Gasto
                       <ExternalLink className="w-2.5 h-2.5 text-indigo-400" />
-                    </div>
+                    </button>
                   ) : <p className="text-[10px] text-slate-300 italic">Pendiente</p>}
                 </div>
               </div>
@@ -378,6 +419,88 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        title="Marcar compra ejecutada"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">URL cotización (opcional)</label>
+            <input
+              value={quotationUrl}
+              onChange={(e) => setQuotationUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Comprobante/soporte de compra *</label>
+            <input
+              value={purchaseOrderUrl}
+              onChange={(e) => setPurchaseOrderUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsPurchaseModalOpen(false)}>CANCELAR</Button>
+            <Button
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
+              disabled={isUpdating}
+              onClick={() => {
+                if (!purchaseOrderUrl.trim()) {
+                  alert('Debes agregar comprobante o soporte de compra')
+                  return
+                }
+                updateStatus('COMPRADO', {
+                  quotationUrl: quotationUrl.trim() || null,
+                  purchaseOrderUrl: purchaseOrderUrl.trim(),
+                })
+              }}
+            >
+              CONFIRMAR COMPRA
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isReceiveModalOpen}
+        onClose={() => setIsReceiveModalOpen(false)}
+        title="Marcar productos recibidos"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Evidencia de recepción *</label>
+            <input
+              value={evidenceUrl}
+              onChange={(e) => setEvidenceUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsReceiveModalOpen(false)}>CANCELAR</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl"
+              disabled={isUpdating}
+              onClick={() => {
+                if (!evidenceUrl.trim()) {
+                  alert('Debes agregar evidencia de recepción')
+                  return
+                }
+                updateStatus('RECIBIDO', {
+                  evidenceUrl: evidenceUrl.trim(),
+                })
+              }}
+            >
+              CONFIRMAR RECEPCIÓN
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Reject Modal */}
       <Modal 

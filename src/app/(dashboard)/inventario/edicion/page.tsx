@@ -12,6 +12,7 @@ interface ProductRow {
   name: string
   unit: string
   categoryId: string
+  categoryName: string
   description: string
   sku: string
   cost: number
@@ -40,9 +41,12 @@ export default function InventarioEdicionPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [rows, setRows] = useState<ProductRow[]>([
-    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, isNew: true },
+    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
+
+  const normalizeCategoryName = (value: string) =>
+    value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
   const fetchCompanies = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -133,6 +137,7 @@ export default function InventarioEdicionPage() {
       name: '',
       unit: 'UNI',
       categoryId: '',
+      categoryName: '',
       description: '',
       sku: '',
       cost: 0,
@@ -141,6 +146,23 @@ export default function InventarioEdicionPage() {
       isNew: true,
     }
     setRows([...rows, newRow])
+  }
+
+  const updateCategoryField = (index: number, value: string) => {
+    const updated = [...rows]
+    const matchedCategory = categories.find(
+      (cat) =>
+        cat.id === value ||
+        normalizeCategoryName(cat.name) === normalizeCategoryName(value)
+    )
+
+    updated[index] = {
+      ...updated[index],
+      categoryName: value,
+      categoryId: matchedCategory?.id || '',
+    }
+
+    setRows(updated)
   }
 
   const updateRow = (index: number, field: keyof ProductRow, value: string | number) => {
@@ -254,6 +276,7 @@ export default function InventarioEdicionPage() {
             name,
             unit: String(pickValue('unidad', 'unit', 'unikg') || 'UNI').trim().toUpperCase() || 'UNI',
             categoryId: matchedCategoryId || (familia ? categoriesByName.get(normalizeHeader(familia)) : '') || '',
+            categoryName: categoryInput || familia || '',
             description: String(pickValue('descripcion', 'description', 'detalle') || descripcionParts).trim(),
             sku,
             cost: toNumber(pickValue('costo', 'cost', 'preciocosto', 'costopromedio', 'costoenbodega')),
@@ -303,6 +326,48 @@ export default function InventarioEdicionPage() {
       sku: row.sku.trim() || `AUTO-${Date.now()}-${idx}`,
     }))
 
+    const categoryMap = new Map(
+      categories.map((category) => [normalizeCategoryName(category.name), category.id])
+    )
+
+    const newCategories = Array.from(
+      new Set(
+        rowsWithSku
+          .map((row) => row.categoryName?.trim() || '')
+          .filter((name) => name && !categoryMap.has(normalizeCategoryName(name)))
+      )
+    )
+
+    const createdCategories: Category[] = []
+    for (const categoryName of newCategories) {
+      const createCategoryRes = await fetch('/api/product-categories', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: categoryName,
+          companyId: selectedCompany,
+        }),
+      })
+
+      const createCategoryData = await createCategoryRes.json()
+      if (!createCategoryData.success) {
+        alert(createCategoryData.error || `No se pudo crear la categoría: ${categoryName}`)
+        setIsSaving(false)
+        return
+      }
+
+      const createdCategory = createCategoryData.data as Category
+      createdCategories.push(createdCategory)
+      categoryMap.set(normalizeCategoryName(createdCategory.name), createdCategory.id)
+    }
+
+    if (createdCategories.length > 0) {
+      setCategories((prev) => [...prev, ...createdCategories])
+    }
+
     setIsSaving(true)
     try {
       const response = await fetch('/api/products/bulk', {
@@ -316,7 +381,10 @@ export default function InventarioEdicionPage() {
           products: rowsWithSku.map(row => ({
             name: row.name,
             unit: row.unit,
-            categoryId: row.categoryId || null,
+            categoryId:
+              row.categoryId ||
+              categoryMap.get(normalizeCategoryName(row.categoryName || '')) ||
+              null,
             description: row.description || null,
             sku: row.sku,
             cost: row.cost,
@@ -464,17 +532,20 @@ export default function InventarioEdicionPage() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <select
-                        value={row.categoryId}
-                        onChange={(e) => updateRow(index, 'categoryId', e.target.value)}
+                      <input
+                        type="text"
+                        list={`category-options-${index}`}
+                        value={row.categoryName}
+                        onChange={(e) => updateCategoryField(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, index)}
+                        placeholder="Categoría..."
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
-                      >
-                        <option value=""></option>
+                      />
+                      <datalist id={`category-options-${index}`}>
                         {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          <option key={cat.id} value={cat.name} />
                         ))}
-                      </select>
+                      </datalist>
                       <button
                         type="button"
                         onClick={() => setShowCategoryModal(true)}

@@ -8,6 +8,8 @@ interface QuoteItem {
   tempId: number
   productId: string
   description: string
+  sku?: string
+  stock?: number | null
   quantity: number
   unitPrice: number | string
   discount: number | string
@@ -53,12 +55,12 @@ export default function NuevaCotizacionPage() {
   const [internalNotes, setInternalNotes] = useState('')
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<QuoteItem[]>([
-    { tempId: 1, productId: '', description: '', quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }
+    { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }]
+    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }]
     return items
   }, [items])
 
@@ -165,7 +167,8 @@ useEffect(() => {
 
         const data = await response.json()
         if (data.success) {
-          setProducts(Array.isArray(data.data) ? data.data : [])
+          const list = Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
+          setProducts(Array.isArray(list) ? list : [])
         } else {
           setProducts([])
         }
@@ -196,6 +199,8 @@ useEffect(() => {
       tempId: newTempId,
       productId: '',
       description: '',
+      sku: '',
+      stock: null,
       quantity: 1,
       unitPrice: '',
       discount: '',
@@ -217,6 +222,11 @@ useEffect(() => {
     }
     
     updated[index] = { ...updated[index], [field]: value }
+    if (field === 'description') {
+      updated[index].productId = ''
+      updated[index].sku = ''
+      updated[index].stock = null
+    }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
   }
@@ -228,6 +238,8 @@ useEffect(() => {
       ...updated[index],
       productId: product.id,
       description: product.name,
+      sku: product.sku || '',
+      stock: typeof product.stock === 'number' ? product.stock : null,
       unitPrice: product.price || 0,
     }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
@@ -367,27 +379,29 @@ useEffect(() => {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px]">
+            <div className="overflow-x-hidden">
+              <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">PRODUCTO/SERVICIO</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">CANT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">DESC. %</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-36">TOTAL</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[46%]">PRODUCTO/SERVICIO</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">CANT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">PRECIO UNIT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-20">DESC. %</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">IMPUESTO</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">TOTAL</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {itemsArray.map((item: any, index: number) => {
                     const selectedProduct = safeProducts.find((product) => product.id === item.productId)
+                    const skuToShow = item.sku || selectedProduct?.sku || ''
+                    const stockToShow = typeof item.stock === 'number' ? item.stock : selectedProduct?.stock
                     return (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
-                      <td className="py-3 px-2 min-w-[480px]">
+                      <td className="py-3 px-2">
                         <div className="space-y-2">
                           <ProductAutocomplete
                             companyId={selectedCompany}
@@ -395,17 +409,19 @@ useEffect(() => {
                             onChange={(val) => updateItem(index, 'description', val)}
                             onSelect={(prod) => selectProduct(index, prod as any)}
                             placeholder="Buscar producto o SKU..."
-                            className="mb-1 w-full min-w-[440px]"
+                            className="mb-1 w-full"
                             inputClassName="text-sm font-semibold"
-                            dropdownClassName="w-[720px] md:w-[820px] lg:w-[940px] max-w-[90vw]"
+                            dropdownClassName="w-full max-w-[calc(100vw-5rem)]"
                           />
-                          {selectedProduct ? (
+                          {skuToShow ? (
                             <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
                               <span className="uppercase tracking-wide">SKU:</span>
-                              <span className="font-mono text-slate-700">{selectedProduct.sku}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${selectedProduct.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                                Stock {selectedProduct.stock}
-                              </span>
+                              <span className="font-mono text-slate-700">{skuToShow}</span>
+                              {typeof stockToShow === 'number' && (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${stockToShow > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                  Stock {stockToShow}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className="text-[11px] text-slate-400">Puedes buscar por nombre o SKU</div>

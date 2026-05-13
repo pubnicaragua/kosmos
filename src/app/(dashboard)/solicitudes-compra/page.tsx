@@ -118,7 +118,7 @@ export default function SolicitudesCompraPage() {
                 <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500">
-                      {getInitials(req.requestedByName || req.requestedBy)}
+                      {getInitials(req.requestedByName)}
                     </div>
                     <span className="text-[11px] text-slate-500 font-semibold truncate max-w-[140px]">
                       {req.requestedByName || 'N/A'}

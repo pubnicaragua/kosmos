@@ -121,6 +121,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'No tienes permisos para aprobar esta solicitud' }, { status: 403 })
     }
 
+    if (status === 'COMPRADO') {
+      const purchaseProof = purchaseOrderUrl ?? currentRequest.purchaseOrderUrl
+      if (!purchaseProof) {
+        return NextResponse.json({ success: false, error: 'Debes adjuntar comprobante o soporte de compra' }, { status: 400 })
+      }
+    }
+
+    if (status === 'RECIBIDO') {
+      const receptionProof = evidenceUrl ?? currentRequest.evidenceUrl
+      if (!receptionProof) {
+        return NextResponse.json({ success: false, error: 'Debes adjuntar evidencia de recepción' }, { status: 400 })
+      }
+    }
+
     const updateData: any = {}
     if (status) updateData.status = status
     if (quotationUrl !== undefined) updateData.quotationUrl = quotationUrl
@@ -171,13 +185,49 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     if (notes) updateData.notes = notes
 
-    const updated = await prisma.purchaseRequest.update({
+    await prisma.purchaseRequest.update({
       where: { id: params.id },
       data: updateData,
       include: { items: true }
     })
 
-    return NextResponse.json({ success: true, data: updated })
+    const updated = await prisma.purchaseRequest.findUnique({
+      where: { id: params.id },
+      include: {
+        items: true,
+        company: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    })
+
+    if (!updated) {
+      return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
+    }
+
+    const [requestedByUser, approvedByUser] = await Promise.all([
+      updated.requestedBy
+        ? prisma.user.findUnique({ where: { id: updated.requestedBy }, select: { id: true, name: true } })
+        : Promise.resolve(null),
+      updated.approvedBy
+        ? prisma.user.findUnique({ where: { id: updated.approvedBy }, select: { id: true, name: true } })
+        : Promise.resolve(null),
+    ])
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...updated,
+        requestingArea: updated.department?.name || updated.requestingArea,
+        requestedByName: requestedByUser?.name || null,
+        approvedByName: approvedByUser?.name || null,
+        canApprove,
+      },
+    })
   } catch (error) {
     console.error('Error updating purchase request:', error)
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })

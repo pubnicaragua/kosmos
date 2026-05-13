@@ -56,6 +56,7 @@ interface EditingProduct {
   promotionCost: string
   promotionDiscount: string
   categoryId: string
+  categoryName: string
 }
 
 export default function InventarioPage() {
@@ -79,6 +80,9 @@ export default function InventarioPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
 
+  const normalizeCategoryName = (value: string) =>
+    value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
   const startEditing = (product: Product) => {
     setEditingRows(prev => ({
       ...prev,
@@ -94,6 +98,7 @@ export default function InventarioPage() {
         promotionCost: product.promotionCost != null ? String(product.promotionCost) : '',
         promotionDiscount: product.promotionDiscount != null ? String(product.promotionDiscount) : '',
         categoryId: product.category?.id || '',
+        categoryName: product.category?.name || '',
       },
     }))
   }
@@ -109,6 +114,50 @@ export default function InventarioPage() {
     if (!token) return
     setSavingRows(prev => ({ ...prev, [productId]: true }))
     try {
+      let resolvedCategoryId = row.categoryId || ''
+      const typedCategoryName = (row.categoryName || '').trim()
+
+      if (typedCategoryName) {
+        const matchedCategory = categories.find(
+          (cat) =>
+            cat.id === typedCategoryName ||
+            normalizeCategoryName(cat.name) === normalizeCategoryName(typedCategoryName)
+        )
+
+        if (matchedCategory) {
+          resolvedCategoryId = matchedCategory.id
+        } else {
+          if (selectedCompany === 'all') {
+            alert('Selecciona una empresa para crear una nueva categoría')
+            return
+          }
+
+          const createCategoryRes = await fetch('/api/product-categories', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: typedCategoryName,
+              companyId: selectedCompany,
+            }),
+          })
+
+          const createCategoryData = await createCategoryRes.json()
+          if (!createCategoryData.success) {
+            alert(createCategoryData.error || 'Error al crear categoría')
+            return
+          }
+
+          const createdCategory = createCategoryData.data
+          resolvedCategoryId = createdCategory.id
+          setCategories(prev => [...prev, createdCategory])
+        }
+      } else {
+        resolvedCategoryId = ''
+      }
+
       const res = await fetch(`/api/products/${productId}`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -123,7 +172,7 @@ export default function InventarioPage() {
           promotion: row.promotion || null,
           promotionCost: row.promotionCost !== '' ? Number(row.promotionCost) : null,
           promotionDiscount: row.promotionDiscount !== '' ? Number(row.promotionDiscount) : null,
-          categoryId: row.categoryId || null,
+          categoryId: resolvedCategoryId || null,
         }),
       })
       if (res.ok) {
@@ -142,6 +191,15 @@ export default function InventarioPage() {
   const updateEditField = (productId: string, field: string, value: string) => {
     setEditingRows(prev => {
       const updated = { ...prev[productId], [field]: value }
+
+      if (field === 'categoryName') {
+        const matchedCategory = categories.find(
+          (cat) =>
+            cat.id === value ||
+            normalizeCategoryName(cat.name) === normalizeCategoryName(value)
+        )
+        updated.categoryId = matchedCategory?.id || ''
+      }
       
       // Auto-calculate margin when cost or price changes
       if (field === 'cost' || field === 'price') {
@@ -575,11 +633,16 @@ export default function InventarioPage() {
                           className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
-                        <select value={editing.categoryId} onChange={e => updateEditField(product.id, 'categoryId', e.target.value)}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm">
-                          <option value="">Sin categoría</option>
-                          {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                        </select>
+                        <input
+                          list={`category-options-${product.id}`}
+                          value={editing.categoryName || ''}
+                          onChange={e => updateEditField(product.id, 'categoryName', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                          placeholder="Categoría..."
+                        />
+                        <datalist id={`category-options-${product.id}`}>
+                          {categories.map(cat => <option key={cat.id} value={cat.name} />)}
+                        </datalist>
                       </td>
                       <td className="py-2 px-2">
                         <input value={editing.description} onChange={e => updateEditField(product.id, 'description', e.target.value)}
