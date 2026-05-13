@@ -549,15 +549,17 @@ function InventarioEdicionPageContent() {
               onChange={(e) => setSelectedCompany(e.target.value)}
               className="w-64"
             />
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={updateExistingProducts}
-                onChange={(e) => setUpdateExistingProducts(e.target.checked)}
-                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <span>Actualizar productos existentes (mismo SKU)</span>
-            </label>
+            {!isService && (
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={updateExistingProducts}
+                  onChange={(e) => setUpdateExistingProducts(e.target.checked)}
+                  className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                />
+                <span>Actualizar productos existentes (mismo SKU)</span>
+              </label>
+            )}
           </div>
         </div>
 
