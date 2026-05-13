@@ -91,3 +91,46 @@ export async function PUT(request: NextRequest) {
     return apiError('Error al actualizar categoría', 500)
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const body = await request.json()
+    const id = String(body?.id || '').trim()
+    if (!id) return apiError('ID de categoría requerido', 400)
+
+    const category = await prisma.productCategory.findUnique({
+      where: { id },
+      select: { id: true, companyId: true },
+    })
+    if (!category) return apiError('Categoría no encontrada', 404)
+
+    const access = await getCompanyAccess(decoded.userId, category.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const result = await prisma.$transaction(async (tx) => {
+      const detached = await tx.product.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null },
+      })
+
+      await tx.productCategory.delete({ where: { id } })
+
+      return { detachedProducts: detached.count }
+    })
+
+    return apiSuccess({
+      id,
+      detachedProducts: result.detachedProducts,
+      message: 'Categoría eliminada exitosamente',
+    })
+  } catch (error) {
+    console.error('Error deleting category:', error)
+    return apiError('Error al eliminar categoría', 500)
+  }
+}

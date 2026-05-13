@@ -23,7 +23,18 @@ interface Client {
   cedula: string | null
   contactName: string | null
   status: 'PROSPECTO' | 'PROPUESTA' | 'NEGOCIACION' | 'CALIFICADO' | 'ACTIVO' | 'INACTIVO'
+  createdAt?: string
+  updatedAt?: string
   company: { name: string }
+}
+
+const STATUS_LABELS: Record<Client['status'], string> = {
+  PROSPECTO: 'Prospecto',
+  PROPUESTA: 'Propuesta',
+  NEGOCIACION: 'Negociación',
+  CALIFICADO: 'Calificado',
+  ACTIVO: 'Activo',
+  INACTIVO: 'Inactivo',
 }
 
 const STATUS_TABS = [
@@ -83,6 +94,9 @@ export default function ClientesPage() {
   const [draftRows, setDraftRows] = useState<ClientRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, ClientRowDraft>>({})
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
+  const [quickViewClient, setQuickViewClient] = useState<Client | null>(null)
+  const [quickViewDetails, setQuickViewDetails] = useState<any | null>(null)
+  const [isQuickViewLoading, setIsQuickViewLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -478,7 +492,38 @@ export default function ClientesPage() {
       ACTIVO: 'success',
       INACTIVO: 'default',
     }
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>
+    return <Badge variant={variants[status] || 'default'}>{STATUS_LABELS[status as Client['status']] || status}</Badge>
+  }
+
+  const openQuickView = async (client: Client) => {
+    setQuickViewClient(client)
+    setQuickViewDetails(null)
+    setIsQuickViewLoading(true)
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      setIsQuickViewLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/clients/${client.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setQuickViewDetails(data.data)
+      }
+    } catch (error) {
+      console.error('Error loading client quick view:', error)
+    } finally {
+      setIsQuickViewLoading(false)
+    }
+  }
+
+  const closeQuickView = () => {
+    setQuickViewClient(null)
+    setQuickViewDetails(null)
   }
 
   // Aplicar filtros de columna
@@ -950,6 +995,9 @@ export default function ClientesPage() {
                     <td className="py-1.5 px-3 text-center">{getStatusBadge(client.status)}</td>
                     <td className="py-1.5 px-3">
                       <div className="flex items-center justify-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => openQuickView(client)}>
+                          Ver
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => startEditingRow(client)}>
                           Editar
                         </Button>
@@ -1240,6 +1288,105 @@ export default function ClientesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {quickViewClient && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={closeQuickView} />
+          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-[430px] bg-white border-l border-slate-200 shadow-2xl overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 flex items-start justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">{quickViewClient.name}</h3>
+                <div className="mt-2">{getStatusBadge((quickViewDetails?.status || quickViewClient.status) as string)}</div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Cliente desde {new Date((quickViewDetails?.createdAt || quickViewClient.createdAt || new Date().toISOString())).toLocaleDateString('es-NI')}
+                </p>
+              </div>
+              <button onClick={closeQuickView} className="text-slate-400 hover:text-slate-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {isQuickViewLoading ? (
+                <div className="space-y-3">
+                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 bg-slate-100 rounded animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  <section className="border border-slate-200 rounded-xl p-4">
+                    <h4 className="text-sm font-black text-slate-800 mb-3">Información principal</h4>
+                    <dl className="space-y-3 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">Cliente</dt>
+                        <dd className="text-slate-900 font-bold text-right">{quickViewDetails?.name || quickViewClient.name}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">Ubicación</dt>
+                        <dd className="text-slate-900 text-right">{[quickViewDetails?.address || quickViewClient.address || '-', quickViewDetails?.city || quickViewClient.city || 'N/A'].join(' · ')}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">RUC / Cédula</dt>
+                        <dd className="text-slate-900 text-right">{quickViewDetails?.ruc || quickViewDetails?.cedula || quickViewClient.ruc || quickViewClient.cedula || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">Contacto</dt>
+                        <dd className="text-slate-900 text-right">{quickViewDetails?.contactName || quickViewClient.contactName || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">WhatsApp</dt>
+                        <dd className="text-slate-900 text-right">{quickViewDetails?.phone || quickViewClient.phone || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-slate-500 font-semibold">Correo</dt>
+                        <dd className="text-slate-900 text-right break-all">{quickViewDetails?.email || quickViewClient.email || 'N/A'}</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  <section className="border border-slate-200 rounded-xl p-4">
+                    <h4 className="text-sm font-black text-slate-800 mb-3">Acciones rápidas</h4>
+                    <div className="space-y-2">
+                      <Button variant="outline" className="w-full justify-start" onClick={() => {
+                        closeQuickView()
+                        startEditingRow(quickViewClient)
+                      }}>
+                        Editar cliente
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start" onClick={() => {
+                        closeQuickView()
+                        router.push(`/clientes/cotizacion/nueva?clientId=${quickViewClient.id}&companyId=${quickViewClient.companyId}`)
+                      }}>
+                        Nueva cotización
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start" onClick={() => {
+                        closeQuickView()
+                        router.push(`/clientes/${quickViewClient.id}`)
+                      }}>
+                        Ver detalle completo
+                      </Button>
+                    </div>
+                  </section>
+
+                  <Button
+                    variant="outline"
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => {
+                      closeQuickView()
+                      handleDeleteClient(quickViewClient.id)
+                    }}
+                  >
+                    Eliminar cliente
+                  </Button>
+                </>
+              )}
+            </div>
+          </aside>
+        </>
       )}
     </div>
   )

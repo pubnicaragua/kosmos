@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 
 interface QuoteItem {
@@ -38,6 +38,9 @@ interface InventoryProduct {
 
 export default function NuevaCotizacionPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const prefillClientId = searchParams.get('clientId') || ''
+  const prefillCompanyId = searchParams.get('companyId') || ''
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
   const [products, setProducts] = useState<InventoryProduct[]>([])
@@ -95,7 +98,9 @@ export default function NuevaCotizacionPage() {
         setCompanies(companiesData)
 
         const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
-        if (activeCompany?.id) {
+        if (prefillCompanyId && companiesData.some((company: Company) => company.id === prefillCompanyId)) {
+          setSelectedCompany(prefillCompanyId)
+        } else if (activeCompany?.id) {
           setSelectedCompany(activeCompany.id)
         } else if (companiesData.length > 0) {
           setSelectedCompany(companiesData[0].id)
@@ -106,7 +111,7 @@ export default function NuevaCotizacionPage() {
     }
 
     fetchCompanies()
-  }, [])
+  }, [prefillCompanyId])
 
 useEffect(() => {
     if (selectedCompany === 'all') {
@@ -144,6 +149,14 @@ useEffect(() => {
     }
     doFetch()
   }, [selectedCompany])
+
+  useEffect(() => {
+    if (!prefillClientId) return
+    const exists = safeClients.some((client) => client.id === prefillClientId)
+    if (exists && selectedClient !== prefillClientId) {
+      setSelectedClient(prefillClientId)
+    }
+  }, [prefillClientId, safeClients, selectedClient])
 
   // Cargar productos del inventario cuando cambia la empresa
   useEffect(() => {
@@ -379,7 +392,7 @@ useEffect(() => {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-x-hidden">
+            <div className="overflow-x-visible">
               <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -411,7 +424,7 @@ useEffect(() => {
                             placeholder="Buscar producto o SKU..."
                             className="mb-1 w-full"
                             inputClassName="text-sm font-semibold"
-                            dropdownClassName="w-full max-w-[calc(100vw-5rem)]"
+                            dropdownClassName="w-[min(1100px,95vw)] max-h-[420px]"
                           />
                           {skuToShow ? (
                             <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">

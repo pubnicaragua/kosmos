@@ -91,6 +91,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       purchaseOrderUrl,
       evidenceUrl,
       departmentId: nextDepartmentId,
+      receivedItems,
     } = body
 
     const currentRequest = await prisma.purchaseRequest.findUnique({
@@ -168,14 +169,32 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     } else if (status === 'RECIBIDO' && currentRequest.status !== 'RECIBIDO') {
       updateData.receivedAt = new Date()
 
+      const validReceivedItems = Array.isArray(receivedItems)
+        ? receivedItems.filter(
+            (entry: any) =>
+              entry &&
+              typeof entry.itemId === 'string' &&
+              Number.isFinite(Number(entry.receivedQuantity)) &&
+              Number(entry.receivedQuantity) > 0
+          )
+        : []
+
+      const receiptMap = new Map<string, number>(
+        validReceivedItems.map((entry: any) => [entry.itemId, Number(entry.receivedQuantity)])
+      )
+
       // UPDATE INVENTORY AUTOMATICALLY
       for (const item of currentRequest.items) {
-        if (item.productId) {
+        const quantityToReceive = receiptMap.size > 0
+          ? receiptMap.get(item.id) || 0
+          : item.requestedQuantity
+
+        if (item.productId && quantityToReceive > 0) {
           await prisma.product.update({
             where: { id: item.productId },
             data: {
               stock: {
-                increment: item.requestedQuantity
+                increment: quantityToReceive
               }
             }
           })

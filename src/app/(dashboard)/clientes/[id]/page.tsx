@@ -20,6 +20,19 @@ interface Client {
   assignedTo: string | null
   createdAt: string
   updatedAt: string
+  ruc?: string | null
+  cedula?: string | null
+  contactName?: string | null
+  company?: { id: string; name: string } | null
+}
+
+const CLIENT_STATUS_LABELS: Record<string, string> = {
+  ACTIVO: 'Activo',
+  INACTIVO: 'Inactivo',
+  PROSPECTO: 'Prospecto',
+  PROPUESTA: 'Propuesta',
+  NEGOCIACION: 'Negociación',
+  CALIFICADO: 'Calificado',
 }
 
 interface Quote {
@@ -164,6 +177,17 @@ export default function ClientDetailPage() {
     )
   }
 
+  const normalizedStatus = (client.status || '').toUpperCase()
+  const statusLabel = CLIENT_STATUS_LABELS[normalizedStatus] || client.status
+  const statusClass =
+    normalizedStatus === 'ACTIVO'
+      ? 'bg-green-100 text-green-800'
+      : normalizedStatus === 'INACTIVO'
+      ? 'bg-gray-100 text-gray-800'
+      : normalizedStatus === 'NEGOCIACION' || normalizedStatus === 'PROPUESTA'
+      ? 'bg-yellow-100 text-yellow-800'
+      : 'bg-blue-100 text-blue-800'
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -196,12 +220,8 @@ export default function ClientDetailPage() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{client.name}</h1>
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-              client.status === 'active' ? 'bg-green-100 text-green-800' :
-              client.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-              'bg-yellow-100 text-yellow-800'
-            }`}>
-              {client.status === 'active' ? 'Activo' : client.status === 'inactive' ? 'Inactivo' : 'Prospecto'}
+            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${statusClass}`}>
+              {statusLabel}
             </span>
           </div>
         </div>
@@ -230,6 +250,30 @@ export default function ClientDetailPage() {
               </div>
             </div>
           )}
+
+          <div className="flex items-start gap-3">
+            <FileText className="w-5 h-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">RUC / Cédula</p>
+              <p className="text-gray-900">{client.ruc || client.cedula || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <User className="w-5 h-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Contacto principal</p>
+              <p className="text-gray-900">{client.contactName || 'N/A'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Empresa</p>
+              <p className="text-gray-900">{client.company?.name || 'N/A'}</p>
+            </div>
+          </div>
 
           {client.address && (
             <div className="flex items-start gap-3">
@@ -278,7 +322,7 @@ export default function ClientDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Cotizaciones</h2>
           <Button
-            onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}`)}
+            onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}&companyId=${client.company?.id || ''}`)}
           >
             <Plus className="w-4 h-4 mr-2" />
             Nueva Cotización
@@ -307,7 +351,7 @@ export default function ClientDetailPage() {
                 <div className="flex items-center gap-4">
                   <p className="text-lg font-semibold text-gray-900">${quote.total.toLocaleString()}</p>
                   <Badge variant={quote.status === 'APPROVED' ? 'success' : quote.status === 'REJECTED' ? 'default' : 'warning'}>
-                    {quote.status}
+                    {quote.status === 'APPROVED' ? 'Aprobada' : quote.status === 'REJECTED' ? 'Rechazada' : quote.status === 'PENDING' ? 'Pendiente' : quote.status}
                   </Badge>
                 </div>
               </div>

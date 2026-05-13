@@ -1576,20 +1576,11 @@ export default function TicketsSoportePage() {
               Información Técnica del Equipo
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <Select
+              <Input
                 label="Tipo de Equipo"
-                options={[
-                  { value: '', label: '' },
-                  { value: 'DVR', label: 'DVR (Grabador Digital)' },
-                  { value: 'NVR', label: 'NVR (Grabador de Red)' },
-                  { value: 'CAMARA_IP', label: 'Cámara IP' },
-                  { value: 'CAMARA_ANALOGICA', label: 'Cámara Analógica' },
-                  { value: 'SWITCH_POE', label: 'Switch PoE' },
-                  { value: 'ROUTER', label: 'Router' },
-                  { value: 'OTRO', label: 'Otro Equipo' },
-                ]}
                 value={formData.equipmentType}
                 onChange={(e) => setFormData({ ...formData, equipmentType: e.target.value })}
+                placeholder="Ej: DVR, NVR, Cámara IP, Router"
                 fullWidth
               />
               <Input

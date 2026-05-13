@@ -34,6 +34,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [quotationUrl, setQuotationUrl] = useState('')
   const [purchaseOrderUrl, setPurchaseOrderUrl] = useState('')
   const [evidenceUrl, setEvidenceUrl] = useState('')
+  const [isUploadingSupport, setIsUploadingSupport] = useState<'quotation' | 'purchase' | 'evidence' | null>(null)
+  const [receivedItemsDraft, setReceivedItemsDraft] = useState<Record<string, { selected: boolean; receivedQuantity: number }>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   const fetchRequest = useCallback(async () => {
@@ -51,6 +53,13 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         setQuotationUrl(data.data.quotationUrl || '')
         setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
         setEvidenceUrl(data.data.evidenceUrl || '')
+        const draft = Object.fromEntries(
+          (Array.isArray(data.data.items) ? data.data.items : []).map((item: any) => [
+            item.id,
+            { selected: true, receivedQuantity: Number(item.requestedQuantity) || 0 },
+          ])
+        ) as Record<string, { selected: boolean; receivedQuantity: number }>
+        setReceivedItemsDraft(draft)
       } else {
         alert(data.error || 'Error al cargar detalle')
         router.push('/solicitudes-compra')
@@ -103,6 +112,13 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         setQuotationUrl(data.data.quotationUrl || '')
         setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
         setEvidenceUrl(data.data.evidenceUrl || '')
+        const draft = Object.fromEntries(
+          (Array.isArray(data.data.items) ? data.data.items : []).map((item: any) => [
+            item.id,
+            { selected: true, receivedQuantity: Number(item.requestedQuantity) || 0 },
+          ])
+        ) as Record<string, { selected: boolean; receivedQuantity: number }>
+        setReceivedItemsDraft(draft)
       } else {
         alert(data.error || 'Error al actualizar estado')
       }
@@ -122,6 +138,40 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const uploadSupportFile = async (target: 'quotation' | 'purchase' | 'evidence', file: File) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      alert('Sesión expirada')
+      return
+    }
+
+    try {
+      setIsUploadingSupport(target)
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await response.json()
+      if (!data.success || !data.data?.url) {
+        alert(data.error || 'No se pudo subir el archivo')
+        return
+      }
+
+      if (target === 'quotation') setQuotationUrl(data.data.url)
+      if (target === 'purchase') setPurchaseOrderUrl(data.data.url)
+      if (target === 'evidence') setEvidenceUrl(data.data.url)
+    } catch (error) {
+      console.error('Error uploading support file:', error)
+      alert('Error al subir archivo')
+    } finally {
+      setIsUploadingSupport(null)
+    }
   }
 
   if (isLoading || !request) {
@@ -434,6 +484,19 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               placeholder="https://..."
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             />
+            <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) uploadSupportFile('quotation', file)
+                  e.currentTarget.value = ''
+                }}
+              />
+              <span className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Subir archivo a bucket</span>
+            </label>
           </div>
           <div>
             <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Comprobante/soporte de compra *</label>
@@ -443,12 +506,25 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               placeholder="https://..."
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             />
+            <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) uploadSupportFile('purchase', file)
+                  e.currentTarget.value = ''
+                }}
+              />
+              <span className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Subir archivo a bucket</span>
+            </label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setIsPurchaseModalOpen(false)}>CANCELAR</Button>
             <Button
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl"
-              disabled={isUpdating}
+              disabled={isUpdating || isUploadingSupport !== null}
               onClick={() => {
                 if (!purchaseOrderUrl.trim()) {
                   alert('Debes agregar comprobante o soporte de compra')
@@ -460,7 +536,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                 })
               }}
             >
-              CONFIRMAR COMPRA
+              {isUploadingSupport ? 'SUBIENDO...' : 'CONFIRMAR COMPRA'}
             </Button>
           </div>
         </div>
@@ -472,6 +548,49 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         title="Marcar productos recibidos"
       >
         <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Productos a ingresar a inventario</p>
+            <div className="space-y-2 max-h-44 overflow-y-auto">
+              {request.items.map((item: any) => {
+                const draft = receivedItemsDraft[item.id] || { selected: true, receivedQuantity: Number(item.requestedQuantity) || 0 }
+                return (
+                  <div key={item.id} className="grid grid-cols-[18px_1fr_88px] items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={draft.selected}
+                      onChange={(e) =>
+                        setReceivedItemsDraft((prev) => ({
+                          ...prev,
+                          [item.id]: {
+                            ...draft,
+                            selected: e.target.checked,
+                          },
+                        }))
+                      }
+                    />
+                    <div className="text-xs text-slate-700 truncate" title={item.productName}>{item.productName}</div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={item.requestedQuantity}
+                      value={draft.receivedQuantity}
+                      onChange={(e) => {
+                        const value = Math.max(0, Math.min(Number(item.requestedQuantity) || 0, Number(e.target.value) || 0))
+                        setReceivedItemsDraft((prev) => ({
+                          ...prev,
+                          [item.id]: {
+                            ...draft,
+                            receivedQuantity: value,
+                          },
+                        }))
+                      }}
+                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
           <div>
             <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Evidencia de recepción *</label>
             <input
@@ -480,23 +599,53 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               placeholder="https://..."
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             />
+            <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) uploadSupportFile('evidence', file)
+                  e.currentTarget.value = ''
+                }}
+              />
+              <span className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Subir archivo a bucket</span>
+            </label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setIsReceiveModalOpen(false)}>CANCELAR</Button>
             <Button
               className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl"
-              disabled={isUpdating}
+              disabled={isUpdating || isUploadingSupport !== null}
               onClick={() => {
                 if (!evidenceUrl.trim()) {
                   alert('Debes agregar evidencia de recepción')
                   return
                 }
+                const receivedItemsPayload = request.items
+                  .map((item: any) => {
+                    const draft = receivedItemsDraft[item.id] || { selected: true, receivedQuantity: Number(item.requestedQuantity) || 0 }
+                    return {
+                      itemId: item.id,
+                      selected: draft.selected,
+                      receivedQuantity: Number(draft.receivedQuantity) || 0,
+                    }
+                  })
+                  .filter((entry: any) => entry.selected && entry.receivedQuantity > 0)
+
+                if (receivedItemsPayload.length === 0) {
+                  alert('Selecciona al menos un producto con cantidad mayor a 0')
+                  return
+                }
+
                 updateStatus('RECIBIDO', {
                   evidenceUrl: evidenceUrl.trim(),
+                  receivedItems: receivedItemsPayload,
                 })
               }}
             >
-              CONFIRMAR RECEPCIÓN
+              {isUploadingSupport ? 'SUBIENDO...' : 'CONFIRMAR RECEPCIÓN'}
             </Button>
           </div>
         </div>

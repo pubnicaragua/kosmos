@@ -18,12 +18,14 @@ interface ProductRow {
   cost: number
   price: number
   netMargin: number
+  stock?: number
   isNew?: boolean
 }
 
 interface Category {
   id: string
   name: string
+  productCount?: number
 }
 
 interface Company {
@@ -40,8 +42,9 @@ export default function InventarioEdicionPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [updateExistingProducts, setUpdateExistingProducts] = useState(true)
   const [rows, setRows] = useState<ProductRow[]>([
-    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, isNew: true },
+    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, stock: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
 
@@ -75,7 +78,14 @@ export default function InventarioEdicionPage() {
       })
       const data = await response.json()
       if (data.success) {
-        setCategories(data.data)
+        const list = Array.isArray(data.data) ? data.data : []
+        setCategories(
+          list.map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            productCount: cat?._count?.products || 0,
+          }))
+        )
       }
     } catch (error) {
       console.error('Error fetching categories:', error)
@@ -110,7 +120,7 @@ export default function InventarioEdicionPage() {
 
       const data = await response.json()
       if (data.success) {
-        setCategories((prev) => [...prev, data.data])
+        setCategories((prev) => [...prev, { ...data.data, productCount: 0 }])
         setShowCategoryModal(false)
         setNewCategoryName('')
       } else {
@@ -119,6 +129,42 @@ export default function InventarioEdicionPage() {
     } catch (error) {
       console.error('Error creating category:', error)
       alert('Error al crear categoría')
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`¿Eliminar categoría "${categoryName}"? Los productos quedarán sin categoría.`)) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/product-categories', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: categoryId }),
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo eliminar la categoría')
+        return
+      }
+
+      setCategories((prev) => prev.filter((category) => category.id !== categoryId))
+      setRows((prev) =>
+        prev.map((row) =>
+          row.categoryId === categoryId
+            ? { ...row, categoryId: '', categoryName: '' }
+            : row
+        )
+      )
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      alert('Error al eliminar categoría')
     }
   }
 
@@ -143,6 +189,7 @@ export default function InventarioEdicionPage() {
       cost: 0,
       price: 0,
       netMargin: 0,
+      stock: 0,
       isNew: true,
     }
     setRows([...rows, newRow])
@@ -378,6 +425,7 @@ export default function InventarioEdicionPage() {
         },
         body: JSON.stringify({
           companyId: selectedCompany,
+          updateExisting: updateExistingProducts,
           products: rowsWithSku.map(row => ({
             name: row.name,
             unit: row.unit,
@@ -387,6 +435,7 @@ export default function InventarioEdicionPage() {
               null,
             description: row.description || null,
             sku: row.sku,
+            stock: row.stock ?? 0,
             cost: row.cost,
             price: row.price,
             netMargin: row.netMargin,
@@ -480,16 +529,27 @@ export default function InventarioEdicionPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200">
-          <Select
-            options={[
-              { value: 'all', label: 'TODAS LAS EMPRESAS' },
-              ...companies.map((company) => ({ value: company.id, label: company.name })),
-            ]}
-            value={selectedCompany}
-            onChange={(e) => setSelectedCompany(e.target.value)}
-            className="w-64"
-          />
+        <div className="p-6 border-b border-gray-200 space-y-4">
+          <div className="flex items-center justify-between">
+            <Select
+              options={[
+                { value: 'all', label: 'TODAS LAS EMPRESAS' },
+                ...companies.map((company) => ({ value: company.id, label: company.name })),
+              ]}
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-64"
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={updateExistingProducts}
+                onChange={(e) => setUpdateExistingProducts(e.target.checked)}
+                className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              />
+              <span>Actualizar productos existentes (mismo SKU)</span>
+            </label>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -647,21 +707,53 @@ export default function InventarioEdicionPage() {
         </div>
       </div>
       {showCategoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">Nueva Categoría</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-[500px] shadow-xl max-h-[80vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">Gestionar Categorías</h3>
+            
+            <div className="mb-6">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Nueva Categoría</label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Nombre de la categoría"
+                  fullWidth
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleCreateCategory()
+                    }
+                  }}
+                />
+                <Button onClick={handleCreateCategory} className="whitespace-nowrap">
+                  Crear
+                </Button>
+              </div>
             </div>
-            <div className="p-6">
-              <Input
-                label="Nombre de la Categoría"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Ej: Electrónica, Alimentos, etc."
-                fullWidth
-              />
-            </div>
-            <div className="p-6 border-t border-gray-100 flex gap-3">
+
+            {categories.length > 0 && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Categorías Existentes</label>
+                <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                  {categories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                      <span className="text-sm text-gray-800">{cat.name}</span>
+                      <button
+                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                        className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50"
+                        title="Eliminar categoría"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-6">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -670,10 +762,7 @@ export default function InventarioEdicionPage() {
                 }}
                 className="flex-1"
               >
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateCategory} className="flex-1 bg-primary hover:bg-primary-dark">
-                Crear Categoría
+                Cerrar
               </Button>
             </div>
           </div>

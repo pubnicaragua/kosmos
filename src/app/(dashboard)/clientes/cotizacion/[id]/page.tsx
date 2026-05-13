@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import { Button } from '@/components/ui-kit/Button'
@@ -65,6 +65,9 @@ export default function DetalleCotizacionPage() {
   const [whatsAppNumber, setWhatsAppNumber] = useState('')
   const [approvalComment, setApprovalComment] = useState('')
   const [companyDetails, setCompanyDetails] = useState<any>(null)
+
+  const stripKosmosBranding = (value?: string | null) =>
+    (value || '').replace(/kosmos\s*crm/gi, '').replace(/kosmoscrm/gi, '').trim()
 
   useEffect(() => {
     const fetchQuote = async () => {
@@ -142,13 +145,16 @@ export default function DetalleCotizacionPage() {
     const doc = new jsPDF()
     const sym = quote.currency === 'NIO' ? 'C$' : '$'
     const companyName = companyDetails?.name || quote.company?.name || ''
+    const safeCompanyName = stripKosmosBranding(companyName)
     
     let y = 20
     
     // Header
-    doc.setFontSize(20)
-    doc.text(companyName, 20, y)
-    y += 10
+    if (safeCompanyName) {
+      doc.setFontSize(20)
+      doc.text(safeCompanyName, 20, y)
+      y += 10
+    }
     doc.setFontSize(16)
     doc.text(`PROFORMA ${quote.quoteNumber}`, 20, y)
     y += 15
@@ -215,7 +221,7 @@ export default function DetalleCotizacionPage() {
     doc.save(pdfFileName)
     
     // Open email client
-    const subject = `Proforma ${quote.quoteNumber} - ${companyName}`
+    const subject = `Proforma ${quote.quoteNumber}${safeCompanyName ? ` - ${safeCompanyName}` : ''}`
     const body = [
       `Estimado/a ${quote.client.contactName || quote.client.name},`,
       '',
@@ -230,7 +236,7 @@ export default function DetalleCotizacionPage() {
       'Quedamos atentos a sus comentarios.',
       '',
       `Atentamente,`,
-      companyName,
+      safeCompanyName,
     ].filter(l => l !== null && l !== undefined).join('\n')
 
     setTimeout(() => {
@@ -275,10 +281,7 @@ export default function DetalleCotizacionPage() {
   }
 
   const handlePrintAndSend = () => {
-    const el = document.getElementById('proforma-print')
-    if (el) el.style.display = 'block'
     window.print()
-    setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
   }
 
   const handleReject = async () => {
@@ -332,13 +335,16 @@ export default function DetalleCotizacionPage() {
       {/* ===== PRINT-ONLY PROFORMA (hidden on screen) ===== */}
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          #proforma-print, #proforma-print * { visibility: visible !important; }
-          #proforma-print { position: fixed !important; top: 0; left: 0; width: 100%; z-index: 9999; background: white; }
-          .no-print { display: none !important; }
+          .screen-only { display: none !important; }
+          #proforma-print {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            background: white !important;
+          }
         }
       `}</style>
-      <div id="proforma-print" className="hidden print:block bg-white p-8 font-sans text-sm text-gray-900" style={{display:'none'}}>
+      <div id="proforma-print" className="hidden print:block bg-white p-8 font-sans text-sm text-gray-900">
         {/* Header: Logo left, Title right */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -349,16 +355,16 @@ export default function DetalleCotizacionPage() {
                 className="text-2xl font-extrabold tracking-wider mb-1"
                 style={{ color: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
               >
-                {companyDetails?.name || quote.company?.name || 'EMPRESA'}
+                {stripKosmosBranding(companyDetails?.name || quote.company?.name || '') || 'EMPRESA'}
               </div>
             )}
             {companyDetails?.industry && (
               <div className="text-xs text-gray-500 italic">{companyDetails.industry}</div>
             )}
-            {companyDetails?.quoteHeaderHtml && (
+            {stripKosmosBranding(companyDetails?.quoteHeaderHtml) && (
               <div 
                 className="text-[10px] text-gray-600 mt-2 max-w-sm whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ __html: companyDetails.quoteHeaderHtml }}
+                dangerouslySetInnerHTML={{ __html: stripKosmosBranding(companyDetails?.quoteHeaderHtml) }}
               />
             )}
           </div>
@@ -480,15 +486,16 @@ export default function DetalleCotizacionPage() {
             <span className="font-semibold">Forma de pago: </span>{quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}
           </div>
 
-          {companyDetails?.quoteFooterHtml && (
+          {stripKosmosBranding(companyDetails?.quoteFooterHtml) && (
             <div 
               className="text-[10px] text-center text-gray-500 border-t pt-2"
-              dangerouslySetInnerHTML={{ __html: companyDetails.quoteFooterHtml }}
+              dangerouslySetInnerHTML={{ __html: stripKosmosBranding(companyDetails?.quoteFooterHtml) }}
             />
           )}
         </div>
       </div>
       {/* ===== END PRINT SECTION ===== */}
+      <div className="screen-only space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -511,10 +518,7 @@ export default function DetalleCotizacionPage() {
             EDITAR
           </Button>
           <Button variant="outline" onClick={() => {
-            const el = document.getElementById('proforma-print')
-            if (el) el.style.display = 'block'
             window.print()
-            setTimeout(() => { if (el) el.style.display = 'none' }, 1000)
           }}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -853,6 +857,7 @@ export default function DetalleCotizacionPage() {
           </div>
         </div>
       </Modal>
+      </div>
     </div>
   )
 }

@@ -275,7 +275,6 @@ export default function InventarioPage() {
       const data = await response.json()
       if (data.success) {
         setCategories(prev => [...prev, data.data])
-        setShowCategoryModal(false)
         setNewCategoryName('')
         alert('Categoría creada exitosamente')
       } else {
@@ -284,6 +283,36 @@ export default function InventarioPage() {
     } catch (error) {
       console.error('Error creating category:', error)
       alert('Error al crear categoría')
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`¿Eliminar categoría "${categoryName}"? Los productos quedarán sin categoría.`)) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/product-categories', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: categoryId }),
+      })
+
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo eliminar la categoría')
+        return
+      }
+
+      setCategories((prev) => prev.filter((category) => category.id !== categoryId))
+      fetchData()
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      alert('Error al eliminar categoría')
     }
   }
 
@@ -884,21 +913,54 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Modal de creación de categoría */}
+      {/* Modal de gestión de categorías */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">Nueva Categoría</h2>
+              <h2 className="text-xl font-bold text-gray-900">Gestionar Categorías</h2>
             </div>
-            <div className="p-6">
-              <Input
-                label="Nombre de la Categoría"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Ej: Electrónica, Alimentos, etc."
-                fullWidth
-              />
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Nueva Categoría</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Ej: Electrónica, Alimentos, etc."
+                    fullWidth
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleCreateCategory()
+                      }
+                    }}
+                  />
+                  <Button onClick={handleCreateCategory} className="whitespace-nowrap">
+                    Crear
+                  </Button>
+                </div>
+              </div>
+
+              {categories.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Categorías Existentes</label>
+                  <div className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {categories.map((cat) => (
+                      <div key={cat.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                        <span className="text-sm text-gray-800">{cat.name}</span>
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                          className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50"
+                          title="Eliminar categoría"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
               <Button 
@@ -909,13 +971,7 @@ export default function InventarioPage() {
                 }} 
                 className="flex-1"
               >
-                Cancelar
-              </Button>
-              <Button 
-                onClick={handleCreateCategory} 
-                className="flex-1 bg-primary hover:bg-primary-dark"
-              >
-                Crear Categoría
+                Cerrar
               </Button>
             </div>
           </div>
