@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { ticketSchema } from '@/lib/validations'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -143,6 +143,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'tickets-soporte')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear tickets', 403)
 
     // Generar número de ticket único
     const lastTicket = await prisma.ticket.findFirst({

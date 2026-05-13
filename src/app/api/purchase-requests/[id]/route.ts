@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -106,6 +106,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const access = await getCompanyAccess(decoded.userId, currentRequest.companyId)
     if (!access.canAccess) {
       return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+    }
+
+    const moduleAccess = await getModuleAccess(decoded.userId, currentRequest.companyId, 'solicitudes-compra')
+    if (!moduleAccess.canEdit) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para editar solicitudes de compra' }, { status: 403 })
     }
 
     const currentDepartmentId = currentRequest.departmentId

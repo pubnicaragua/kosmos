@@ -70,7 +70,39 @@ export async function getModuleAccess(
     }
   }
 
-  if (!userCompany.customRole) {
+  // If user has customRole, use its permissions
+  if (userCompany.customRole) {
+    const perm = userCompany.customRole.permissions.find((p) => p.module === module)
+    
+    // If module not found in permissions, deny all access
+    if (!perm) {
+      return {
+        canAccess: false,
+        canView: false,
+        canCreate: false,
+        canEdit: false,
+        canDelete: false,
+        canExport: false,
+        restrictedByCustomRole: true,
+      }
+    }
+
+    return {
+      canAccess: true,
+      canView: Boolean(perm.canView),
+      canCreate: Boolean(perm.canCreate),
+      canEdit: Boolean(perm.canEdit),
+      canDelete: Boolean(perm.canDelete),
+      canExport: Boolean(perm.canExport),
+      restrictedByCustomRole: true,
+    }
+  }
+
+  // No customRole - use default permissions based on role
+  const role = userCompany.role
+  
+  // ADMIN has full access to all modules
+  if (role === 'ADMIN') {
     return {
       canAccess: true,
       canView: true,
@@ -82,15 +114,27 @@ export async function getModuleAccess(
     }
   }
 
-  const perm = userCompany.customRole.permissions.find((p) => p.module === module)
+  // MANAGER has view/create/edit, no delete
+  if (role === 'MANAGER') {
+    return {
+      canAccess: true,
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: false,
+      canExport: true,
+      restrictedByCustomRole: false,
+    }
+  }
 
+  // USER (default) has view only
   return {
     canAccess: true,
-    canView: Boolean(perm?.canView),
-    canCreate: Boolean(perm?.canCreate),
-    canEdit: Boolean(perm?.canEdit),
-    canDelete: Boolean(perm?.canDelete),
-    canExport: Boolean(perm?.canExport),
-    restrictedByCustomRole: true,
+    canView: true,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canExport: false,
+    restrictedByCustomRole: false,
   }
 }

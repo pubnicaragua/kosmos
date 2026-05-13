@@ -430,16 +430,48 @@ useEffect(() => {
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-3 px-2">
                         <div className="space-y-2">
-                          <ProductAutocomplete
-                            companyId={selectedCompany}
-                            value={item.description}
-                            onChange={(val) => updateItem(index, 'description', val)}
-                            onSelect={(prod) => selectProduct(index, prod as any)}
-                            placeholder="Buscar producto o SKU..."
-                            className="mb-1 w-full"
-                            inputClassName="text-sm font-semibold"
-                            dropdownClassName="w-[min(1100px,95vw)] max-h-[420px]"
-                          />
+                          {item.productId ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={item.description}
+                                readOnly
+                                className="flex-1 px-3 py-2 text-sm font-semibold bg-gray-50 border border-gray-300 rounded-lg cursor-not-allowed text-gray-700"
+                                title="Producto de inventario - no editable"
+                              />
+                              <button
+                                onClick={() => {
+                                  const updated = [...itemsArray]
+                                  updated[index] = {
+                                    ...updated[index],
+                                    productId: '',
+                                    description: '',
+                                    sku: '',
+                                    stock: null,
+                                    unitPrice: '',
+                                  }
+                                  setItems(updated)
+                                }}
+                                className="px-2 py-2 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
+                                title="Desvincular producto"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <ProductAutocomplete
+                              companyId={selectedCompany}
+                              value={item.description}
+                              onChange={(val) => updateItem(index, 'description', val)}
+                              onSelect={(prod) => selectProduct(index, prod as any)}
+                              placeholder="Buscar producto o SKU..."
+                              className="mb-1 w-full"
+                              inputClassName="text-sm font-semibold"
+                              dropdownClassName="w-[min(1100px,95vw)] max-h-[420px]"
+                            />
+                          )}
                           {skuToShow ? (
                             <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
                               <span className="uppercase tracking-wide">SKU:</span>

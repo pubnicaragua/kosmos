@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -85,6 +86,12 @@ export async function POST(req: Request) {
     if (!companyId || !items || items.length === 0) {
       return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 })
     }
+
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'solicitudes-compra')
+    if (!moduleAccess.canCreate) return NextResponse.json({ success: false, error: 'No tienes permisos para crear solicitudes de compra' }, { status: 403 })
 
     // Generate Request Number: SC-{Alias}-{Sequence}
     const company = await prisma.company.findUnique({ where: { id: companyId } })
