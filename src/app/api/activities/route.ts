@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -118,6 +118,11 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'actividades')
+    if (!moduleAccess.canCreate) {
+      return apiError('No tienes permisos para crear actividades', 403)
     }
 
     const activity = await prisma.activity.create({

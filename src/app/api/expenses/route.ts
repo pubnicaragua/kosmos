@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { expensesFiltersSchema } from '@/lib/validations'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 

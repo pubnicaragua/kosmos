@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,6 +104,11 @@ export async function DELETE(
     const access = await getCompanyAccess(auth.payload.userId, income.companyId)
     if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const moduleAccess = await getModuleAccess(auth.payload.userId, income.companyId, 'ingresos')
+    if (!moduleAccess.canDelete) {
+      return errorResponse('No tienes permisos para eliminar ingresos', 403)
     }
 
     await prisma.income.delete({ where: { id: params.id } })

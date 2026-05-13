@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,11 +55,11 @@ export async function PUT(
     if (!employee) return apiError('Empleado no encontrado', 404)
 
     // Verify user has access to company
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: employee.companyId }
-    })
+    const access = await getCompanyAccess(decoded.userId, employee.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'empleados')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar empleados', 403)
 
     const body = await request.json()
 
@@ -103,11 +104,11 @@ export async function DELETE(
     if (!employee) return apiError('Empleado no encontrado', 404)
 
     // Verify user has access to company
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: employee.companyId }
-    })
+    const access = await getCompanyAccess(decoded.userId, employee.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'empleados')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar empleados', 403)
 
     await prisma.employee.delete({
       where: { id: params.id }

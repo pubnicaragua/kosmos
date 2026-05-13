@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
@@ -46,11 +47,8 @@ export async function GET(request: NextRequest) {
     if (!companyId) return apiError('companyId requerido', 400)
 
     // Verify user has access to company
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId }
-    })
-
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const employees = await prisma.employee.findMany({
       where: { companyId },
@@ -76,11 +74,11 @@ export async function POST(request: NextRequest) {
     const validatedData = employeeSchema.parse(body)
 
     // Verify user has access to company
-    const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: validatedData.companyId }
-    })
+    const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'empleados')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear empleados', 403)
 
     // Check if employee code already exists
     const existing = await prisma.employee.findUnique({

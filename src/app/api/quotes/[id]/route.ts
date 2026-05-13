@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,6 +84,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, quote.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const moduleAccess = await getModuleAccess(decoded.userId, quote.companyId, 'cotizaciones')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar cotizaciones', 403)
+
     if ('status' in body || 'approvalAction' in body) {
       return apiError('Usa el endpoint de estado para aprobar/rechazar o cambiar estado', 400)
     }
@@ -145,6 +148,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const access = await getCompanyAccess(decoded.userId, quote.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, quote.companyId, 'cotizaciones')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar cotizaciones', 403)
 
     await prisma.quote.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Cotización eliminada' })

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -137,6 +137,11 @@ export async function DELETE(
     const access = await getCompanyAccess(decoded.userId, activity.companyId)
     if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    const moduleAccess = await getModuleAccess(decoded.userId, activity.companyId, 'actividades')
+    if (!moduleAccess.canDelete) {
+      return apiError('No tienes permisos para eliminar actividades', 403)
     }
 
     await prisma.activity.delete({

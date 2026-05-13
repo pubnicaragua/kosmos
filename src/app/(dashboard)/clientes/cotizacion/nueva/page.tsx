@@ -54,6 +54,8 @@ function NuevaCotizacionContent() {
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
   const [validUntil, setValidUntil] = useState(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
   const [seller, setSeller] = useState('')
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isAdminRole, setIsAdminRole] = useState(false)
   const [clientNotes, setClientNotes] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
   const [terms, setTerms] = useState('')
@@ -108,6 +110,18 @@ function NuevaCotizacionContent() {
       } catch (error) {
         console.error('Error fetching companies:', error)
       }
+    }
+
+    // Auto-fill seller with logged user
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    setCurrentUser(user)
+    const role = user?.role || ''
+    const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+    setIsAdminRole(isAdmin)
+    
+    // Set seller to current user if not admin
+    if (!isAdmin && user?.id) {
+      setSeller(user.id)
     }
 
     fetchCompanies()
@@ -611,13 +625,25 @@ useEffect(() => {
                 <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} fullWidth />
               </div>
               <div>
-                <UserAutocomplete
-                  label="Vendedor"
-                  companyId={selectedCompany}
-                  value={seller}
-                  onChange={(val) => setSeller(val)}
-                  fullWidth
-                />
+                {isAdminRole ? (
+                  <UserAutocomplete
+                    label="Vendedor"
+                    companyId={selectedCompany}
+                    value={seller}
+                    onChange={(val) => setSeller(val)}
+                    fullWidth
+                  />
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+                    <input
+                      type="text"
+                      value={currentUser?.name || 'Usuario actual'}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

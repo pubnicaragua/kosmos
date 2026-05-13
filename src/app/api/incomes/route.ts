@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -143,6 +143,11 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(payload.userId, companyId)
     if (!access.canAccess) {
       return errorResponse('No tienes acceso a esta empresa', 403)
+    }
+
+    const moduleAccess = await getModuleAccess(payload.userId, companyId, 'ingresos')
+    if (!moduleAccess.canCreate) {
+      return errorResponse('No tienes permisos para crear ingresos', 403)
     }
 
     const normalizedAmount = Number(amount)

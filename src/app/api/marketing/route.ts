@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,6 +117,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'marketing')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear campañas de marketing', 403)
 
     const baseData = {
       name: validatedData.name,

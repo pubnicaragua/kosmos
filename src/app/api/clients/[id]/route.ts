@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +47,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, client.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const moduleAccess = await getModuleAccess(decoded.userId, client.companyId, 'clientes')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar clientes', 403)
+
     const updated = await prisma.client.update({
       where: { id: params.id },
       data: {
@@ -85,8 +88,15 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const access = await getCompanyAccess(decoded.userId, client.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    await prisma.client.delete({ where: { id: params.id } })
-    return apiSuccess({ message: 'Cliente eliminado' })
+    const moduleAccess = await getModuleAccess(decoded.userId, client.companyId, 'clientes')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar clientes', 403)
+
+    // Soft delete - set status to INACTIVO instead of hard delete
+    await prisma.client.update({ 
+      where: { id: params.id },
+      data: { status: 'INACTIVO' }
+    })
+    return apiSuccess({ message: 'Cliente marcado como inactivo' })
   } catch (error) {
     console.error('Error deleting client:', error)
     return apiError('Error al eliminar cliente', 500)

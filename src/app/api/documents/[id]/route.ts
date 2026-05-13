@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +20,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const access = await getCompanyAccess(decoded.userId, document.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, document.companyId, 'documentos')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar documentos', 403)
 
     const updated = await (prisma.document as any).update({
       where: { id: params.id },
@@ -56,6 +59,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const access = await getCompanyAccess(decoded.userId, document.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, document.companyId, 'documentos')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar documentos', 403)
 
     await prisma.document.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Documento eliminado' })

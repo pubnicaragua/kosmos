@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'documentos')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear documentos', 403)
 
     const { area, visibility, category, sharedWith, ...cleanDocData } = docData as any
     let document

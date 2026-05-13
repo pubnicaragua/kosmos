@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
@@ -69,9 +69,11 @@ interface ClientRowDraft {
   status: Client['status']
 }
 
-export default function ClientesPage() {
+function ClientesPageContent() {
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editClientId = searchParams.get('edit')
   const [clients, setClients] = useState<Client[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -134,6 +136,17 @@ export default function ClientesPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [selectedCompany, selectedStatus, searchTerm])
+
+  useEffect(() => {
+    if (editClientId && clients.length > 0) {
+      const clientToEdit = clients.find(c => c.id === editClientId)
+      if (clientToEdit) {
+        startEditingRow(clientToEdit)
+        // Clear the query param after triggering edit
+        router.replace('/clientes')
+      }
+    }
+  }, [editClientId, clients])
 
   const fetchCompanies = async () => {
     const token = localStorage.getItem('accessToken')
@@ -461,7 +474,7 @@ export default function ClientesPage() {
   }
 
   const handleDeleteClient = async (clientId: string) => {
-    const confirmed = window.confirm('¿Seguro que deseas eliminar este cliente?')
+    const confirmed = window.confirm('¿Seguro que deseas marcar este cliente como inactivo?')
     if (!confirmed) return
 
     const token = localStorage.getItem('accessToken')
@@ -475,7 +488,10 @@ export default function ClientesPage() {
 
       const data = await response.json()
       if (data.success) {
-        setClients((prev) => prev.filter((client) => client.id !== clientId))
+        // Update status to INACTIVO instead of removing
+        setClients((prev) => prev.map((client) => 
+          client.id === clientId ? { ...client, status: 'INACTIVO' } : client
+        ))
       } else {
         alert(data.error || 'No se pudo eliminar el cliente')
       }
@@ -1015,18 +1031,52 @@ export default function ClientesPage() {
                                 </svg>
                                 Ver detalle
                               </button>
-                              <button
-                                onClick={() => {
-                                  handleDeleteClient(client.id)
-                                  setMenuOpenId(null)
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Eliminar
-                              </button>
+                              {client.status === 'INACTIVO' ? (
+                                <button
+                                  onClick={async () => {
+                                    const token = localStorage.getItem('accessToken')
+                                    if (!token) return
+                                    try {
+                                      const response = await fetch(`/api/clients/${client.id}`, {
+                                        method: 'PUT',
+                                        headers: {
+                                          'Authorization': `Bearer ${token}`,
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ status: 'ACTIVO' }),
+                                      })
+                                      const data = await response.json()
+                                      if (data.success) {
+                                        setClients((prev) => prev.map((c) => 
+                                          c.id === client.id ? { ...c, status: 'ACTIVO' } : c
+                                        ))
+                                      }
+                                    } catch (error) {
+                                      console.error('Error reactivating client:', error)
+                                    }
+                                    setMenuOpenId(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  Reactivar
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    handleDeleteClient(client.id)
+                                    setMenuOpenId(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  Eliminar
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1402,7 +1452,14 @@ export default function ClientesPage() {
                       </div>
                       <div className="flex justify-between gap-4">
                         <dt className="text-slate-600">Ubicación</dt>
-                        <dd className="text-slate-900 text-right">{quickViewDetails?.city || quickViewClient.city || 'N/A'}</dd>
+                        <dd className="text-slate-900 text-right">
+                          {quickViewDetails?.address || quickViewClient.address || 'No registrada'}
+                          {(quickViewDetails?.city || quickViewClient.city) && (
+                            <span className="block text-xs text-slate-500 mt-0.5">
+                              {[quickViewDetails?.city || quickViewClient.city, quickViewDetails?.country || quickViewClient.country].filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                        </dd>
                       </div>
                       <div className="flex justify-between gap-4">
                         <dt className="text-slate-600">RUC / Cédula</dt>
@@ -1502,5 +1559,20 @@ export default function ClientesPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ClientesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    }>
+      <ClientesPageContent />
+    </Suspense>
   )
 }

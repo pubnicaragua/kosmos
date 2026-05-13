@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -95,6 +95,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const access = await getCompanyAccess(decoded.userId, existingCampaign.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const moduleAccess = await getModuleAccess(decoded.userId, existingCampaign.companyId, 'marketing')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar campañas de marketing', 403)
+
     const updateData: any = {}
     if (validatedData.name !== undefined) updateData.name = validatedData.name
     if (validatedData.description !== undefined) updateData.description = validatedData.description
@@ -162,6 +165,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const access = await getCompanyAccess(decoded.userId, existingCampaign.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, existingCampaign.companyId, 'marketing')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar campañas de marketing', 403)
 
     await prisma.marketingCampaign.delete({
       where: { id: params.id },

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getCompanyAccess } from '@/lib/company-access'
+import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
 export const dynamic = 'force-dynamic'
@@ -32,6 +32,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const access = await getCompanyAccess(decoded.userId, opportunity.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, opportunity.companyId, 'pipeline-ventas')
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar oportunidades', 403)
 
     const baseData: any = {
       title: body.title,
@@ -137,6 +140,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     const access = await getCompanyAccess(decoded.userId, opportunity.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, opportunity.companyId, 'pipeline-ventas')
+    if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar oportunidades', 403)
 
     await prisma.opportunity.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Oportunidad eliminada' })

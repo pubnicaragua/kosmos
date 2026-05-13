@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -76,6 +76,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'contratos')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear contratos', 403)
 
     const year = new Date().getFullYear()
     const countResult = await prisma.contract.count({ where: { companyId } })

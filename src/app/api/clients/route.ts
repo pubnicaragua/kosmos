@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { clientSchema } from '@/lib/validations'
-import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
+import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
 
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'clientes')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear clientes', 403)
 
     const client = await prisma.client.create({
       data: validatedData,
