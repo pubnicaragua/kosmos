@@ -336,11 +336,20 @@ export default function DetalleCotizacionPage() {
       <style>{`
         @media print {
           .screen-only { display: none !important; }
+          header, nav, .topbar, [class*="topbar"], [class*="navbar"], [class*="header"] { display: none !important; }
+          body > div:first-child > div:first-child { display: none !important; }
           #proforma-print {
             display: block !important;
             position: static !important;
             width: 100% !important;
             background: white !important;
+          }
+          @page {
+            margin: 0.5cm;
+          }
+          body {
+            margin: 0;
+            padding: 0;
           }
         }
       `}</style>
