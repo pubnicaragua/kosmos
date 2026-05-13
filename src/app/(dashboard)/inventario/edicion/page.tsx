@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Input } from '@/components/ui-kit/Input'
@@ -36,6 +36,8 @@ interface Company {
 
 export default function InventarioEdicionPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const productType = searchParams.get('type') || 'PRODUCTO'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [companies, setCompanies] = useState<Company[]>([])
@@ -47,6 +49,7 @@ export default function InventarioEdicionPage() {
     { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, stock: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
+  const isService = productType === 'SERVICIO'
 
   const normalizeCategoryName = (value: string) =>
     value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -486,8 +489,14 @@ export default function InventarioEdicionPage() {
             <span>&gt;</span>
             <span className="text-primary font-medium">EDICIÓN/AGREGADO</span>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900">Inventario</h1>
-          <p className="text-sm text-gray-500 mt-1">Completa los detalles para generar una propuesta comercial.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {isService ? 'Agregar Servicio' : 'Agregar Producto'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isService 
+              ? 'Completa los detalles del servicio. El stock no aplica para servicios.'
+              : 'Completa los detalles del producto físico incluyendo stock disponible.'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <input
@@ -556,11 +565,16 @@ export default function InventarioEdicionPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRODUCTO</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">
+                  {isService ? 'SERVICIO' : 'PRODUCTO'}
+                </th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">UNIDAD</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">CATEGORÍA</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">DESC.</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">SKU</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">
+                  SKU {isService && <span className="text-gray-400">(Opcional)</span>}
+                </th>
+                {!isService && <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-24">STOCK</th>}
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">COSTO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32">MARGEN %</th>
@@ -638,6 +652,18 @@ export default function InventarioEdicionPage() {
                       fullWidth
                     />
                   </td>
+                  {!isService && (
+                    <td className="py-3 px-4">
+                      <Input
+                        type="number"
+                        value={row.stock || 0}
+                        onChange={(e) => updateRow(index, 'stock', parseInt(e.target.value) || 0)}
+                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        placeholder="0"
+                        fullWidth
+                      />
+                    </td>
+                  )}
                   <td className="py-3 px-4">
                     <Input
                       type="number"

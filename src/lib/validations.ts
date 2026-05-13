@@ -173,6 +173,7 @@ export const productSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
   sku: z.string().min(1, 'SKU requerido'),
   description: z.string().optional(),
+  type: z.string().default('PRODUCTO').optional(),
   categoryId: z.string().optional(),
   unit: z.string().default('UNI'),
   stock: z.number().min(0, 'Stock debe ser mayor o igual a 0').optional(),
@@ -180,6 +181,7 @@ export const productSchema = z.object({
   cost: z.number().min(0, 'Costo debe ser mayor o igual a 0').optional(),
   price: z.number().min(0, 'Precio debe ser mayor a 0'),
   netMargin: z.number().min(0).max(100).optional(),
+  promotion: z.string().optional(),
   isActive: z.boolean().optional(),
   companyId: z.string().min(1, 'Empresa requerida'),
 })

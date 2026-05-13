@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
@@ -124,10 +124,26 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingProduct) {
-      return apiError(
-        'Ya existe un producto con este SKU. Use la opción de editar para actualizar stock o precio.',
-        409
-      )
+      return NextResponse.json({
+        success: false,
+        error: 'DUPLICATE_SKU',
+        message: 'Ya existe un producto con este SKU',
+        existingProduct: {
+          id: existingProduct.id,
+          name: existingProduct.name,
+          sku: existingProduct.sku,
+          stock: existingProduct.stock,
+          price: existingProduct.price,
+          cost: existingProduct.cost,
+          categoryName: existingProduct.category?.name || null,
+        },
+        newData: {
+          name: validatedData.name,
+          stock: validatedData.stock || 0,
+          price: validatedData.price,
+          cost: validatedData.cost || 0,
+        }
+      }, { status: 409 })
     }
 
     const product = await prisma.product.create({
