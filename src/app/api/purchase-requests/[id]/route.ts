@@ -83,7 +83,15 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
     const body = await req.json()
-    const { status, rejectedReason, notes, quotationUrl, purchaseOrderUrl, evidenceUrl, departmentId } = body
+    const {
+      status,
+      rejectedReason,
+      notes,
+      quotationUrl,
+      purchaseOrderUrl,
+      evidenceUrl,
+      departmentId: nextDepartmentId,
+    } = body
 
     const currentRequest = await prisma.purchaseRequest.findUnique({
       where: { id: params.id },
@@ -97,11 +105,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
     }
 
-    const departmentId = currentRequest.departmentId
-    const isDeptApprover = departmentId
+    const currentDepartmentId = currentRequest.departmentId
+    const isDeptApprover = currentDepartmentId
       ? await prisma.userDepartment.findFirst({
           where: {
-            departmentId,
+            departmentId: currentDepartmentId,
             userId: decoded.userId,
             isApprover: true,
           },
@@ -118,7 +126,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (quotationUrl !== undefined) updateData.quotationUrl = quotationUrl
     if (purchaseOrderUrl !== undefined) updateData.purchaseOrderUrl = purchaseOrderUrl
     if (evidenceUrl !== undefined) updateData.evidenceUrl = evidenceUrl
-    if (departmentId !== undefined) updateData.departmentId = departmentId
+    if (nextDepartmentId !== undefined) updateData.departmentId = nextDepartmentId
     if (status === 'APROBADA') {
       updateData.approvedBy = decoded.userId
       updateData.approvedAt = new Date()
