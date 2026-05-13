@@ -368,7 +368,7 @@ useEffect(() => {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[980px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
@@ -387,7 +387,7 @@ useEffect(() => {
                     return (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 min-w-[480px]">
                         <div className="space-y-2">
                           <ProductAutocomplete
                             companyId={selectedCompany}
@@ -395,9 +395,9 @@ useEffect(() => {
                             onChange={(val) => updateItem(index, 'description', val)}
                             onSelect={(prod) => selectProduct(index, prod as any)}
                             placeholder="Buscar producto o SKU..."
-                            className="mb-1 min-w-[360px]"
+                            className="mb-1 w-full min-w-[440px]"
                             inputClassName="text-sm font-semibold"
-                            dropdownClassName="w-[680px] md:w-[760px] lg:w-[860px]"
+                            dropdownClassName="w-[720px] md:w-[820px] lg:w-[940px] max-w-[90vw]"
                           />
                           {selectedProduct ? (
                             <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { getCompanyAccess } from '@/lib/company-access'
+
+const isAdminRole = (role?: string | null) =>
+  role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -16,12 +20,53 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       include: {
         items: true,
         company: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     })
 
     if (!request) return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
 
-    return NextResponse.json({ success: true, data: request })
+    const access = await getCompanyAccess(decoded.userId, request.companyId)
+    if (!access.canAccess) {
+      return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+    }
+
+    const departmentId = request.department?.id || request.departmentId
+    const isDeptApprover = departmentId
+      ? await prisma.userDepartment.findFirst({
+          where: {
+            departmentId,
+            userId: decoded.userId,
+            isApprover: true,
+          },
+        })
+      : null
+    const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
+
+    const [requestedByUser, approvedByUser] = await Promise.all([
+      request.requestedBy
+        ? prisma.user.findUnique({ where: { id: request.requestedBy }, select: { id: true, name: true } })
+        : Promise.resolve(null),
+      request.approvedBy
+        ? prisma.user.findUnique({ where: { id: request.approvedBy }, select: { id: true, name: true } })
+        : Promise.resolve(null),
+    ])
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...request,
+        requestingArea: request.department?.name || request.requestingArea,
+        requestedByName: requestedByUser?.name || null,
+        approvedByName: approvedByUser?.name || null,
+        canApprove,
+      }
+    })
   } catch (error) {
     console.error('Error fetching purchase request detail:', error)
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })
@@ -47,6 +92,27 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     if (!currentRequest) return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
 
+    const access = await getCompanyAccess(decoded.userId, currentRequest.companyId)
+    if (!access.canAccess) {
+      return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+    }
+
+    const departmentId = currentRequest.departmentId
+    const isDeptApprover = departmentId
+      ? await prisma.userDepartment.findFirst({
+          where: {
+            departmentId,
+            userId: decoded.userId,
+            isApprover: true,
+          },
+        })
+      : null
+    const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
+
+    if (status && !canApprove) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para aprobar esta solicitud' }, { status: 403 })
+    }
+
     const updateData: any = {}
     if (status) updateData.status = status
     if (quotationUrl !== undefined) updateData.quotationUrl = quotationUrl
@@ -54,7 +120,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (evidenceUrl !== undefined) updateData.evidenceUrl = evidenceUrl
     if (departmentId !== undefined) updateData.departmentId = departmentId
     if (status === 'APROBADA') {
-      updateData.approvedBy = (decoded as any).id
+      updateData.approvedBy = decoded.userId
       updateData.approvedAt = new Date()
     } else if (status === 'RECHAZADA') {
       updateData.rejectedReason = rejectedReason || 'Rechazado por el administrador'

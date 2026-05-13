@@ -33,6 +33,7 @@ interface Department {
 }
 
 const TYPES = [
+  { value: '', label: '' },
   { value: 'REPOSICION', label: 'Reposición de Inventario' },
   { value: 'PRODUCTO_NUEVO', label: 'Producto Nuevo' },
   { value: 'PEDIDO_ESPECIAL', label: 'Pedido Especial (Proyecto)' },
@@ -46,7 +47,7 @@ export default function NuevaSolicitudPage() {
   
   const [formData, setFormData] = useState({
     requestingArea: '',
-    requestType: 'REPOSICION',
+    requestType: '',
     priority: 'MEDIA',
     notes: '',
   })
@@ -121,6 +122,10 @@ export default function NuevaSolicitudPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCompany) return
+    if (!formData.requestType) {
+      alert('Selecciona el tipo de solicitud')
+      return
+    }
 
     try {
       setIsSaving(true)

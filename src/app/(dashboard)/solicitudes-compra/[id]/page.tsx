@@ -57,7 +57,15 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   useEffect(() => {
     fetchRequest()
     const storedUser = localStorage.getItem('user')
-    if (storedUser) setCurrentUser(JSON.parse(storedUser))
+    const storedCompany = localStorage.getItem('activeCompany')
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser)
+      const parsedCompany = storedCompany ? JSON.parse(storedCompany) : null
+      setCurrentUser({
+        ...parsedUser,
+        role: parsedCompany?.role || parsedUser.role,
+      })
+    }
   }, [fetchRequest])
 
   const updateStatus = async (newStatus: string) => {
@@ -91,7 +99,12 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
     }
   }
 
-  const canApprove = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER'
+  const canApprove = Boolean(
+    request?.canApprove ??
+      (currentUser?.role === 'SUPER_ADMIN' ||
+        currentUser?.role === 'ADMIN' ||
+        currentUser?.role === 'MANAGER')
+  )
 
   const handlePrint = () => {
     window.print()

@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         companyId: validatedData.companyId,
         title: validatedData.title,
         description: validatedData.description,
-        type: validatedData.type || 'SOPORTE_REMOTO',
+        type: validatedData.type ?? '',
         status: validatedData.status || 'NUEVO',
         priority: validatedData.priority || 'MEDIA',
         clientId: validatedData.clientId,

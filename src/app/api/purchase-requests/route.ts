@@ -16,6 +16,12 @@ export async function GET(req: Request) {
 
     if (!companyId) return NextResponse.json({ success: false, error: 'companyId es requerido' }, { status: 400 })
 
+    const departments = await prisma.department.findMany({
+      where: { companyId },
+      select: { id: true, name: true },
+    })
+    const departmentMap = new Map(departments.map((dept) => [dept.id, dept.name]))
+
     const requests = await prisma.purchaseRequest.findMany({
       where: { companyId },
       include: {
@@ -30,10 +36,22 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
     })
 
+    const requesterIds = Array.from(
+      new Set(requests.map((req) => req.requestedBy).filter(Boolean))
+    )
+    const requesters = requesterIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: requesterIds } },
+          select: { id: true, name: true },
+        })
+      : []
+    const requesterMap = new Map(requesters.map((user) => [user.id, user.name]))
+
     // Map to include department name as requestingArea for display
     const mappedRequests = requests.map(req => ({
       ...req,
-      requestingArea: req.department?.name || req.requestingArea || 'Sin departamento'
+      requestingArea: req.department?.name || departmentMap.get(req.requestingArea) || req.requestingArea || 'Sin departamento',
+      requestedByName: requesterMap.get(req.requestedBy) || null,
     }))
 
     return NextResponse.json({ success: true, data: mappedRequests })
@@ -75,11 +93,19 @@ export async function POST(req: Request) {
     const sequence = (count + 1).toString().padStart(4, '0')
     const requestNumber = `SC-${alias}-${sequence}`
 
+    const department = requestingArea
+      ? await prisma.department.findUnique({
+          where: { id: requestingArea },
+          select: { id: true, name: true },
+        })
+      : null
+
     const request = await prisma.purchaseRequest.create({
       data: {
         requestNumber,
         companyId,
-        requestingArea,
+        requestingArea: department?.name || requestingArea,
+        departmentId: department?.id || null,
         requestedBy: decoded.userId,
         requestType,
         priority,
@@ -111,10 +137,11 @@ export async function POST(req: Request) {
       const notifyUserIds = new Set<string>()
 
       // Get department approvers if requestingArea is specified
-      if (requestingArea) {
+      const departmentId = department?.id || requestingArea
+      if (departmentId) {
         const departmentUsers = await prisma.userDepartment.findMany({
           where: {
-            departmentId: requestingArea,
+            departmentId,
             isApprover: true
           }
         })

@@ -21,6 +21,13 @@ const STATUS_CONFIG = {
   RECIBIDO: { label: 'Recibido', color: 'bg-green-100 text-green-700 border-green-200', icon: Truck },
 }
 
+const getInitials = (name?: string | null) => {
+  if (!name) return 'N/A'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase()
+}
+
 export default function SolicitudesCompraPage() {
   const { selectedCompany } = useCompany()
   const [requests, setRequests] = useState<any[]>([])
@@ -109,11 +116,13 @@ export default function SolicitudesCompraPage() {
                 </div>
                 
                 <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                  <div className="flex -space-x-2">
-                    {/* Placeholder for requestor avatar */}
-                    <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-400">
-                      ?
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[9px] font-bold text-slate-500">
+                      {getInitials(req.requestedByName || req.requestedBy)}
                     </div>
+                    <span className="text-[11px] text-slate-500 font-semibold truncate max-w-[140px]">
+                      {req.requestedByName || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 text-[11px] font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                     Detalles <ArrowRight className="w-3 h-3" />
@@ -268,7 +277,10 @@ export default function SolicitudesCompraPage() {
                         {req.requestNumber}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-600 font-medium">{req.requestingArea}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-slate-600 font-medium">{req.requestingArea}</div>
+                      <div className="text-[11px] text-slate-400 font-semibold">Solicitante: {req.requestedByName || 'N/A'}</div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className={`inline-block px-2 py-0.5 rounded-full border text-[9px] uppercase font-black ${
                         req.priority === 'ALTA' ? 'border-red-500 text-red-600' :
