@@ -4,6 +4,8 @@ import { join } from 'path'
 import { existsSync } from 'fs'
 import { supabase, supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',

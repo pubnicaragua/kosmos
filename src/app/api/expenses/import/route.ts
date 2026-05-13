@@ -5,6 +5,8 @@ import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 import * as XLSX from 'xlsx'
 
+export const dynamic = 'force-dynamic'
+
 // Mapeo de columnas en español e inglés
 const EXPENSE_COLUMN_MAPPINGS = {
   provider: ['proveedor', 'provider', 'vendor', 'empresa', 'nombre proveedor', 'supplier'],

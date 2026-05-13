@@ -4,6 +4,8 @@ import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 async function authorizeRequest(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

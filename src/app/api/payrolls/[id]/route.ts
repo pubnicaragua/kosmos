@@ -4,6 +4,8 @@ import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 function getPayrollModel() {
   const payrollModel = (prisma as any).payroll
   if (!payrollModel) {

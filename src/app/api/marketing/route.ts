@@ -5,6 +5,8 @@ import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 const marketingSchema = z.object({
   name: z.string().min(1, 'Nombre requerido'),
   description: z.string().optional(),

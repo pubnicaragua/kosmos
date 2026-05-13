@@ -5,6 +5,8 @@ import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

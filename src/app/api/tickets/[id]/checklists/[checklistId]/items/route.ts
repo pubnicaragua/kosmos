@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; checklistId: string } }

@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 const DISCOUNT_APPROVAL_MARKER = '[DISCOUNT_APPROVAL_AUDIT]'
 
 function extractDiscountApproval(internalNotes?: string | null) {

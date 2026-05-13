@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 function getContractStatus(endDate: Date): 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' {
   const today = new Date()
   const end = new Date(endDate)

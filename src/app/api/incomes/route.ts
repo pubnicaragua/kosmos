@@ -4,6 +4,8 @@ import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization')

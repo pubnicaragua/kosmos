@@ -5,6 +5,8 @@ import { successResponse, errorResponse } from '@/lib/api-response'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 function normalizeCurrency(value?: string): string {
   if (!value) return 'USD'
   const normalized = value.trim().toUpperCase()

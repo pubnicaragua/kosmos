@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')

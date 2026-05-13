@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 
+export const dynamic = 'force-dynamic'
+
 // Verificar si el modelo UserPreferences existe
 const hasUserPreferences = 'userPreferences' in prisma
 

@@ -11,6 +11,8 @@ import {
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { loginSchema } from '@/lib/validations'
 
+export const dynamic = 'force-dynamic'
+
 const ACCESS_TOKEN_COOKIE = 'accessToken'
 const REFRESH_TOKEN_COOKIE = 'refreshToken'
 const REMEMBER_ME_COOKIE = 'rememberMe'

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 const isAdminRole = (role?: string | null) =>
   role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER'
 

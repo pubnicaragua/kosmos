@@ -4,6 +4,8 @@ import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 function getPayrollModel() {
   // Try both common pluralizations just in case
   return (prisma as any).payroll || (prisma as any).payrolls

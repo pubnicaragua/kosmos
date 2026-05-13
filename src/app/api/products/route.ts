@@ -6,6 +6,8 @@ import { productSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 import { getModuleAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')

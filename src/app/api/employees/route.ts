@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 const employeeSchema = z.object({
   companyId: z.string(),
   employeeCode: z.string(),

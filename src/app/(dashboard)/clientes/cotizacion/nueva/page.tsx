@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 
@@ -36,7 +36,7 @@ interface InventoryProduct {
   category?: { name: string }
 }
 
-export default function NuevaCotizacionPage() {
+function NuevaCotizacionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const prefillClientId = searchParams.get('clientId') || ''
@@ -635,5 +635,13 @@ useEffect(() => {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function NuevaCotizacionPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-gray-500">Cargando...</div></div>}>
+      <NuevaCotizacionContent />
+    </Suspense>
   )
 }

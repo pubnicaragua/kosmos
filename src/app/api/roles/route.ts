@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
+export const dynamic = 'force-dynamic'
+
 const MODULES = [
   'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
   'pipeline-ventas', 'documentos', 'contratos', 'inventario',

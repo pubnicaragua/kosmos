@@ -6,6 +6,8 @@ import { ticketSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess } from '@/lib/company-access'
 import { notifyAssignment } from '@/lib/notifications'
 
+export const dynamic = 'force-dynamic'
+
 const isAdminRole = (role: string | null | undefined) =>
   role === 'SUPER_ADMIN' || role === 'ADMIN'
 
