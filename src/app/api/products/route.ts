@@ -112,6 +112,24 @@ export async function POST(request: NextRequest) {
     const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'inventario')
     if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear productos', 403)
 
+    // Check for duplicate by SKU
+    const existingProduct = await prisma.product.findFirst({
+      where: {
+        companyId: validatedData.companyId,
+        sku: validatedData.sku,
+      },
+      include: {
+        category: { select: { name: true } },
+      },
+    })
+
+    if (existingProduct) {
+      return apiError(
+        'Ya existe un producto con este SKU. Use la opción de editar para actualizar stock o precio.',
+        409
+      )
+    }
+
     const product = await prisma.product.create({
       data: validatedData,
       include: {

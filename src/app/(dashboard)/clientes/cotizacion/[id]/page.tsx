@@ -336,9 +336,10 @@ export default function DetalleCotizacionPage() {
       <style>{`
         @media print {
           .screen-only { display: none !important; }
-          header, nav, aside, .topbar, .sidebar, .hamburger, button[aria-label*="menu"], 
-          [class*="topbar"], [class*="navbar"], [class*="header"], [class*="sidebar"],
-          [class*="hamburger"], [class*="menu-button"], [role="navigation"] { display: none !important; }
+          header, nav, aside, .topbar, .sidebar, .hamburger, 
+          button, [role="button"], [class*="topbar"], [class*="navbar"], 
+          [class*="header"], [class*="sidebar"], [class*="hamburger"], 
+          [class*="menu"], [role="navigation"], [class*="button"] { display: none !important; }
           body > div:first-child > div:first-child,
           body > div:first-child > aside,
           body > div:first-child > header,
@@ -350,6 +351,9 @@ export default function DetalleCotizacionPage() {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
+          }
+          #proforma-print * {
+            display: revert !important;
           }
           @page {
             margin: 0.5cm;
@@ -512,6 +516,10 @@ export default function DetalleCotizacionPage() {
               dangerouslySetInnerHTML={{ __html: stripKosmosBranding(companyDetails?.quoteFooterHtml) }}
             />
           )}
+
+          <div className="text-[9px] text-center text-gray-400 border-t pt-2 mt-4">
+            Generado el {new Date().toLocaleDateString('es-NI', { day: '2-digit', month: '2-digit', year: 'numeric' })} a las {new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}
+          </div>
         </div>
       </div>
       {/* ===== END PRINT SECTION ===== */}
