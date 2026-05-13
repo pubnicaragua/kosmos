@@ -280,7 +280,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   </Badge>
                   <div>
                     <h2 className="text-3xl font-black tracking-tight">{request.requestNumber}</h2>
-                    <p className="opacity-60 text-sm font-medium">{request.requestingArea} • {request.requestType}</p>
+                    <p className="opacity-60 text-sm font-medium">{request.requestedByName || 'Sin asignar'} • {request.requestType}</p>
                   </div>
                 </div>
                 <div className="text-right space-y-2">

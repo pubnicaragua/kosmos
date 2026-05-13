@@ -336,20 +336,31 @@ export default function DetalleCotizacionPage() {
       <style>{`
         @media print {
           .screen-only { display: none !important; }
-          header, nav, .topbar, [class*="topbar"], [class*="navbar"], [class*="header"] { display: none !important; }
-          body > div:first-child > div:first-child { display: none !important; }
+          header, nav, aside, .topbar, .sidebar, .hamburger, button[aria-label*="menu"], 
+          [class*="topbar"], [class*="navbar"], [class*="header"], [class*="sidebar"],
+          [class*="hamburger"], [class*="menu-button"], [role="navigation"] { display: none !important; }
+          body > div:first-child > div:first-child,
+          body > div:first-child > aside,
+          body > div:first-child > header,
+          body > div:first-child > nav { display: none !important; }
           #proforma-print {
             display: block !important;
             position: static !important;
             width: 100% !important;
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           @page {
             margin: 0.5cm;
           }
           body {
-            margin: 0;
-            padding: 0;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
