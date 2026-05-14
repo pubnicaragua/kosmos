@@ -7,9 +7,11 @@ import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { ArrowLeft } from 'lucide-react'
 import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nicaragua-validators'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 export default function NuevoClientePage() {
   const router = useRouter()
+  const permissions = useModulePermissions('clientes', { requireAction: 'create' })
   const [selectedCompany, setSelectedCompany] = useState('')
   const [companies, setCompanies] = useState<any[]>([])
   const [formData, setFormData] = useState({

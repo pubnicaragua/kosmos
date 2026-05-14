@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Input } from '@/components/ui-kit/Input'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface ProductRow {
   id: string
@@ -37,6 +38,7 @@ interface Company {
 function InventarioEdicionPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const permissions = useModulePermissions('inventario', { requireAction: 'create' })
   const productType = searchParams.get('type') || 'PRODUCTO'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCompany, setSelectedCompany] = useState('all')

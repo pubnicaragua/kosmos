@@ -12,6 +12,7 @@ import {
   Button, Card, Badge, Modal 
 } from '@/components/ui-kit'
 import { useCompany } from '@/hooks/useCompany'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 const STATUS_CONFIG: Record<string, any> = {
   PENDIENTE: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock, next: 'APROBADA' },
@@ -24,6 +25,7 @@ const STATUS_CONFIG: Record<string, any> = {
 export default function DetalleSolicitudPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { selectedCompany } = useCompany()
+  const permissions = useModulePermissions('solicitudes-compra', { requireAction: 'view' })
   const [request, setRequest] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)

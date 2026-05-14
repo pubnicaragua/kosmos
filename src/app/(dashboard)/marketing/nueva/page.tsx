@@ -6,6 +6,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { ArrowLeft, Upload, BarChart2, X, Plus, Trash2 } from 'lucide-react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 const DEFAULT_METRICS = [
   { label: 'CTR (%)', value: '' },
@@ -83,6 +84,7 @@ function MetricsEditor({ value, onChange }: { value: string; onChange: (v: strin
 
 export default function NuevaCampanaPage() {
   const router = useRouter()
+  const permissions = useModulePermissions('marketing', { requireAction: 'create' })
   const [selectedCompany, setSelectedCompany] = useState('')
   const [companies, setCompanies] = useState<any[]>([])
   const evidenceFileRef = useRef<HTMLInputElement>(null)

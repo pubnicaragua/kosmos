@@ -11,6 +11,7 @@ import {
   ProductAutocomplete 
 } from '@/components/ui-kit'
 import { useCompany } from '@/hooks/useCompany'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface RequestItem {
   tempId: number
@@ -42,6 +43,7 @@ const TYPES = [
 export default function NuevaSolicitudPage() {
   const router = useRouter()
   const { selectedCompany } = useCompany()
+  const permissions = useModulePermissions('solicitudes-compra', { requireAction: 'create' })
   const [isSaving, setIsSaving] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
   
