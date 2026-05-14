@@ -25,13 +25,13 @@ const PREDEFINED_ROLES = [
     name: 'Vendedor',
     description: 'Acceso a clientes, pipeline y cotizaciones',
     color: '#10b981',
-    modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+    modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, cotizaciones: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
   },
   {
     name: 'RRHH',
-    description: 'Gestión de personal y actividades internas',
+    description: 'Gestión de recursos humanos y nóminas',
     color: '#f59e0b',
-    modules: { actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+    modules: { empleados: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
   },
   {
     name: 'Inventario',

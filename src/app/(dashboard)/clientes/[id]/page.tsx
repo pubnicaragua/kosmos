@@ -57,7 +57,7 @@ interface Contract {
 export default function ClientDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const permissions = useModulePermissions('cotizaciones')
+  const permissions = useModulePermissions('clientes')
   const [client, setClient] = useState<Client | null>(null)
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
