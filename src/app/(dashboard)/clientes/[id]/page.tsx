@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { ArrowLeft, Mail, Phone, MapPin, Building2, User, Calendar, Edit, Trash2, FileText, Plus } from 'lucide-react'
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
@@ -54,8 +55,9 @@ interface Contract {
 }
 
 export default function ClientDetailPage() {
-  const params = useParams()
   const router = useRouter()
+  const params = useParams()
+  const permissions = useModulePermissions('cotizaciones')
   const [client, setClient] = useState<Client | null>(null)
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -467,12 +469,14 @@ export default function ClientDetailPage() {
       <Card className="mt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Cotizaciones</h2>
-          <Button
-            onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}&companyId=${client.company?.id || ''}`)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Cotización
-          </Button>
+          {permissions.canCreate && (
+            <Button
+              onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}&companyId=${client.company?.id || ''}`)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Cotización
+            </Button>
+          )}
         </div>
         {quotes.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">No hay cotizaciones para este cliente</p>

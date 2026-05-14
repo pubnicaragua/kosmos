@@ -13,11 +13,11 @@ const permissionsCache = new Map<string, ModulePermissions>()
 
 export function useModulePermissions(moduleName: string): ModulePermissions {
   const [permissions, setPermissions] = useState<ModulePermissions>({
-    canView: true,
-    canCreate: true,
-    canEdit: true,
-    canDelete: true,
-    canExport: true,
+    canView: false,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canExport: false,
     loading: true,
   })
 
@@ -37,15 +37,16 @@ export function useModulePermissions(moduleName: string): ModulePermissions {
       }
 
       const userData = JSON.parse(user)
-      const companyId = localStorage.getItem('selectedCompany')
+      const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+      const companyId = activeCompany?.id
       
       if (!companyId || companyId === 'all') {
         setPermissions({
-          canView: true,
-          canCreate: true,
-          canEdit: true,
-          canDelete: true,
-          canExport: true,
+          canView: false,
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+          canExport: false,
           loading: false,
         })
         return
@@ -67,35 +68,36 @@ export function useModulePermissions(moduleName: string): ModulePermissions {
         })
 
         if (response.ok) {
-          const data = await response.json()
+          const result = await response.json()
+          const data = result.data || result
           const perms = {
-            canView: data.canView ?? true,
-            canCreate: data.canCreate ?? true,
-            canEdit: data.canEdit ?? true,
-            canDelete: data.canDelete ?? true,
-            canExport: data.canExport ?? true,
+            canView: Boolean(data.canView),
+            canCreate: Boolean(data.canCreate),
+            canEdit: Boolean(data.canEdit),
+            canDelete: Boolean(data.canDelete),
+            canExport: Boolean(data.canExport),
             loading: false,
           }
           permissionsCache.set(cacheKey, perms)
           setPermissions(perms)
         } else {
           setPermissions({
-            canView: true,
-            canCreate: true,
-            canEdit: true,
-            canDelete: true,
-            canExport: true,
+            canView: false,
+            canCreate: false,
+            canEdit: false,
+            canDelete: false,
+            canExport: false,
             loading: false,
           })
         }
       } catch (error) {
         console.error('Error fetching permissions:', error)
         setPermissions({
-          canView: true,
-          canCreate: true,
-          canEdit: true,
-          canDelete: true,
-          canExport: true,
+          canView: false,
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+          canExport: false,
           loading: false,
         })
       }

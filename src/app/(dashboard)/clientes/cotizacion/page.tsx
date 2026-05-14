@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
@@ -26,6 +27,7 @@ interface Company {
 
 export default function CotizacionesList() {
   const router = useRouter()
+  const permissions = useModulePermissions('cotizaciones')
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')
@@ -128,12 +130,14 @@ export default function CotizacionesList() {
               className="w-64"
             />
           )}
-          <Button onClick={() => router.push('/clientes/cotizacion/nueva')}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva Cotización
-          </Button>
+          {permissions.canCreate && (
+            <Button onClick={() => router.push('/clientes/cotizacion/nueva')}>
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva Cotización
+            </Button>
+          )}
         </div>
       </div>
 
@@ -200,12 +204,14 @@ export default function CotizacionesList() {
                     >
                       Ver
                     </button>
-                    <button
-                      onClick={() => handleEditQuote(quote.id)}
-                      className="text-primary hover:text-primary/80"
-                    >
-                      Editar
-                    </button>
+                    {permissions.canEdit && (
+                      <button
+                        onClick={() => handleEditQuote(quote.id)}
+                        className="text-primary hover:text-primary/80"
+                      >
+                        Editar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
