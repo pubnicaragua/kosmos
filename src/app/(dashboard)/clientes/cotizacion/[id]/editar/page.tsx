@@ -314,6 +314,9 @@ export default function EditarCotizacionPage() {
                           onChange={(e) => updateItem(index, 'description', e.target.value)}
                           placeholder="Descripción..."
                           fullWidth
+                          readOnly={!!item.productId}
+                          className={item.productId ? "bg-gray-50 cursor-not-allowed text-gray-600" : ""}
+                          title={item.productId ? "Producto del catálogo - no editable" : ""}
                         />
                       </td>
                       <td className="py-2 px-2">
@@ -330,6 +333,9 @@ export default function EditarCotizacionPage() {
                           value={item.unitPrice}
                           onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                           fullWidth
+                          readOnly={!!item.productId}
+                          className={item.productId ? "bg-gray-50 cursor-not-allowed text-gray-600" : ""}
+                          title={item.productId ? "El precio base del catálogo no se puede editar. Utiliza la columna de descuento." : ""}
                         />
                       </td>
                       <td className="py-2 px-2">
