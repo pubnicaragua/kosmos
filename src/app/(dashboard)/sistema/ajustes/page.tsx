@@ -9,6 +9,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
 import { SimpleRichTextEditor } from '@/components/ui-kit/SimpleRichTextEditor'
 import { DepartamentosManager } from '@/components/departamentos/DepartamentosManager'
+import { clearPermissionsCache } from '@/hooks/useModulePermissions'
 import { 
   LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
   FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen,
@@ -517,6 +518,7 @@ export default function AjustesPage() {
       if (data.success) {
         setRoleMsg({ type: 'success', text: editingRole ? 'Rol actualizado' : 'Rol creado exitosamente' })
         await fetchRolesData(rolesCompanyId)
+        clearPermissionsCache()
         setTimeout(() => { setShowRoleModal(false); setRoleMsg(null) }, 800)
       } else {
         setRoleMsg({ type: 'error', text: data.error || 'Error al guardar rol' })
@@ -532,6 +534,7 @@ export default function AjustesPage() {
     try {
       await fetch(`/api/roles/${roleId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
       await fetchRolesData(rolesCompanyId)
+      clearPermissionsCache()
     } catch (err) { console.error(err) }
   }
 
@@ -616,6 +619,7 @@ export default function AjustesPage() {
         body: JSON.stringify({ userId, companyId: rolesCompanyId, customRoleId: customRoleId || null }),
       })
       await fetchRolesData(rolesCompanyId)
+      clearPermissionsCache()
     } catch (err) { console.error(err) }
   }
 
@@ -631,6 +635,7 @@ export default function AjustesPage() {
       const data = await res.json()
       if (data.success) {
         await fetchRolesData(rolesCompanyId)
+        clearPermissionsCache()
       } else {
         alert(data.error || 'Error al cambiar rol')
       }
