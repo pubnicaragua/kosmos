@@ -51,7 +51,7 @@ interface Payroll {
 }
 
 export default function RecursosHumanosPage() {
-  const permissions = useModulePermissions('empleados')
+  const permissions = useModulePermissions('empleados', { requireAction: 'view' })
   const [activeTab, setActiveTab] = useState<'employees' | 'payrolls'>('employees')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activeCompany, setActiveCompany] = useState<any>(null)
@@ -816,23 +816,27 @@ const handleDownloadTemplate = () => {
             </>
           ) : (
             <>
-              <label htmlFor="payroll-import" className="cursor-pointer">
-                <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold pointer-events-none">
+              {permissions.canCreate && (
+                <label htmlFor="payroll-import" className="cursor-pointer">
+                  <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 font-bold pointer-events-none">
+                    <Upload className="w-4 h-4 mr-2" />
+                    IMPORTAR
+                  </Button>
+                  <input 
+                    id="payroll-import" 
+                    type="file" 
+                    className="hidden" 
+                    onChange={handleImportXLSX} 
+                    accept=".xlsx,.xls" 
+                  />
+                </label>
+              )}
+              {permissions.canCreate && (
+                <Button onClick={() => setShowPayrollModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
                   <Upload className="w-4 h-4 mr-2" />
-                  IMPORTAR
+                  NUEVA PLANILLA
                 </Button>
-                <input 
-                  id="payroll-import" 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleImportXLSX} 
-                  accept=".xlsx,.xls" 
-                />
-              </label>
-              <Button onClick={() => setShowPayrollModal(true)} className="bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-200 font-bold">
-                <Upload className="w-4 h-4 mr-2" />
-                NUEVA PLANILLA
-              </Button>
+              )}
             </>
           )}
         </div>
@@ -932,15 +936,17 @@ const handleDownloadTemplate = () => {
                     <Badge className={employee.status === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
                       {employee.status}
                     </Badge>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteEmployee(employee.id)
-                      }}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {permissions.canDelete && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteEmployee(employee.id)
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -1037,15 +1043,17 @@ const handleDownloadTemplate = () => {
                     <option value="PROCESADA">PROC.</option>
                     <option value="PAGADA">PAGADA</option>
                   </select>
-                  <button
-                    onClick={() => handleDelete(payroll.id)}
-                    className="p-2 text-slate-300 hover:text-error hover:bg-error/10 rounded-lg transition-all"
-                    title="Eliminar"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  {permissions.canDelete && (
+                    <button
+                      onClick={() => handleDelete(payroll.id)}
+                      className="p-2 text-slate-300 hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                      title="Eliminar"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -1482,13 +1490,15 @@ const handleDownloadTemplate = () => {
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSaveEmployee}
-                disabled={uploading}
-                className="flex-1"
-              >
-                {uploading ? 'Guardando...' : isEditing ? 'Actualizar Empleado' : 'Crear Empleado'}
-              </Button>
+              {(isEditing ? permissions.canEdit : permissions.canCreate) && (
+                <Button
+                  onClick={handleSaveEmployee}
+                  disabled={uploading}
+                  className="flex-1"
+                >
+                  {uploading ? 'Guardando...' : isEditing ? 'Actualizar Empleado' : 'Crear Empleado'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

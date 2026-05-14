@@ -57,7 +57,7 @@ interface Contract {
 export default function ClientDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const permissions = useModulePermissions('clientes')
+  const permissions = useModulePermissions('clientes', { requireAction: 'view' })
   const [client, setClient] = useState<Client | null>(null)
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -240,12 +240,14 @@ export default function ClientDetailPage() {
         <div className="flex gap-2">
           {isEditing ? (
             <>
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                Guardar
-              </button>
+              {permissions.canEdit && (
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Guardar
+                </button>
+              )}
               <button
                 onClick={handleCancel}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
@@ -255,20 +257,24 @@ export default function ClientDetailPage() {
             </>
           ) : (
             <>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <Edit className="w-4 h-4" />
-                Editar
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-                Eliminar
-              </button>
+              {permissions.canEdit && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+              )}
+              {permissions.canDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Eliminar
+                </button>
+              )}
             </>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface QuoteItem {
   tempId: number
@@ -39,6 +40,7 @@ interface InventoryProduct {
 function NuevaCotizacionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const permissions = useModulePermissions('clientes', { requireAction: 'create' })
   const prefillClientId = searchParams.get('clientId') || ''
   const prefillCompanyId = searchParams.get('companyId') || ''
   const [companies, setCompanies] = useState<Company[]>([])

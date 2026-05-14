@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface ModulePermissions {
   canView: boolean
@@ -9,9 +10,18 @@ interface ModulePermissions {
   loading: boolean
 }
 
+interface UseModulePermissionsOptions {
+  requireAction?: 'view' | 'create' | 'edit' | 'delete' | 'export'
+  redirectTo?: string
+}
+
 const permissionsCache = new Map<string, ModulePermissions>()
 
-export function useModulePermissions(moduleName: string): ModulePermissions {
+export function useModulePermissions(
+  moduleName: string,
+  options?: UseModulePermissionsOptions
+): ModulePermissions {
+  const router = useRouter()
   const [permissions, setPermissions] = useState<ModulePermissions>({
     canView: false,
     canCreate: false,
@@ -105,6 +115,22 @@ export function useModulePermissions(moduleName: string): ModulePermissions {
 
     fetchPermissions()
   }, [moduleName])
+
+  useEffect(() => {
+    if (!permissions.loading && options?.requireAction) {
+      const actionMap = {
+        view: permissions.canView,
+        create: permissions.canCreate,
+        edit: permissions.canEdit,
+        delete: permissions.canDelete,
+        export: permissions.canExport,
+      }
+      
+      if (!actionMap[options.requireAction]) {
+        router.push(options.redirectTo || '/sistema/unauthorized')
+      }
+    }
+  }, [permissions.loading, permissions, options?.requireAction, options?.redirectTo, router])
 
   return permissions
 }

@@ -43,7 +43,7 @@ interface Company {
 
 export default function GastosPage() {
   const router = useRouter()
-  const permissions = useModulePermissions('gastos')
+  const permissions = useModulePermissions('gastos', { requireAction: 'view' })
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])

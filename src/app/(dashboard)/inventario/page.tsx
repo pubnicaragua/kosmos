@@ -62,7 +62,7 @@ interface EditingProduct {
 
 export default function InventarioPage() {
   const router = useRouter()
-  const permissions = useModulePermissions('inventario')
+  const permissions = useModulePermissions('inventario', { requireAction: 'view' })
   const [products, setProducts] = useState<Product[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)

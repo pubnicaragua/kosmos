@@ -27,7 +27,7 @@ interface Company {
 
 export default function CotizacionesList() {
   const router = useRouter()
-  const permissions = useModulePermissions('cotizaciones')
+  const permissions = useModulePermissions('cotizaciones', { requireAction: 'view' })
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')

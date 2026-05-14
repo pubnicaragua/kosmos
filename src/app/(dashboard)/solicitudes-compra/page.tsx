@@ -31,7 +31,7 @@ const getInitials = (name?: string | null) => {
 
 export default function SolicitudesCompraPage() {
   const { selectedCompany } = useCompany()
-  const permissions = useModulePermissions('solicitudes-compra')
+  const permissions = useModulePermissions('solicitudes-compra', { requireAction: 'view' })
   const [requests, setRequests] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [kpis, setKpis] = useState<any>(null)

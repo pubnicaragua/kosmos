@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Edit2, Trash2, Check, X } from 'lucide-react'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface ExpenseDetail {
   id: string
@@ -21,6 +22,7 @@ interface ExpenseDetail {
 export default function ExpenseDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const permissions = useModulePermissions('gastos', { requireAction: 'view' })
   const [expense, setExpense] = useState<ExpenseDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -181,21 +183,27 @@ export default function ExpenseDetailPage() {
           <div className="flex gap-2">
             {!isEditing ? (
               <>
-                <button onClick={handleEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                  <Edit2 className="w-4 h-4" />
-                  Editar
-                </button>
-                <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  Eliminar
-                </button>
+                {permissions.canEdit && (
+                  <button onClick={handleEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <Edit2 className="w-4 h-4" />
+                    Editar
+                  </button>
+                )}
+                {permissions.canDelete && (
+                  <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </button>
+                )}
               </>
             ) : (
               <>
-                <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Guardar
-                </button>
+                {permissions.canEdit && (
+                  <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Guardar
+                  </button>
+                )}
                 <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
                   <X className="w-4 h-4" />
                   Cancelar

@@ -60,7 +60,7 @@ interface Quote {
 export default function DetalleCotizacionPage() {
   const router = useRouter()
   const params = useParams()
-  const permissions = useModulePermissions('cotizaciones')
+  const permissions = useModulePermissions('cotizaciones', { requireAction: 'view' })
   const [quote, setQuote] = useState<Quote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)

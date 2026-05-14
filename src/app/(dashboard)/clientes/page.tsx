@@ -73,7 +73,7 @@ interface ClientRowDraft {
 function ClientesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const permissions = useModulePermissions('clientes')
+  const permissions = useModulePermissions('clientes', { requireAction: 'view' })
   const editClientId = searchParams.get('edit')
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const [clients, setClients] = useState<Client[]>([])
@@ -1012,18 +1012,20 @@ function ClientesPageContent() {
                           </button>
                           {menuOpenId === client.id && (
                             <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                              <button
-                                onClick={() => {
-                                  startEditingRow(client)
-                                  setMenuOpenId(null)
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Editar cliente
-                              </button>
+                              {permissions.canEdit && (
+                                <button
+                                  onClick={() => {
+                                    startEditingRow(client)
+                                    setMenuOpenId(null)
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Editar cliente
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   router.push(`/clientes/${client.id}`)
@@ -1038,50 +1040,58 @@ function ClientesPageContent() {
                                 Ver detalle
                               </button>
                               {client.status === 'INACTIVO' ? (
-                                <button
-                                  onClick={async () => {
-                                    const token = localStorage.getItem('accessToken')
-                                    if (!token) return
-                                    try {
-                                      const response = await fetch(`/api/clients/${client.id}`, {
-                                        method: 'PUT',
-                                        headers: {
-                                          'Authorization': `Bearer ${token}`,
-                                          'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({ status: 'ACTIVO' }),
-                                      })
-                                      const data = await response.json()
-                                      if (data.success) {
-                                        setClients((prev) => prev.map((c) => 
-                                          c.id === client.id ? { ...c, status: 'ACTIVO' } : c
-                                        ))
-                                      }
-                                    } catch (error) {
-                                      console.error('Error reactivating client:', error)
-                                    }
-                                    setMenuOpenId(null)
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  Reactivar
-                                </button>
+                                <>
+                                  {permissions.canEdit && (
+                                    <button
+                                      onClick={async () => {
+                                        const token = localStorage.getItem('accessToken')
+                                        if (!token) return
+                                        try {
+                                          const response = await fetch(`/api/clients/${client.id}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`,
+                                              'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ status: 'ACTIVO' }),
+                                          })
+                                          const data = await response.json()
+                                          if (data.success) {
+                                            setClients((prev) => prev.map((c) => 
+                                              c.id === client.id ? { ...c, status: 'ACTIVO' } : c
+                                            ))
+                                          }
+                                        } catch (error) {
+                                          console.error('Error reactivating client:', error)
+                                        }
+                                        setMenuOpenId(null)
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      Reactivar
+                                    </button>
+                                  )}
+                                </>
                               ) : (
-                                <button
-                                  onClick={() => {
-                                    handleDeleteClient(client.id)
-                                    setMenuOpenId(null)
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                  Eliminar
-                                </button>
+                                <>
+                                  {permissions.canDelete && (
+                                    <button
+                                      onClick={() => {
+                                        handleDeleteClient(client.id)
+                                        setMenuOpenId(null)
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                      Eliminar
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
