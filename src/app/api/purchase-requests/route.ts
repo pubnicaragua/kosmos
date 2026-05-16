@@ -119,6 +119,7 @@ export async function POST(req: Request) {
         requestType,
         priority,
         notes,
+        currency: body.currency || 'USD',
         status: 'PENDIENTE',
         items: {
           create: items.map((item: any) => ({

@@ -25,6 +25,7 @@ interface RequestItem {
   unitCost: number
   monthlyAverage: number
   lastSaleDate: string
+  currency: string
 }
 
 interface Department {
@@ -52,6 +53,7 @@ export default function NuevaSolicitudPage() {
     requestType: '',
     priority: 'MEDIA',
     notes: '',
+    currency: 'USD'
   })
 
   const [items, setItems] = useState<RequestItem[]>([
@@ -67,13 +69,14 @@ export default function NuevaSolicitudPage() {
       reason: 'Agotado',
       unitCost: 0,
       monthlyAverage: 0,
-      lastSaleDate: ''
+      lastSaleDate: '',
+      currency: 'USD'
     }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '' }]
+    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '', currency: 'USD' }]
     return items
   }, [items])
 
@@ -90,7 +93,8 @@ export default function NuevaSolicitudPage() {
       reason: 'Agotado',
       unitCost: 0,
       monthlyAverage: 0,
-      lastSaleDate: ''
+      lastSaleDate: '',
+      currency: 'USD'
     }])
   }
 
@@ -371,11 +375,11 @@ export default function NuevaSolicitudPage() {
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
                       <div className="space-y-1">
                         <p className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Subtotal Estimado</p>
-                        <p className="text-2xl font-black text-blue-600">${(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
+                        <p className="text-2xl font-black text-blue-600">{formData.currency === 'NIO' ? 'C$' : '$'}{(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
                       </div>
                       <div className="text-right text-xs text-blue-600 space-y-1">
                         <div><span className="font-bold">{item.requestedQuantity}</span> unidades</div>
-                        <div>@ <span className="font-bold">${item.unitCost.toFixed(2)}</span> c/u</div>
+                        <div>@ <span className="font-bold">{formData.currency === 'NIO' ? 'C$' : '$'}{item.unitCost.toFixed(2)}</span> c/u</div>
                       </div>
                     </div>
                   </div>
@@ -448,6 +452,38 @@ export default function NuevaSolicitudPage() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Moneda</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, currency: 'NIO'})}
+                    className={`
+                      py-3 px-4 rounded-xl text-[11px] font-black transition-all border-2 flex items-center justify-center gap-2
+                      ${formData.currency === 'NIO' 
+                        ? 'bg-green-50 border-green-500 text-green-700' 
+                        : 'bg-white border-slate-100 text-slate-400 hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    <span className="text-base">C$</span> CÓRDOBAS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, currency: 'USD'})}
+                    className={`
+                      py-3 px-4 rounded-xl text-[11px] font-black transition-all border-2 flex items-center justify-center gap-2
+                      ${formData.currency === 'USD' 
+                        ? 'bg-blue-50 border-blue-500 text-blue-700' 
+                        : 'bg-white border-slate-100 text-slate-400 hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    <span className="text-base">$</span> DÓLARES
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Notas adicionales</label>
                 <textarea 
                   className="w-full rounded-2xl border-2 border-slate-100 p-4 text-sm focus:border-blue-500 focus:outline-none transition-all placeholder:text-slate-300 min-h-[120px]"
@@ -473,7 +509,7 @@ export default function NuevaSolicitudPage() {
               <div className="pt-4 mt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-bold">TOTAL ESTIMADO</span>
-                  <p className="text-3xl font-black">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-3xl font-black">{formData.currency === 'NIO' ? 'C$' : '$'}{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
             </div>

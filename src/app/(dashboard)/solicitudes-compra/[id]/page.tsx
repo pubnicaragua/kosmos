@@ -288,7 +288,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                 <div className="text-right space-y-2">
                   <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Monto Estimado</p>
                   <p className="text-4xl font-black text-blue-400">
-                    ${request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
@@ -375,7 +375,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                           <td className="px-6 py-4 text-right font-medium text-slate-600">
                             {item.monthlyAverage?.toFixed(1) || '0.0'}
                           </td>
-                          <td className="px-6 py-4 text-right font-black text-slate-900">${(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                          <td className="px-6 py-4 text-right font-black text-slate-900">{request.currency === 'NIO' ? 'C$' : '$'}{(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                         </tr>
                       ))}
                     </tbody>

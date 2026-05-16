@@ -710,6 +710,7 @@ model PurchaseRequest {
   receivedAt       DateTime?               @map("received_at")
   expenseId        String?                 @map("expense_id")
   notes            String?                 @db.Text
+  currency         String                  @default("USD")
   createdAt        DateTime                @default(now()) @map("created_at")
   updatedAt        DateTime                @updatedAt @map("updated_at")
   company          Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
