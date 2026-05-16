@@ -360,7 +360,7 @@ export default function NuevaSolicitudPage() {
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Costo Unitario</label>
                         <Input 
                           type="text"
-                          placeholder="$0.00"
+                          placeholder={formData.currency === 'NIO' ? 'C$0.00' : '$0.00'}
                           value={item.unitCost || ''}
                           onChange={(e) => {
                             const val = e.target.value.replace(/[^0-9.]/g, '')
