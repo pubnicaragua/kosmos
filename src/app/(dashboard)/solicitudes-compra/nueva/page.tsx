@@ -159,9 +159,6 @@ export default function NuevaSolicitudPage() {
         const data = await response.json()
         if (data.success) {
           setDepartments(data.data)
-          if (data.data.length > 0 && !formData.requestingArea) {
-            setFormData(prev => ({ ...prev, requestingArea: data.data[0].id }))
-          }
         }
       } catch (error) {
         console.error('Error fetching departments:', error)
@@ -231,7 +228,33 @@ export default function NuevaSolicitudPage() {
                           type="text"
                           placeholder="SKU-001"
                           value={item.sku}
-                          onChange={(e) => updateItem(item.tempId, 'sku', e.target.value)}
+                          onChange={async (e) => {
+                            const skuValue = e.target.value
+                            updateItem(item.tempId, 'sku', skuValue)
+                            
+                            if (skuValue && skuValue.length >= 3 && selectedCompany) {
+                              try {
+                                const token = localStorage.getItem('accessToken')
+                                const res = await fetch(`/api/products?companyId=${selectedCompany}&sku=${skuValue}`, {
+                                  headers: { Authorization: `Bearer ${token}` }
+                                })
+                                const data = await res.json()
+                                if (data.success && data.data.length > 0) {
+                                  const existing = data.data[0]
+                                  if (confirm(`Producto "${existing.name}" ya existe en inventario con SKU ${existing.sku}. ¿Deseas usar los datos existentes?`)) {
+                                    updateItem(item.tempId, 'productId', existing.id)
+                                    updateItem(item.tempId, 'productName', existing.name)
+                                    updateItem(item.tempId, 'category', existing.category?.name || '')
+                                    updateItem(item.tempId, 'currentStock', existing.stock || 0)
+                                    updateItem(item.tempId, 'minStock', existing.minStock || 0)
+                                    updateItem(item.tempId, 'unitCost', existing.cost || 0)
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('Error checking SKU:', err)
+                              }
+                            }
+                          }}
                           className="bg-white border-slate-200 rounded-xl font-mono"
                         />
                       </div>
@@ -332,12 +355,14 @@ export default function NuevaSolicitudPage() {
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Costo Unitario</label>
                         <Input 
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="text"
                           placeholder="$0.00"
-                          value={item.unitCost}
-                          onChange={(e) => updateItem(item.tempId, 'unitCost', parseFloat(e.target.value) || 0)}
+                          value={item.unitCost || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, '')
+                            const num = parseFloat(val) || 0
+                            updateItem(item.tempId, 'unitCost', num)
+                          }}
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
                       </div>
@@ -376,7 +401,10 @@ export default function NuevaSolicitudPage() {
               <div className="space-y-2">
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Área Solicitante</label>
                 <Select 
-                  options={departments.map(d => ({ value: d.id, label: d.name }))}
+                  options={[
+                    { value: '', label: 'Seleccionar área...' },
+                    ...departments.map(d => ({ value: d.id, label: d.name }))
+                  ]}
                   value={formData.requestingArea}
                   onChange={(e) => setFormData({...formData, requestingArea: e.target.value})}
                   fullWidth

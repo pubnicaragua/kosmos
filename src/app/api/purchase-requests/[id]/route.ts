@@ -196,15 +196,42 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           ? receiptMap.get(item.id) || 0
           : item.requestedQuantity
 
-        if (item.productId && quantityToReceive > 0) {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: {
-                increment: quantityToReceive
+        if (quantityToReceive > 0) {
+          if (item.productId) {
+            // Update existing product
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: {
+                  increment: quantityToReceive
+                }
               }
-            }
-          })
+            })
+          } else {
+            // Create new product in inventory
+            const categoryId = item.category 
+              ? (await prisma.productCategory.findFirst({
+                  where: { 
+                    companyId: currentRequest.companyId,
+                    name: item.category 
+                  }
+                }))?.id || null
+              : null
+
+            await prisma.product.create({
+              data: {
+                companyId: currentRequest.companyId,
+                name: item.productName,
+                sku: item.sku || `AUTO-${Date.now()}`,
+                categoryId,
+                stock: quantityToReceive,
+                minStock: item.minimumStock || 0,
+                cost: item.unitCost || 0,
+                price: (item.unitCost || 0) * 1.3,
+                type: 'PRODUCT'
+              }
+            })
+          }
         }
       }
     }

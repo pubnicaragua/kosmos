@@ -498,48 +498,58 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       >
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">URL cotización (opcional)</label>
-            <input
-              value={quotationUrl}
-              onChange={(e) => setQuotationUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            />
-            <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-              <input
-                type="file"
-                className="hidden"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) uploadSupportFile('quotation', file)
-                  e.currentTarget.value = ''
-                }}
-              />
-              <span className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Subir archivo a bucket</span>
-            </label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Cotización del Proveedor (opcional)</label>
+            {quotationUrl ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <span className="text-xs text-green-700 font-medium flex-1">Archivo subido</span>
+                <button onClick={() => setQuotationUrl('')} className="text-xs text-red-600 hover:text-red-700 font-bold">Eliminar</button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition-all">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadSupportFile('quotation', file)
+                    e.currentTarget.value = ''
+                  }}
+                />
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span className="text-sm font-bold text-slate-600">Subir cotización</span>
+              </label>
+            )}
           </div>
           <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-1 block">Comprobante/soporte de compra *</label>
-            <input
-              value={purchaseOrderUrl}
-              onChange={(e) => setPurchaseOrderUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            />
-            <label className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-              <input
-                type="file"
-                className="hidden"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) uploadSupportFile('purchase', file)
-                  e.currentTarget.value = ''
-                }}
-              />
-              <span className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50">Subir archivo a bucket</span>
-            </label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Comprobante de Compra *</label>
+            {purchaseOrderUrl ? (
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <span className="text-xs text-green-700 font-medium flex-1">Archivo subido</span>
+                <button onClick={() => setPurchaseOrderUrl('')} className="text-xs text-red-600 hover:text-red-700 font-bold">Eliminar</button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-indigo-200 rounded-xl hover:bg-indigo-50 cursor-pointer transition-all">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) uploadSupportFile('purchase', file)
+                    e.currentTarget.value = ''
+                  }}
+                />
+                <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span className="text-sm font-bold text-indigo-600">Subir comprobante</span>
+              </label>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setIsPurchaseModalOpen(false)}>CANCELAR</Button>
