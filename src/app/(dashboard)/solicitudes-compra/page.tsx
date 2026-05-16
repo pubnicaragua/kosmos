@@ -5,7 +5,8 @@ import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { 
   ShoppingCart, Plus, Filter, Search, MoreVertical, 
   Clock, CheckCircle2, XCircle, Package, Truck, 
-  AlertTriangle, TrendingUp, BarChart3, ArrowRight
+  AlertTriangle, TrendingUp, BarChart3, ArrowRight,
+  ChevronRight, Info
 } from 'lucide-react'
 import { Button } from '@/components/ui-kit/Button'
 import { Card } from '@/components/ui-kit/Card'
