@@ -7,8 +7,7 @@ import {
   ChevronRight, Calculator, AlertCircle, Info, Send
 } from 'lucide-react'
 import { 
-  Input, Select, Button, Card, Badge, 
-  ProductAutocomplete 
+  Input, Select, Button, Card, Badge
 } from '@/components/ui-kit'
 import { useCompany } from '@/hooks/useCompany'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
@@ -25,6 +24,7 @@ interface RequestItem {
   reason: string
   unitCost: number
   monthlyAverage: number
+  lastSaleDate: string
 }
 
 interface Department {
@@ -66,13 +66,14 @@ export default function NuevaSolicitudPage() {
       requestedQuantity: 1, 
       reason: 'Agotado',
       unitCost: 0,
-      monthlyAverage: 0
+      monthlyAverage: 0,
+      lastSaleDate: ''
     }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0 }]
+    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '' }]
     return items
   }, [items])
 
@@ -88,7 +89,8 @@ export default function NuevaSolicitudPage() {
       requestedQuantity: 1, 
       reason: 'Agotado',
       unitCost: 0,
-      monthlyAverage: 0
+      monthlyAverage: 0,
+      lastSaleDate: ''
     }])
   }
 
@@ -102,24 +104,6 @@ export default function NuevaSolicitudPage() {
     setItems(itemsArray.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
   }
 
-  const handleProductSelect = (tempId: number, product: any) => {
-    setItems(itemsArray.map(item => {
-      if (item.tempId === tempId) {
-        return {
-          ...item,
-          productId: product.id,
-          productName: product.name,
-          sku: product.sku,
-          category: product.category?.name || 'Varios',
-          currentStock: product.stock,
-          minStock: product.minStock,
-          unitCost: product.cost || 0,
-          monthlyAverage: 0
-        }
-      }
-      return item
-    }))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -239,71 +223,134 @@ export default function NuevaSolicitudPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Producto / Servicio</label>
-                        <ProductAutocomplete 
-                          companyId={selectedCompany || ''}
-                          value={item.productName}
-                          onChange={(val) => updateItem(item.tempId, 'productName', val)}
-                          onSelect={(prod) => handleProductSelect(item.tempId, prod)}
-                          className="w-full bg-white border-slate-200 rounded-xl"
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Código SKU</label>
+                        <Input 
+                          type="text"
+                          placeholder="SKU-001"
+                          value={item.sku}
+                          onChange={(e) => updateItem(item.tempId, 'sku', e.target.value)}
+                          className="bg-white border-slate-200 rounded-xl font-mono"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cantidad Solicitada</label>
-                          <Input 
-                            type="number"
-                            min="1"
-                            value={item.requestedQuantity}
-                            onChange={(e) => updateItem(item.tempId, 'requestedQuantity', parseInt(e.target.value) || 0)}
-                            className="bg-white border-slate-200 rounded-xl font-bold"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo</label>
-                          <Select 
-                            options={[
-                              { value: 'Agotado', label: 'Stock Agotado' },
-                              { value: 'PROYECTO', label: 'Proyecto Específico' },
-                              { value: 'ALTA DEMANDA', label: 'Alta Demanda' },
-                              { value: 'CLIENTE', label: 'Pedido de Cliente' },
-                            ]}
-                            value={item.reason}
-                            onChange={(e) => updateItem(item.tempId, 'reason', e.target.value)}
-                            fullWidth
-                            className="bg-white border-slate-200 rounded-xl"
-                          />
-                        </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nombre del Producto *</label>
+                        <Input 
+                          type="text"
+                          placeholder="Ej: Laptop Dell Inspiron 15"
+                          value={item.productName}
+                          onChange={(e) => updateItem(item.tempId, 'productName', e.target.value)}
+                          className="bg-white border-slate-200 rounded-xl font-bold"
+                        />
                       </div>
                     </div>
-                    
-                    <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Stock Actual</p>
-                          <p className="text-xl font-black text-slate-800">{item.currentStock}</p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Mínimo</p>
-                          <p className="text-xl font-black text-red-500">{item.minStock}</p>
-                        </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoría</label>
+                        <Input 
+                          type="text"
+                          placeholder="SSD, RAM, Cámara, etc."
+                          value={item.category}
+                          onChange={(e) => updateItem(item.tempId, 'category', e.target.value)}
+                          className="bg-white border-slate-200 rounded-xl"
+                        />
                       </div>
-                      <div className="pt-4 mt-4 border-t border-slate-50 flex justify-between items-end">
-                        <div className="space-y-1 text-slate-500 text-[11px] font-medium">
-                          <div className="flex items-center gap-1">
-                            <Info className="w-3 h-3" /> SKU: {item.sku || '---'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calculator className="w-3 h-3" /> Costo Est: ${item.unitCost.toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Subtotal Est.</p>
-                          <p className="text-lg font-black text-blue-600">${(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
-                        </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Actual</label>
+                        <Input 
+                          type="number"
+                          min="0"
+                          value={item.currentStock}
+                          onChange={(e) => updateItem(item.tempId, 'currentStock', parseInt(e.target.value) || 0)}
+                          className="bg-white border-slate-200 rounded-xl font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Mínimo</label>
+                        <Input 
+                          type="number"
+                          min="0"
+                          value={item.minStock}
+                          onChange={(e) => updateItem(item.tempId, 'minStock', parseInt(e.target.value) || 0)}
+                          className="bg-white border-slate-200 rounded-xl font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cantidad Solicitada *</label>
+                        <Input 
+                          type="number"
+                          min="1"
+                          value={item.requestedQuantity}
+                          onChange={(e) => updateItem(item.tempId, 'requestedQuantity', parseInt(e.target.value) || 0)}
+                          className="bg-white border-slate-200 rounded-xl font-bold text-lg"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo</label>
+                        <Select 
+                          options={[
+                            { value: 'Agotado', label: 'Stock Agotado' },
+                            { value: 'Alta demanda', label: 'Alta Demanda' },
+                            { value: 'Proyecto', label: 'Proyecto Específico' },
+                          ]}
+                          value={item.reason}
+                          onChange={(e) => updateItem(item.tempId, 'reason', e.target.value)}
+                          fullWidth
+                          className="bg-white border-slate-200 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Última Venta</label>
+                        <Input 
+                          type="date"
+                          value={item.lastSaleDate}
+                          onChange={(e) => updateItem(item.tempId, 'lastSaleDate', e.target.value)}
+                          className="bg-white border-slate-200 rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Promedio Mensual</label>
+                        <Input 
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          placeholder="Ventas/mes"
+                          value={item.monthlyAverage}
+                          onChange={(e) => updateItem(item.tempId, 'monthlyAverage', parseFloat(e.target.value) || 0)}
+                          className="bg-white border-slate-200 rounded-xl"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Costo Unitario</label>
+                        <Input 
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="$0.00"
+                          value={item.unitCost}
+                          onChange={(e) => updateItem(item.tempId, 'unitCost', parseFloat(e.target.value) || 0)}
+                          className="bg-white border-slate-200 rounded-xl font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Subtotal Estimado</p>
+                        <p className="text-2xl font-black text-blue-600">${(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
+                      </div>
+                      <div className="text-right text-xs text-blue-600 space-y-1">
+                        <div><span className="font-bold">{item.requestedQuantity}</span> unidades</div>
+                        <div>@ <span className="font-bold">${item.unitCost.toFixed(2)}</span> c/u</div>
                       </div>
                     </div>
                   </div>

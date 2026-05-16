@@ -407,6 +407,187 @@ export default function SolicitudesCompraPage() {
           </div>
         </div>
       )}
+
+      {/* Workflow Explanation Section */}
+      <div className="mt-16 space-y-8">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Flujo del Proceso de Compras</h2>
+          <div className="h-px flex-1 bg-slate-100" />
+        </div>
+
+        <Card className="p-8 border-slate-100 shadow-sm rounded-3xl bg-gradient-to-br from-blue-50 to-white">
+          <div className="space-y-8">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-blue-100 rounded-2xl shrink-0">
+                <AlertTriangle className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 mb-2">Sistema Sin Dependencia de Inventario</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Este módulo permite crear solicitudes de compra <span className="font-bold text-blue-600">ANTES de tener productos en inventario</span>. 
+                  Ingresa manualmente todos los datos del producto que necesitas adquirir, sin necesidad de cargarlo previamente al sistema.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-red-600">1</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">Detección</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Área detecta faltante o necesidad</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-blue-400 shadow-lg h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-blue-600">2</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-blue-800 uppercase tracking-tight">Solicitud Manual</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Ingreso de datos sin inventario previo</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-green-600">3</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">Aprobación</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Jefe de área aprueba solicitud</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-purple-600">4</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">Cotización</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Compras cotiza con proveedores</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-indigo-600">5</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">Orden Compra</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Genera OC y ejecuta compra</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-white p-6 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                      <span className="text-2xl font-black text-orange-600">6</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight">Recepción</h4>
+                      <p className="text-[10px] text-slate-500 leading-relaxed">Recibe productos físicamente</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden md:block absolute top-1/2 -right-2 w-4 h-4 -translate-y-1/2">
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl border-2 border-green-400 shadow-xl h-full">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+                      <span className="text-2xl font-black text-green-600">7</span>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-black text-white uppercase tracking-tight">Inventario</h4>
+                      <p className="text-[10px] text-green-100 leading-relaxed">Actualización automática</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-200">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-50 rounded-lg shrink-0">
+                  <Info className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h5 className="text-xs font-black text-slate-800 uppercase tracking-tight mb-1">Entrada Manual</h5>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    No necesitas tener el producto en inventario. Ingresa SKU, categoría, stock actual/mínimo, y costos manualmente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-green-50 rounded-lg shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h5 className="text-xs font-black text-slate-800 uppercase tracking-tight mb-1">Trazabilidad Total</h5>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Cada solicitud registra: última venta, promedio mensual, motivo, y toda la documentación de soporte.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-purple-50 rounded-lg shrink-0">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h5 className="text-xs font-black text-slate-800 uppercase tracking-tight mb-1">Métricas Automáticas</h5>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    El sistema calcula automáticamente stock bajo, productos sin rotación, y tiempos de reposición.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

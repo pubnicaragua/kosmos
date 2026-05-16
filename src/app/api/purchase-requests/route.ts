@@ -127,12 +127,13 @@ export async function POST(req: Request) {
             productName: item.productName,
             category: item.category || null,
             currentStock: item.currentStock || 0,
-            minimumStock: item.minimumStock || 0,
+            minimumStock: item.minStock || item.minimumStock || 0,
             requestedQuantity: item.requestedQuantity,
             reason: item.reason || null,
+            lastSaleDate: item.lastSaleDate ? new Date(item.lastSaleDate) : null,
             monthlyAverage: item.monthlyAverage || 0,
             unitCost: item.unitCost || 0,
-            totalCost: item.unitCost * item.requestedQuantity,
+            totalCost: (item.unitCost || 0) * (item.requestedQuantity || 0),
           }))
         }
       },

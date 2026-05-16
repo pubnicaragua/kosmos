@@ -337,10 +337,13 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-100">
                       <tr>
-                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Producto</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">SKU / Producto</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Categoría</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Stock</th>
                         <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-center">Cant.</th>
-                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Stock Act.</th>
-                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Venta Prom.</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Motivo</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Últ. Venta</th>
+                        <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Prom/Mes</th>
                         <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest text-right">Total Est.</th>
                       </tr>
                     </thead>
@@ -350,13 +353,29 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
                               <span className="font-bold text-slate-900">{item.productName}</span>
-                              <span className="text-[10px] font-bold text-slate-400">{item.sku || 'SIN SKU'}</span>
+                              <span className="text-[10px] font-mono text-slate-400">{item.sku || 'N/A'}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-center font-black text-blue-600">{item.requestedQuantity}</td>
-                          <td className="px-6 py-4 text-right font-bold text-slate-600">{item.currentStock}</td>
-                          <td className="px-6 py-4 text-right font-medium text-slate-500">{item.monthlyAverage?.toFixed(1) || 0} / mes</td>
-                          <td className="px-6 py-4 text-right font-black text-slate-900">${(item.totalCost || 0).toLocaleString()}</td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-medium text-slate-600">{item.category || 'N/A'}</span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="font-bold text-slate-900">{item.currentStock || 0}</span>
+                              <span className="text-[9px] text-red-500">Mín: {item.minimumStock || 0}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center font-black text-blue-600 text-lg">{item.requestedQuantity}</td>
+                          <td className="px-6 py-4">
+                            <span className="text-xs font-medium text-slate-600">{item.reason || 'N/A'}</span>
+                          </td>
+                          <td className="px-6 py-4 text-right text-xs text-slate-500">
+                            {item.lastSaleDate ? new Date(item.lastSaleDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-right font-medium text-slate-600">
+                            {item.monthlyAverage?.toFixed(1) || '0.0'}
+                          </td>
+                          <td className="px-6 py-4 text-right font-black text-slate-900">${(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                         </tr>
                       ))}
                     </tbody>
