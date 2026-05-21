@@ -40,6 +40,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [receivedItemsDraft, setReceivedItemsDraft] = useState<Record<string, { selected: boolean; receivedQuantity: number }>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [activeCompanyName, setActiveCompanyName] = useState<string>('')
+  const [activeCompanyLogo, setActiveCompanyLogo] = useState<string>('')
 
   const fetchRequest = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -86,6 +87,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         role: parsedCompany?.role || parsedUser.role,
       })
       if (parsedCompany?.name) setActiveCompanyName(parsedCompany.name)
+      if (parsedCompany?.logoUrl || parsedCompany?.logo) setActiveCompanyLogo(parsedCompany.logoUrl || parsedCompany.logo)
     }
   }, [fetchRequest])
 
@@ -706,70 +708,122 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       </div>
 
       {/* PO Print Layout */}
-      <div id="po-print" className="hidden print:block font-sans text-sm text-gray-900">
-        <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-6">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 mb-1">{activeCompanyName || 'EMPRESA'}</h1>
-            <p className="text-sm text-slate-600 font-bold tracking-widest uppercase">ORDEN DE COMPRA</p>
+      <div id="po-print" className="hidden print:block font-sans text-sm text-black">
+        <div className="flex justify-between items-start mb-6">
+          <div className="w-1/2">
+            {activeCompanyLogo && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={activeCompanyLogo} alt="Logo" className="h-16 mb-2 object-contain" />
+            )}
+            <h1 className="text-xl font-bold uppercase">{activeCompanyName || 'NOMBRE DE LA COMPAÑÍA'}</h1>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-black text-slate-800">{request.requestNumber}</p>
-            <p className="text-xs font-bold text-slate-500 mt-1">Fecha: {new Date(request.requestDate).toLocaleDateString('es-ES')}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-8 mb-8">
-          <div className="border border-slate-200 rounded-lg p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">INFORMACIÓN GENERAL</p>
-            <div className="space-y-1 text-xs">
-              <p><span className="font-semibold">Solicitante:</span> {request.requestedByName || 'N/A'}</p>
-              <p><span className="font-semibold">Tipo:</span> {request.requestType}</p>
-              <p><span className="font-semibold">Prioridad:</span> {request.priority}</p>
-            </div>
-          </div>
-          <div className="border border-slate-200 rounded-lg p-4 flex flex-col justify-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">RESUMEN</p>
-            <div className="flex justify-between items-center text-slate-600 text-xs">
-              <span>Monto Estimado:</span>
-              <span className="font-black text-slate-900 text-lg">
-                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
+          <div className="text-right w-1/2">
+            <h2 className="text-4xl font-bold italic mb-2 tracking-tight">Orden de compra</h2>
+            <p className="text-[10px] text-gray-700 leading-tight">
+              El siguiente número debe figurar en toda la<br/>correspondencia, documentación de envío y<br/>facturas relacionadas:
+            </p>
+            <p className="text-sm font-bold mt-2">NÚMERO DE O/C: {request.requestNumber}</p>
           </div>
         </div>
 
-        <table className="w-full border-collapse mb-8 text-xs">
+        <div className="flex gap-8 mb-6 text-xs">
+           <div className="flex-1">
+             <p className="font-bold mb-1">Para:</p>
+             <p>{request.supplierName || 'Proveedor'}</p>
+             <p>Solicitado por: {request.requestedByName || 'N/A'}</p>
+             <p>Tipo: {request.requestType}</p>
+           </div>
+           <div className="flex-1">
+             <p className="font-bold mb-1">Enviar a:</p>
+             <p>{activeCompanyName || 'Empresa'}</p>
+             <p className="font-bold mt-1 uppercase">ESTADO: {request.status}</p>
+           </div>
+        </div>
+
+        <table className="w-full border-collapse mb-6 text-xs border border-[#005ea2]">
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="px-4 py-3 text-left font-bold text-slate-700 uppercase tracking-wider">PRODUCTO / SKU</th>
-              <th className="px-4 py-3 text-center font-bold text-slate-700 uppercase tracking-wider">CANTIDAD</th>
-              <th className="px-4 py-3 text-right font-bold text-slate-700 uppercase tracking-wider">TOTAL EST.</th>
+            <tr className="bg-[#005ea2] text-white text-center">
+              <th className="p-2 border border-[#005ea2]">FECHA DE O/C</th>
+              <th className="p-2 border border-[#005ea2]">SOLICITANTE</th>
+              <th className="p-2 border border-[#005ea2]">ENVIADO MEDIANTE</th>
+              <th className="p-2 border border-[#005ea2]">TÉRMINOS Y CONDICIONES</th>
             </tr>
           </thead>
           <tbody>
-            {request.items.map((item: any) => (
-              <tr key={item.id} className="border-b border-slate-100">
-                <td className="px-4 py-4">
-                  <div className="font-bold text-slate-900">{item.productName}</div>
-                  <div className="text-[10px] text-slate-500">{item.sku || 'N/A'} - {item.reason || 'N/A'}</div>
-                </td>
-                <td className="px-4 py-4 text-center font-bold">{item.requestedQuantity}</td>
-                <td className="px-4 py-4 text-right font-bold">
-                  {request.currency === 'NIO' ? 'C$' : '$'}{(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
-                </td>
-              </tr>
-            ))}
+            <tr className="text-center">
+              <td className="p-2 border border-[#005ea2]">{new Date(request.requestDate).toLocaleDateString('es-ES')}</td>
+              <td className="p-2 border border-[#005ea2]">{request.requestedByName || 'N/A'}</td>
+              <td className="p-2 border border-[#005ea2]">N/A</td>
+              <td className="p-2 border border-[#005ea2]">{request.priority} Prioridad</td>
+            </tr>
           </tbody>
         </table>
 
+        <table className="w-full border-collapse mb-2 text-xs border border-[#005ea2]">
+          <thead>
+            <tr className="bg-[#005ea2] text-white text-center">
+              <th className="p-2 border border-[#005ea2] w-16">CANTIDAD</th>
+              <th className="p-2 border border-[#005ea2] w-16">UNIDAD</th>
+              <th className="p-2 border border-[#005ea2]">DESCRIPCIÓN</th>
+              <th className="p-2 border border-[#005ea2] w-24">PRECIO UNITARIO</th>
+              <th className="p-2 border border-[#005ea2] w-24">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {request.items.map((item: any) => {
+              const qty = item.requestedQuantity || 1;
+              const total = item.totalCost || 0;
+              const unitPrice = total / qty;
+              return (
+                <tr key={item.id} className="text-center h-8">
+                  <td className="p-2 border border-[#005ea2]">{qty}</td>
+                  <td className="p-2 border border-[#005ea2]">UN/S</td>
+                  <td className="p-2 border border-[#005ea2] text-left">
+                    <span className="font-bold">{item.productName}</span>
+                    {item.sku && <span className="text-gray-500 ml-1">({item.sku})</span>}
+                  </td>
+                  <td className="p-2 border border-[#005ea2] text-right">
+                    {request.currency === 'NIO' ? 'C$' : '$'}{unitPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                  </td>
+                  <td className="p-2 border border-[#005ea2] text-right">
+                    {request.currency === 'NIO' ? 'C$' : '$'}{total.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <div className="flex justify-end mb-8 text-xs">
+          <div className="w-64">
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right">SUBTOTAL</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2]">
+                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right uppercase">Impuesto sobre las ventas</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2]">
+                {request.currency === 'NIO' ? 'C$' : '$'}0.00
+              </div>
+            </div>
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right font-bold uppercase">TOTAL</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2] font-bold bg-gray-100">
+                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {request.notes && (
-          <div className="mb-8">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">NOTAS ADICIONALES</p>
-            <p className="text-xs text-slate-600">{request.notes}</p>
+          <div className="text-[10px] mt-4">
+            <ol className="list-decimal pl-4 text-gray-700">
+              <li>{request.notes}</li>
+            </ol>
           </div>
         )}
-
-        {/* Firmas removidas */}
       </div>
     </div>
     </>
