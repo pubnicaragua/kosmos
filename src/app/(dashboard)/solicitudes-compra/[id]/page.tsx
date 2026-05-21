@@ -187,11 +187,9 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
     <>
       <style jsx global>{`
         @media print {
-          body { margin: 0; padding: 20px; }
-          .no-print { display: none !important; }
-          .print-full-width { max-width: 100% !important; margin: 0 !important; }
-          .print-break-inside-avoid { break-inside: avoid; }
-          .print-page-break { page-break-after: always; }
+          body * { visibility: hidden !important; }
+          #po-print, #po-print * { visibility: visible !important; }
+          #po-print { position: absolute !important; top: 0; left: 0; width: 100%; margin: 0; padding: 20px; }
           @page { margin: 1.5cm; }
         }
       `}</style>
@@ -253,19 +251,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      {/* Print Header */}
-      <div className="hidden print:block mb-8 border-b-2 border-slate-200 pb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">KOSMOS CRM</h1>
-            <p className="text-sm text-slate-600">Sistema Operativo</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500 mb-1">Fecha de Impresión</p>
-            <p className="text-sm font-bold text-slate-900">{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-        </div>
-      </div>
+      {/* Print Layout */}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 print:grid-cols-1">
         {/* Left Column - Main Info */}
@@ -714,6 +700,84 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           </div>
         </div>
       </Modal>
+
+      {/* PO Print Layout */}
+      <div id="po-print" className="hidden font-sans text-sm text-gray-900">
+        <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-6">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 mb-1">{selectedCompany?.name || 'EMPRESA'}</h1>
+            <p className="text-sm text-slate-600 font-bold tracking-widest uppercase">ORDEN DE COMPRA</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black text-slate-800">{request.requestNumber}</p>
+            <p className="text-xs font-bold text-slate-500 mt-1">Fecha: {new Date(request.requestDate).toLocaleDateString('es-ES')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div className="border border-slate-200 rounded-lg p-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">INFORMACIÓN GENERAL</p>
+            <div className="space-y-1 text-xs">
+              <p><span className="font-semibold">Solicitante:</span> {request.requestedByName || 'N/A'}</p>
+              <p><span className="font-semibold">Tipo:</span> {request.requestType}</p>
+              <p><span className="font-semibold">Prioridad:</span> {request.priority}</p>
+            </div>
+          </div>
+          <div className="border border-slate-200 rounded-lg p-4 flex flex-col justify-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">RESUMEN</p>
+            <div className="flex justify-between items-center text-slate-600 text-xs">
+              <span>Monto Estimado:</span>
+              <span className="font-black text-slate-900 text-lg">
+                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <table className="w-full border-collapse mb-8 text-xs">
+          <thead>
+            <tr className="bg-slate-100 border-b border-slate-200">
+              <th className="px-4 py-3 text-left font-bold text-slate-700 uppercase tracking-wider">PRODUCTO / SKU</th>
+              <th className="px-4 py-3 text-center font-bold text-slate-700 uppercase tracking-wider">CANTIDAD</th>
+              <th className="px-4 py-3 text-right font-bold text-slate-700 uppercase tracking-wider">TOTAL EST.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {request.items.map((item: any) => (
+              <tr key={item.id} className="border-b border-slate-100">
+                <td className="px-4 py-4">
+                  <div className="font-bold text-slate-900">{item.productName}</div>
+                  <div className="text-[10px] text-slate-500">{item.sku || 'N/A'} - {item.reason || 'N/A'}</div>
+                </td>
+                <td className="px-4 py-4 text-center font-bold">{item.requestedQuantity}</td>
+                <td className="px-4 py-4 text-right font-bold">
+                  {request.currency === 'NIO' ? 'C$' : '$'}{(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {request.notes && (
+          <div className="mb-8">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">NOTAS ADICIONALES</p>
+            <p className="text-xs text-slate-600">{request.notes}</p>
+          </div>
+        )}
+
+        <div className="mt-16 pt-8 flex justify-between px-12">
+          <div className="text-center">
+            <div className="w-48 border-t border-slate-400 pt-2 mx-auto"></div>
+            <p className="text-xs font-bold text-slate-600 mt-2">SOLICITADO POR</p>
+            <p className="text-[10px] text-slate-500">{request.requestedByName || 'Firma'}</p>
+          </div>
+          <div className="text-center">
+            <div className="w-48 border-t border-slate-400 pt-2 mx-auto"></div>
+            <p className="text-xs font-bold text-slate-600 mt-2">AUTORIZADO POR</p>
+            <p className="text-[10px] text-slate-500">Firma Autorizada</p>
+          </div>
+        </div>
+      </div>
     </div>
     </>
   )
