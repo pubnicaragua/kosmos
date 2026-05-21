@@ -191,11 +191,12 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         @media print {
           body * { visibility: hidden !important; }
           #po-print, #po-print * { visibility: visible !important; }
-          #po-print { position: absolute !important; top: 0; left: 0; width: 100%; margin: 0; padding: 2cm !important; }
-          @page { margin: 0; } /* Removes browser header/footer text */
+          #po-print { width: 100%; margin: 0; padding: 2cm !important; }
+          @page { margin: 0; }
         }
       `}</style>
-      <div className="max-w-7xl mx-auto pb-20 print-full-width">
+      <div className="max-w-7xl mx-auto pb-20 print:pb-0">
+        <div className="print:absolute print:h-0 print:overflow-hidden print:opacity-0">
       {/* Top Navigation */}
       <div className="flex items-center justify-between mb-8 no-print">
         <div className="flex items-center gap-4">
@@ -702,6 +703,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           </div>
         </div>
       </Modal>
+      </div>
 
       {/* PO Print Layout */}
       <div id="po-print" className="hidden print:block font-sans text-sm text-gray-900">
