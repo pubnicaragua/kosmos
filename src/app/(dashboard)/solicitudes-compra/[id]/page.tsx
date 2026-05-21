@@ -734,7 +734,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
              <p>Tipo: {request.requestType}</p>
            </div>
            <div className="flex-1">
-             <p className="font-bold mb-1">Enviar a:</p>
+             <p className="font-bold mb-1">Datos de la Empresa:</p>
              <p>{activeCompanyName || 'Empresa'}</p>
              <p className="font-bold mt-1 uppercase">ESTADO: {request.status}</p>
            </div>
@@ -819,9 +819,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
 
         {request.notes && (
           <div className="text-[10px] mt-4">
-            <ol className="list-decimal pl-4 text-gray-700">
-              <li>{request.notes}</li>
-            </ol>
+            <p className="font-bold mb-1 uppercase text-gray-700">Notas:</p>
+            <p className="text-gray-700 whitespace-pre-wrap">{request.notes}</p>
           </div>
         )}
       </div>
