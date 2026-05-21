@@ -39,6 +39,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [isUploadingSupport, setIsUploadingSupport] = useState<'quotation' | 'purchase' | 'evidence' | null>(null)
   const [receivedItemsDraft, setReceivedItemsDraft] = useState<Record<string, { selected: boolean; receivedQuantity: number }>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [activeCompanyName, setActiveCompanyName] = useState<string>('')
 
   const fetchRequest = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -84,6 +85,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         ...parsedUser,
         role: parsedCompany?.role || parsedUser.role,
       })
+      if (parsedCompany?.name) setActiveCompanyName(parsedCompany.name)
     }
   }, [fetchRequest])
 
@@ -705,7 +707,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       <div id="po-print" className="hidden print:block font-sans text-sm text-gray-900">
         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-6">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 mb-1">EMPRESA</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-1">{activeCompanyName || 'EMPRESA'}</h1>
             <p className="text-sm text-slate-600 font-bold tracking-widest uppercase">ORDEN DE COMPRA</p>
           </div>
           <div className="text-right">
@@ -765,18 +767,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           </div>
         )}
 
-        <div className="mt-16 pt-8 flex justify-between px-12">
-          <div className="text-center">
-            <div className="w-48 border-t border-slate-400 pt-2 mx-auto"></div>
-            <p className="text-xs font-bold text-slate-600 mt-2">SOLICITADO POR</p>
-            <p className="text-[10px] text-slate-500">{request.requestedByName || 'Firma'}</p>
-          </div>
-          <div className="text-center">
-            <div className="w-48 border-t border-slate-400 pt-2 mx-auto"></div>
-            <p className="text-xs font-bold text-slate-600 mt-2">AUTORIZADO POR</p>
-            <p className="text-[10px] text-slate-500">Firma Autorizada</p>
-          </div>
-        </div>
+        {/* Firmas removidas */}
       </div>
     </div>
     </>
