@@ -193,11 +193,11 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         @media print {
           body * { visibility: hidden !important; }
           #po-print, #po-print * { visibility: visible !important; }
-          #po-print { width: 100%; margin: 0; padding: 2cm !important; }
-          @page { margin: 0; }
+          #po-print { width: 100%; margin: 0; padding: 0 !important; }
+          @page { size: letter; margin: 1cm; }
         }
       `}</style>
-      <div className="max-w-7xl mx-auto pb-20 print:pb-0">
+      <div className="max-w-7xl mx-auto pb-20 print:pb-0 print:max-w-none print:w-full print:px-0 print:mx-0">
         <div className="print:absolute print:h-0 print:overflow-hidden print:opacity-0">
       {/* Top Navigation */}
       <div className="flex items-center justify-between mb-8 no-print">
