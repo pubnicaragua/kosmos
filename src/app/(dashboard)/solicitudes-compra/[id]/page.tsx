@@ -705,7 +705,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       <div id="po-print" className="hidden font-sans text-sm text-gray-900">
         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-6">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 mb-1">{selectedCompany?.name || 'EMPRESA'}</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-1">EMPRESA</h1>
             <p className="text-sm text-slate-600 font-bold tracking-widest uppercase">ORDEN DE COMPRA</p>
           </div>
           <div className="text-right">
