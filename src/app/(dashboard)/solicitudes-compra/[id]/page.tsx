@@ -189,8 +189,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         @media print {
           body * { visibility: hidden !important; }
           #po-print, #po-print * { visibility: visible !important; }
-          #po-print { position: absolute !important; top: 0; left: 0; width: 100%; margin: 0; padding: 20px; }
-          @page { margin: 1.5cm; }
+          #po-print { position: absolute !important; top: 0; left: 0; width: 100%; margin: 0; padding: 2cm !important; }
+          @page { margin: 0; } /* Removes browser header/footer text */
         }
       `}</style>
       <div className="max-w-7xl mx-auto pb-20 print-full-width">
@@ -702,7 +702,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       </Modal>
 
       {/* PO Print Layout */}
-      <div id="po-print" className="hidden font-sans text-sm text-gray-900">
+      <div id="po-print" className="hidden print:block font-sans text-sm text-gray-900">
         <div className="flex justify-between items-start mb-8 border-b-2 border-slate-200 pb-6">
           <div>
             <h1 className="text-3xl font-black text-slate-900 mb-1">EMPRESA</h1>
