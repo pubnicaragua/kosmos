@@ -39,6 +39,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [isUploadingSupport, setIsUploadingSupport] = useState<'quotation' | 'purchase' | 'evidence' | null>(null)
   const [receivedItemsDraft, setReceivedItemsDraft] = useState<Record<string, { selected: boolean; receivedQuantity: number }>>({})
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [activeCompanyName, setActiveCompanyName] = useState<string>('')
+  const [activeCompanyLogo, setActiveCompanyLogo] = useState<string>('')
 
   const fetchRequest = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -84,6 +86,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         ...parsedUser,
         role: parsedCompany?.role || parsedUser.role,
       })
+      if (parsedCompany?.name) setActiveCompanyName(parsedCompany.name)
+      if (parsedCompany?.logoUrl || parsedCompany?.logo) setActiveCompanyLogo(parsedCompany.logoUrl || parsedCompany.logo)
     }
   }, [fetchRequest])
 
@@ -187,15 +191,14 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
     <>
       <style jsx global>{`
         @media print {
-          body { margin: 0; padding: 20px; }
-          .no-print { display: none !important; }
-          .print-full-width { max-width: 100% !important; margin: 0 !important; }
-          .print-break-inside-avoid { break-inside: avoid; }
-          .print-page-break { page-break-after: always; }
-          @page { margin: 1.5cm; }
+          body * { visibility: hidden !important; }
+          #po-print, #po-print * { visibility: visible !important; }
+          #po-print { width: 100%; margin: 0; padding: 0 !important; }
+          @page { size: letter; margin: 1cm; }
         }
       `}</style>
-      <div className="max-w-7xl mx-auto pb-20 print-full-width">
+      <div className="max-w-7xl mx-auto pb-20 print:pb-0 print:max-w-none print:w-full print:px-0 print:mx-0">
+        <div className="print:absolute print:h-0 print:overflow-hidden print:opacity-0">
       {/* Top Navigation */}
       <div className="flex items-center justify-between mb-8 no-print">
         <div className="flex items-center gap-4">
@@ -253,19 +256,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         </div>
       </div>
 
-      {/* Print Header */}
-      <div className="hidden print:block mb-8 border-b-2 border-slate-200 pb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">KOSMOS CRM</h1>
-            <p className="text-sm text-slate-600">Sistema Operativo</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-slate-500 mb-1">Fecha de Impresión</p>
-            <p className="text-sm font-bold text-slate-900">{new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-        </div>
-      </div>
+      {/* Print Layout */}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 print:grid-cols-1">
         {/* Left Column - Main Info */}
@@ -714,6 +705,125 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           </div>
         </div>
       </Modal>
+      </div>
+
+      {/* PO Print Layout */}
+      <div id="po-print" className="hidden print:block font-sans text-sm text-black">
+        <div className="flex justify-between items-start mb-6">
+          <div className="w-1/2">
+            {activeCompanyLogo && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={activeCompanyLogo} alt="Logo" className="h-16 mb-2 object-contain" />
+            )}
+            <h1 className="text-xl font-bold uppercase">{activeCompanyName || 'NOMBRE DE LA COMPAÑÍA'}</h1>
+          </div>
+          <div className="text-right w-1/2">
+            <h2 className="text-4xl font-bold italic mb-2 tracking-tight">Orden de compra</h2>
+            <p className="text-[10px] text-gray-700 leading-tight">
+              El siguiente número debe figurar en toda la<br/>correspondencia, documentación de envío y<br/>facturas relacionadas:
+            </p>
+            <p className="text-sm font-bold mt-2">NÚMERO DE O/C: {request.requestNumber}</p>
+          </div>
+        </div>
+
+        <div className="flex gap-8 mb-6 text-xs">
+           <div className="flex-1">
+             <p className="font-bold mb-1">Para:</p>
+             <p>{request.supplierName || 'Proveedor'}</p>
+             <p>Solicitado por: {request.requestedByName || 'N/A'}</p>
+             <p>Tipo: {request.requestType}</p>
+           </div>
+           <div className="flex-1">
+             <p className="font-bold mb-1">Datos de la Empresa:</p>
+             <p>{activeCompanyName || 'Empresa'}</p>
+             <p className="font-bold mt-1 uppercase">ESTADO: {request.status}</p>
+           </div>
+        </div>
+
+        <table className="w-full border-collapse mb-6 text-xs border border-[#005ea2]">
+          <thead>
+            <tr className="bg-[#005ea2] text-white text-center">
+              <th className="p-2 border border-[#005ea2]">FECHA DE O/C</th>
+              <th className="p-2 border border-[#005ea2]">SOLICITANTE</th>
+              <th className="p-2 border border-[#005ea2]">ENVIADO MEDIANTE</th>
+              <th className="p-2 border border-[#005ea2]">TÉRMINOS Y CONDICIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="text-center">
+              <td className="p-2 border border-[#005ea2]">{new Date(request.requestDate).toLocaleDateString('es-ES')}</td>
+              <td className="p-2 border border-[#005ea2]">{request.requestedByName || 'N/A'}</td>
+              <td className="p-2 border border-[#005ea2]">N/A</td>
+              <td className="p-2 border border-[#005ea2]">{request.priority} Prioridad</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table className="w-full border-collapse mb-2 text-xs border border-[#005ea2]">
+          <thead>
+            <tr className="bg-[#005ea2] text-white text-center">
+              <th className="p-2 border border-[#005ea2] w-16">CANTIDAD</th>
+              <th className="p-2 border border-[#005ea2] w-16">UNIDAD</th>
+              <th className="p-2 border border-[#005ea2]">DESCRIPCIÓN</th>
+              <th className="p-2 border border-[#005ea2] w-24">PRECIO UNITARIO</th>
+              <th className="p-2 border border-[#005ea2] w-24">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {request.items.map((item: any) => {
+              const qty = item.requestedQuantity || 1;
+              const total = item.totalCost || 0;
+              const unitPrice = total / qty;
+              return (
+                <tr key={item.id} className="text-center h-8">
+                  <td className="p-2 border border-[#005ea2]">{qty}</td>
+                  <td className="p-2 border border-[#005ea2]">UN/S</td>
+                  <td className="p-2 border border-[#005ea2] text-left">
+                    <span className="font-bold">{item.productName}</span>
+                    {item.sku && <span className="text-gray-500 ml-1">({item.sku})</span>}
+                  </td>
+                  <td className="p-2 border border-[#005ea2] text-right">
+                    {request.currency === 'NIO' ? 'C$' : '$'}{unitPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                  </td>
+                  <td className="p-2 border border-[#005ea2] text-right">
+                    {request.currency === 'NIO' ? 'C$' : '$'}{total.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <div className="flex justify-end mb-8 text-xs">
+          <div className="w-64">
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right">SUBTOTAL</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2]">
+                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right uppercase">Impuesto sobre las ventas</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2]">
+                {request.currency === 'NIO' ? 'C$' : '$'}0.00
+              </div>
+            </div>
+            <div className="flex border border-[#005ea2] border-t-0">
+              <div className="flex-1 p-2 text-right font-bold uppercase">TOTAL</div>
+              <div className="w-24 p-2 text-right border-l border-[#005ea2] font-bold bg-gray-100">
+                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {request.notes && (
+          <div className="text-[10px] mt-4">
+            <p className="font-bold mb-1 uppercase text-gray-700">Notas:</p>
+            <p className="text-gray-700 whitespace-pre-wrap">{request.notes}</p>
+          </div>
+        )}
+      </div>
     </div>
     </>
   )
