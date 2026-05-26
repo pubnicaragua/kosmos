@@ -337,7 +337,7 @@ useEffect(() => {
       const data = await response.json()
       if (data.success) {
         alert(isDraft ? 'Borrador guardado' : 'Cotización creada exitosamente')
-        router.push('/clientes')
+        router.push(`/clientes/cotizacion/${data.data.id}`)
       } else {
         alert('Error al crear cotización')
       }

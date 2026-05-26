@@ -96,6 +96,12 @@ export const navigationSections: NavSection[] = [
         icon: 'ShoppingCart',
       },
       {
+        id: 'tasks',
+        label: 'Gestión de Tareas',
+        href: '/tareas',
+        icon: 'ListChecks',
+      },
+      {
         id: 'support',
         label: 'Tickets & Soporte',
         href: '/tickets-soporte',

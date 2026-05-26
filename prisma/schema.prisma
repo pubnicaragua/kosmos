@@ -54,6 +54,8 @@ model Company {
   userCompanies      UserCompany[]
   departments        Department[]
   templates          Template[]
+  taskLists          TaskList[]
+  taskAssignments    TaskAssignment[]
 
   // Configuración de Plantillas (Proformas y Facturas)
   quotePrimaryColor   String? @map("quote_primary_color")
@@ -949,4 +951,145 @@ model UserDepartment {
 
   @@unique([userId, departmentId])
   @@map("user_departments")
+}
+
+enum TaskFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+model TaskList {
+  id              String           @id @default(cuid())
+  companyId       String           @map("company_id")
+  name            String
+  description     String?
+  area            String?
+  frequency       TaskFrequency    @default(DAILY)
+  isActive        Boolean          @default(true) @map("is_active")
+  requireEvidence Boolean          @default(false) @map("require_evidence")
+  createdBy       String           @map("created_by")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  templates       TaskTemplate[]
+  assignments     TaskAssignment[]
+
+  @@index([companyId])
+  @@index([area])
+  @@index([frequency])
+  @@map("task_lists")
+}
+
+model TaskTemplate {
+  id               String          @id @default(cuid())
+  taskListId       String          @map("task_list_id")
+  title            String
+  description      String?
+  order            Int             @default(0)
+  requirePhoto     Boolean         @default(false) @map("require_photo")
+  requireVideo     Boolean         @default(false) @map("require_video")
+  estimatedMinutes Int?            @map("estimated_minutes")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  taskList         TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  executions       TaskExecution[]
+
+  @@index([taskListId])
+  @@index([order])
+  @@map("task_templates")
+}
+
+model TaskAssignment {
+  id          String          @id @default(cuid())
+  companyId   String          @map("company_id")
+  taskListId  String          @map("task_list_id")
+  assignedTo  String          @map("assigned_to")
+  assignedBy  String          @map("assigned_by")
+  dueDate     DateTime?       @map("due_date")
+  priority    TaskPriority    @default(MEDIUM)
+  status      TaskStatus      @default(PENDING)
+  startedAt   DateTime?       @map("started_at")
+  completedAt DateTime?       @map("completed_at")
+  notes       String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  taskList    TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  executions  TaskExecution[]
+
+  @@index([companyId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("task_assignments")
+}
+
+model TaskExecution {
+  id                String        @id @default(cuid())
+  assignmentId      String        @map("assignment_id")
+  templateId        String        @map("template_id")
+  completed         Boolean       @default(false)
+  completedAt       DateTime?     @map("completed_at")
+  completedBy       String?       @map("completed_by")
+  evidencePhotoUrl  String?       @map("evidence_photo_url")
+  evidenceVideoUrl  String?       @map("evidence_video_url")
+  notes             String?
+  latitude          Float?
+  longitude         Float?
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  assignment        TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  template          TaskTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@index([completed])
+  @@map("task_executions")
+}
+
+model TaskNotification {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  assignmentId String?   @map("assignment_id")
+  title        String
+  message      String
+  type         String    @default("TASK_ASSIGNED")
+  read         Boolean   @default(false)
+  readAt       DateTime? @map("read_at")
+  sentPush     Boolean   @default(false) @map("sent_push")
+  pushSentAt   DateTime? @map("push_sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([read])
+  @@map("task_notifications")
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  endpoint   String   @unique
+  keys       Json
+  deviceInfo String?  @map("device_info")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
