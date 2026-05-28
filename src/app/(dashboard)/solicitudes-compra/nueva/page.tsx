@@ -367,7 +367,6 @@ export default function NuevaSolicitudPage() {
                                     updateItem(item.tempId, 'productName', existing.name)
                                     updateItem(item.tempId, 'category', existing.category?.name || '')
                                     updateItem(item.tempId, 'currentStock', existing.stock || 0)
-                                    updateItem(item.tempId, 'minStock', existing.minStock || 0)
                                     updateItem(item.tempId, 'unitCost', existing.cost || 0)
                                   }
                                 }
