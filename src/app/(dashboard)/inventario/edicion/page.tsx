@@ -415,6 +415,17 @@ function InventarioEdicionPageContent() {
       alert('Agregue al menos un producto con nombre')
       return
     }
+
+    const invalidPriceRows = validRows.filter(row => row.price < row.cost)
+    if (invalidPriceRows.length > 0) {
+      alert('Hay productos donde el precio de venta es menor al costo. Por favor corrija los valores antes de guardar.')
+      return
+    }
+
+    if (skuWarning) {
+      alert('Resuelva la advertencia de SKU duplicado antes de guardar.')
+      return
+    }
     // Generar SKU automático para productos sin SKU
     const rowsWithSku = validRows.map((row, idx) => ({
       ...row,
@@ -738,7 +749,11 @@ function InventarioEdicionPageContent() {
                       onKeyDown={(e) => handleKeyDown(e, index)}
                       placeholder={index === rows.length - 1 ? 'Precio...' : '34 $'}
                       fullWidth
+                      className={row.price < row.cost ? '!border-red-500 bg-red-50' : ''}
                     />
+                    {row.price < row.cost && (
+                      <span className="text-xs text-red-500 mt-1 block">El precio debe ser ≥ al costo</span>
+                    )}
                   </td>
                   <td className="py-3 px-4">
                     <Input

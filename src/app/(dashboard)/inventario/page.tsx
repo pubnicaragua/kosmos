@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
 import { Button } from '@/components/ui-kit/Button'
@@ -60,8 +60,9 @@ interface EditingProduct {
   categoryName: string
 }
 
-export default function InventarioPage() {
+function InventarioPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const permissions = useModulePermissions('inventario', { requireAction: 'view' })
   const [products, setProducts] = useState<Product[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -112,6 +113,14 @@ export default function InventarioPage() {
   const saveEditing = async (productId: string) => {
     const row = editingRows[productId]
     if (!row) return
+    
+    const parsedCost = parseFloat(row.cost) || 0;
+    const parsedPrice = parseFloat(row.price) || 0;
+    if (parsedPrice < parsedCost) {
+      alert('El precio de venta no puede ser menor al costo');
+      return;
+    }
+
     const token = localStorage.getItem('accessToken')
     if (!token) return
     setSavingRows(prev => ({ ...prev, [productId]: true }))
@@ -340,6 +349,14 @@ export default function InventarioPage() {
         setProducts(data.data.data || [])
         setTotalItems(data.data.pagination?.total || 0)
         setTotalPages(data.data.pagination?.totalPages || 1)
+        
+        const editId = searchParams?.get('edit')
+        if (editId) {
+          const productToEdit = (data.data.data || []).find((p: Product) => p.id === editId)
+          if (productToEdit && !editingRows[editId]) {
+            startEditing(productToEdit)
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching products:', error)
@@ -997,5 +1014,17 @@ export default function InventarioPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function InventarioPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <InventarioPageContent />
+    </Suspense>
   )
 }
