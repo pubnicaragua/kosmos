@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'solicitudes-compra')
-    if (!moduleAccess.canCreate && access.role !== 'SUPER_ADMIN' && access.role !== 'ADMIN') {
+    if (!moduleAccess.canCreate && access.effectiveRole !== 'SUPER_ADMIN' && access.effectiveRole !== 'ADMIN') {
       return apiError('No tienes permisos para crear motivos', 403)
     }
 
@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const moduleAccess = await getModuleAccess(decoded.userId, existing.companyId, 'solicitudes-compra')
-    if (!moduleAccess.canEdit && access.role !== 'SUPER_ADMIN' && access.role !== 'ADMIN') {
+    if (!moduleAccess.canEdit && access.effectiveRole !== 'SUPER_ADMIN' && access.effectiveRole !== 'ADMIN') {
       return apiError('No tienes permisos para editar motivos', 403)
     }
 
@@ -176,7 +176,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const moduleAccess = await getModuleAccess(decoded.userId, existing.companyId, 'solicitudes-compra')
-    if (!moduleAccess.canDelete && access.role !== 'SUPER_ADMIN' && access.role !== 'ADMIN') {
+    if (!moduleAccess.canDelete && access.effectiveRole !== 'SUPER_ADMIN' && access.effectiveRole !== 'ADMIN') {
       return apiError('No tienes permisos para eliminar motivos', 403)
     }
 
