@@ -479,6 +479,8 @@ export default function TicketsSoportePage() {
   }, [fetchCompanyUsers])
 
   const resetForm = () => {
+    const now = new Date()
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     setFormData({
       title: '',
       description: '',
@@ -491,8 +493,8 @@ export default function TicketsSoportePage() {
       branch: '',
       amount: '',
       currency: 'USD',
-      startDate: new Date().toISOString().split('T')[0],
-      startTime: '',
+      startDate: now.toISOString().split('T')[0],
+      startTime: currentTime,
       dueDate: '',
       dueTime: '',
       attachments: [],
@@ -690,12 +692,26 @@ export default function TicketsSoportePage() {
         .filter(Boolean)
         .join(', ')
 
+      // Validate due date > start date
+      if (formData.dueDate && formData.startDate) {
+        const startFull = formData.startTime ? `${formData.startDate}T${formData.startTime}` : formData.startDate
+        const dueFull = formData.dueTime ? `${formData.dueDate}T${formData.dueTime}` : formData.dueDate
+        if (new Date(dueFull) <= new Date(startFull)) {
+          alert('La fecha límite debe ser posterior a la fecha de inicio')
+          setIsSaving(false)
+          return
+        }
+      }
+
+      // Auto-determine status based on assignment
+      const autoStatus = formData.assignedUsers.length > 0 ? 'ASIGNADO' : 'NUEVO'
+
       const payload: any = {
         title: formData.title,
         description: formData.description || null,
         clientId: formData.isInternal ? null : (formData.clientId || null),
         type: formData.type,
-        status: formData.status,
+        status: editingTicketId ? formData.status : autoStatus,
         priority: formData.priority,
         assignedTo: assignedNamesFromIds || formData.assignedTo || null,
         assignedUsers: formData.assignedUsers.length > 0 ? formData.assignedUsers : null,
@@ -1517,13 +1533,27 @@ export default function TicketsSoportePage() {
             </label>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Estado"
-              options={columns.map((column) => ({ value: column.id, label: column.label }))}
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              fullWidth
-            />
+            {editingTicketId ? (
+              <Select
+                label="Estado"
+                options={columns.map((column) => ({ value: column.id, label: column.label }))}
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                fullWidth
+              />
+            ) : (
+              <div className="flex flex-col">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
+                  {formData.assignedUsers.length > 0 ? (
+                    <span className="text-blue-600 font-semibold">→ Asignado (automático)</span>
+                  ) : (
+                    <span className="text-amber-600 font-semibold">→ Nuevo (sin asignar)</span>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">El estado se asigna según los usuarios asignados</p>
+              </div>
+            )}
             <Select
               label="Prioridad"
               options={[
@@ -1550,13 +1580,13 @@ export default function TicketsSoportePage() {
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
               fullWidth
             />
-            <Input
-              label="Hora de inicio"
-              type="time"
-              value={formData.startTime}
-              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-              fullWidth
-            />
+            <div className="flex flex-col">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hora de inicio</label>
+              <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700">
+                {formData.startTime || '--:--'}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Hora del sistema (automática)</p>
+            </div>
             <Input
               label="Fecha límite"
               type="date"

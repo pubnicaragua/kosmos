@@ -51,6 +51,8 @@ function InventarioEdicionPageContent() {
     { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, stock: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
+  const [skuWarning, setSkuWarning] = useState<{ index: number; product: any } | null>(null)
+  const [checkingSku, setCheckingSku] = useState<number | null>(null)
   const isService = productType === 'SERVICIO'
 
   const normalizeCategoryName = (value: string) =>
@@ -215,6 +217,47 @@ function InventarioEdicionPageContent() {
     }
 
     setRows(updated)
+  }
+
+  const checkSkuExists = async (sku: string, index: number) => {
+    if (!sku.trim() || selectedCompany === 'all') return
+    
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    
+    setCheckingSku(index)
+    try {
+      const response = await fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(sku.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success && data.data?.length > 0) {
+        const existingProduct = data.data[0]
+        setSkuWarning({ index, product: existingProduct })
+      }
+    } catch (error) {
+      console.error('Error checking SKU:', error)
+    } finally {
+      setCheckingSku(null)
+    }
+  }
+
+  const handleSkuWarningAction = (action: 'increase' | 'edit' | 'ignore') => {
+    if (!skuWarning) return
+    
+    if (action === 'increase') {
+      // Redirect to edit page with quantity increase mode
+      router.push(`/inventario?edit=${skuWarning.product.id}&action=increase`)
+    } else if (action === 'edit') {
+      // Redirect to edit the existing product
+      router.push(`/inventario?edit=${skuWarning.product.id}`)
+    } else {
+      // Clear the SKU field and continue
+      const updated = [...rows]
+      updated[skuWarning.index].sku = ''
+      setRows(updated)
+    }
+    setSkuWarning(null)
   }
 
   const updateRow = (index: number, field: keyof ProductRow, value: string | number) => {
@@ -647,14 +690,23 @@ function InventarioEdicionPageContent() {
                     />
                   </td>
                   <td className="py-3 px-4">
-                    <Input
-                      type="text"
-                      value={row.sku}
-                      onChange={(e) => updateRow(index, 'sku', e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
-                      placeholder={index === rows.length - 1 ? 'SKU...' : 'SKU-000'}
-                      fullWidth
-                    />
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={row.sku}
+                        onChange={(e) => updateRow(index, 'sku', e.target.value)}
+                        onBlur={(e) => checkSkuExists(e.target.value, index)}
+                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        placeholder={index === rows.length - 1 ? 'SKU...' : 'SKU-000'}
+                        fullWidth
+                        className={checkingSku === index ? 'border-yellow-400' : ''}
+                      />
+                      {checkingSku === index && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   {!isService && (
                     <td className="py-3 px-4">
@@ -736,6 +788,73 @@ function InventarioEdicionPageContent() {
           </div>
         </div>
       </div>
+      {/* SKU Warning Modal */}
+      {skuWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-[480px] shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-amber-100 rounded-full">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">SKU Ya Existe</h3>
+                <p className="text-sm text-gray-500">Este SKU ya está registrado en el inventario</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500">Producto:</span>
+                  <p className="font-semibold text-gray-900">{skuWarning.product.name}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">SKU:</span>
+                  <p className="font-semibold text-gray-900">{skuWarning.product.sku}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Stock Actual:</span>
+                  <p className="font-semibold text-blue-600">{skuWarning.product.stock} unidades</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Precio:</span>
+                  <p className="font-semibold text-green-600">${skuWarning.product.price}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <button
+                onClick={() => handleSkuWarningAction('increase')}
+                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Aumentar Cantidad del Producto Existente
+              </button>
+              <button
+                onClick={() => handleSkuWarningAction('edit')}
+                className="w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar Producto Existente
+              </button>
+              <button
+                onClick={() => handleSkuWarningAction('ignore')}
+                className="w-full py-2 px-4 text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Cancelar y usar otro SKU
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-[500px] shadow-xl max-h-[80vh] overflow-y-auto">

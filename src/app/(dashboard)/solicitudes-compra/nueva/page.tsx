@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, Plus, Trash2, Save, ShoppingCart, 
-  ChevronRight, Calculator, AlertCircle, Info, Send
+  ChevronRight, Calculator, AlertCircle, Info, Send, Settings, X
 } from 'lucide-react'
 import { 
   Input, Select, Button, Card, Badge
@@ -19,7 +19,6 @@ interface RequestItem {
   sku: string
   category: string
   currentStock: number
-  minStock: number
   requestedQuantity: number
   reason: string
   unitCost: number
@@ -32,6 +31,13 @@ interface Department {
   id: string
   name: string
   description: string | null
+}
+
+interface PurchaseReason {
+  id: string
+  name: string
+  description: string | null
+  requestType: string
 }
 
 const TYPES = [
@@ -55,6 +61,13 @@ export default function NuevaSolicitudPage() {
     notes: '',
     currency: 'USD'
   })
+  const [quotationFiles, setQuotationFiles] = useState<File[]>([])
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false)
+  const [reasons, setReasons] = useState<PurchaseReason[]>([])
+  const [showReasonsModal, setShowReasonsModal] = useState(false)
+  const [newReasonName, setNewReasonName] = useState('')
+  const [newReasonDesc, setNewReasonDesc] = useState('')
+  const [isSavingReason, setIsSavingReason] = useState(false)
 
   const [items, setItems] = useState<RequestItem[]>([
     { 
@@ -64,7 +77,6 @@ export default function NuevaSolicitudPage() {
       sku: '', 
       category: '', 
       currentStock: 0, 
-      minStock: 0, 
       requestedQuantity: 1, 
       reason: 'Agotado',
       unitCost: 0,
@@ -76,7 +88,7 @@ export default function NuevaSolicitudPage() {
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, minStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '', currency: 'USD' }]
+    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '', currency: 'USD' }]
     return items
   }, [items])
 
@@ -88,7 +100,6 @@ export default function NuevaSolicitudPage() {
       sku: '', 
       category: '', 
       currentStock: 0, 
-      minStock: 0, 
       requestedQuantity: 1, 
       reason: 'Agotado',
       unitCost: 0,
@@ -121,6 +132,24 @@ export default function NuevaSolicitudPage() {
       setIsSaving(true)
       const token = localStorage.getItem('accessToken')
       
+      // Upload quotation files first
+      let quotationUrls: string[] = []
+      if (quotationFiles.length > 0) {
+        for (const file of quotationFiles) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', file)
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: uploadFormData,
+          })
+          const uploadData = await uploadRes.json()
+          if (uploadData.success) {
+            quotationUrls.push(uploadData.data.url)
+          }
+        }
+      }
+      
       const response = await fetch('/api/purchase-requests', {
         method: 'POST',
         headers: {
@@ -130,6 +159,7 @@ export default function NuevaSolicitudPage() {
         body: JSON.stringify({
           companyId: selectedCompany,
           ...formData,
+          quotationFiles: quotationUrls,
           items: itemsArray.filter((i: any) => i.productName.trim() !== '')
         })
       })
@@ -171,6 +201,93 @@ export default function NuevaSolicitudPage() {
 
     fetchDepartments()
   }, [selectedCompany])
+
+  // Fetch reasons when requestType changes
+  useEffect(() => {
+    const fetchReasons = async () => {
+      if (!selectedCompany || !formData.requestType) {
+        setReasons([])
+        return
+      }
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch(
+          `/api/purchase-request-reasons?companyId=${selectedCompany}&requestType=${formData.requestType}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const data = await response.json()
+        if (data.success) {
+          setReasons(data.data)
+        }
+      } catch (error) {
+        console.error('Error fetching reasons:', error)
+      }
+    }
+
+    fetchReasons()
+  }, [selectedCompany, formData.requestType])
+
+  const handleCreateReason = async () => {
+    if (!newReasonName.trim() || !formData.requestType || !selectedCompany) return
+    
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    setIsSavingReason(true)
+    try {
+      const response = await fetch('/api/purchase-request-reasons', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          companyId: selectedCompany,
+          requestType: formData.requestType,
+          name: newReasonName.trim(),
+          description: newReasonDesc.trim() || null
+        })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setReasons([...reasons, data.data])
+        setNewReasonName('')
+        setNewReasonDesc('')
+      } else {
+        alert(data.error || 'Error al crear motivo')
+      }
+    } catch (error) {
+      console.error('Error creating reason:', error)
+    } finally {
+      setIsSavingReason(false)
+    }
+  }
+
+  const handleDeleteReason = async (reasonId: string) => {
+    if (!confirm('¿Eliminar este motivo?')) return
+    
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch('/api/purchase-request-reasons', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: reasonId })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setReasons(reasons.filter(r => r.id !== reasonId))
+      }
+    } catch (error) {
+      console.error('Error deleting reason:', error)
+    }
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -295,16 +412,6 @@ export default function NuevaSolicitudPage() {
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Mínimo</label>
-                        <Input 
-                          type="number"
-                          min="0"
-                          value={item.minStock}
-                          onChange={(e) => updateItem(item.tempId, 'minStock', parseInt(e.target.value) || 0)}
-                          className="bg-white border-slate-200 rounded-xl font-bold"
-                        />
-                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,12 +426,27 @@ export default function NuevaSolicitudPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Motivo</label>
+                          {formData.requestType && (
+                            <button
+                              type="button"
+                              onClick={() => setShowReasonsModal(true)}
+                              className="text-[9px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                            >
+                              <Settings className="w-3 h-3" /> Gestionar
+                            </button>
+                          )}
+                        </div>
                         <Select 
                           options={[
-                            { value: 'Agotado', label: 'Stock Agotado' },
-                            { value: 'Alta demanda', label: 'Alta Demanda' },
-                            { value: 'Proyecto', label: 'Proyecto Específico' },
+                            { value: '', label: 'Seleccionar motivo...' },
+                            ...reasons.map(r => ({ value: r.name, label: r.name })),
+                            ...(reasons.length === 0 ? [
+                              { value: 'Agotado', label: 'Stock Agotado' },
+                              { value: 'Alta demanda', label: 'Alta Demanda' },
+                              { value: 'Proyecto', label: 'Proyecto Específico' },
+                            ] : [])
                           ]}
                           value={item.reason}
                           onChange={(e) => updateItem(item.tempId, 'reason', e.target.value)}
@@ -492,6 +614,52 @@ export default function NuevaSolicitudPage() {
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 />
               </div>
+
+              <div className="space-y-2 pt-4 border-t border-slate-100">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">
+                  📎 Cotizaciones de Proveedores (2-3 archivos)
+                </label>
+                <p className="text-[10px] text-slate-400 ml-1 mb-2">
+                  Adjunta cotizaciones para validar precios al momento de aprobación
+                </p>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    if (files.length + quotationFiles.length > 3) {
+                      alert('Máximo 3 archivos de cotización permitidos')
+                      return
+                    }
+                    setQuotationFiles([...quotationFiles, ...files])
+                  }}
+                  className="block w-full text-[11px] text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 cursor-pointer"
+                />
+                {quotationFiles.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {quotationFiles.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="text-xs font-semibold text-green-800 truncate max-w-[180px]">{file.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setQuotationFiles(quotationFiles.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -523,6 +691,106 @@ export default function NuevaSolicitudPage() {
           </div>
         </div>
       </div>
+
+      {/* Reasons Management Modal */}
+      {showReasonsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[500px] shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Gestionar Motivos</h3>
+                <p className="text-xs text-slate-500">
+                  Tipo: {TYPES.find(t => t.value === formData.requestType)?.label}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReasonsModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Add new reason */}
+            <div className="mb-6 p-4 bg-slate-50 rounded-xl">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                Nuevo Motivo
+              </label>
+              <div className="space-y-3">
+                <Input
+                  type="text"
+                  placeholder="Nombre del motivo"
+                  value={newReasonName}
+                  onChange={(e) => setNewReasonName(e.target.value)}
+                  className="bg-white"
+                />
+                <Input
+                  type="text"
+                  placeholder="Descripción (opcional)"
+                  value={newReasonDesc}
+                  onChange={(e) => setNewReasonDesc(e.target.value)}
+                  className="bg-white"
+                />
+                <Button
+                  onClick={handleCreateReason}
+                  disabled={isSavingReason || !newReasonName.trim()}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  {isSavingReason ? 'Guardando...' : 'Agregar Motivo'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Existing reasons */}
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">
+                Motivos Existentes ({reasons.length})
+              </label>
+              {reasons.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6 bg-slate-50 rounded-xl">
+                  No hay motivos personalizados para este tipo de solicitud.
+                  <br />
+                  <span className="text-xs">Se usarán los motivos predeterminados.</span>
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {reasons.map(reason => (
+                    <div
+                      key={reason.id}
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{reason.name}</p>
+                        {reason.description && (
+                          <p className="text-xs text-slate-500">{reason.description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteReason(reason.id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                        title="Eliminar motivo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100">
+              <Button
+                variant="outline"
+                onClick={() => setShowReasonsModal(false)}
+                className="w-full"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
