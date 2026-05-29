@@ -426,6 +426,38 @@ function InventarioEdicionPageContent() {
       alert('Resuelva la advertencia de SKU duplicado antes de guardar.')
       return
     }
+
+    setIsSaving(true)
+
+    // Validate all SKUs against backend to ensure no duplicates sneak through
+    const skusToCheck = validRows
+      .filter(row => row.sku.trim() !== '')
+      .map(row => row.sku.trim())
+
+    if (skusToCheck.length > 0) {
+      try {
+        const skuChecks = await Promise.all(
+          skusToCheck.map(sku =>
+            fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(sku)}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(res => res.json())
+          )
+        )
+        
+        const existingProductData = skuChecks.find(data => data.success && data.data?.length > 0)
+        if (existingProductData) {
+          const existingProduct = existingProductData.data[0]
+          const rowIndex = rows.findIndex(r => r.sku.trim() === existingProduct.sku)
+          setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
+          setIsSaving(false)
+          alert('Se encontró un SKU que ya existe. Por favor, resuelva la advertencia antes de guardar.')
+          return
+        }
+      } catch (error) {
+        console.error('Error checking SKUs:', error)
+      }
+    }
+
     // Generar SKU automático para productos sin SKU
     const rowsWithSku = validRows.map((row, idx) => ({
       ...row,

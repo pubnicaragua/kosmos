@@ -351,10 +351,39 @@ function InventarioPageContent() {
         setTotalPages(data.data.pagination?.totalPages || 1)
         
         const editId = searchParams?.get('edit')
+        const action = searchParams?.get('action')
         if (editId) {
-          const productToEdit = (data.data.data || []).find((p: Product) => p.id === editId)
-          if (productToEdit && !editingRows[editId]) {
+          let productToEdit = (data.data.data || []).find((p: Product) => p.id === editId)
+          
+          if (!productToEdit) {
+            try {
+              const res = await fetch(`/api/products/${editId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              const pData = await res.json()
+              if (pData.success && pData.data) {
+                productToEdit = pData.data
+                setProducts(prev => {
+                  const exists = prev.some(p => p.id === editId)
+                  return exists ? prev : [productToEdit, ...prev]
+                })
+              }
+            } catch (e) {
+              console.error('Error fetching specific product to edit:', e)
+            }
+          }
+
+          if (productToEdit) {
             startEditing(productToEdit)
+            if (action === 'increase') {
+              setTimeout(() => {
+                const stockInput = document.getElementById(`stock-input-${editId}`) as HTMLInputElement
+                if (stockInput) {
+                  stockInput.focus()
+                  stockInput.classList.add('ring-2', 'ring-orange-500', 'border-orange-500')
+                }
+              }, 100)
+            }
           }
         }
       }
@@ -691,8 +720,8 @@ function InventarioPageContent() {
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm" placeholder="Nombre" />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" value={editing.stock} onChange={e => updateEditField(product.id, 'stock', e.target.value)}
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center" placeholder="0" />
+                        <input type="number" id={`stock-input-${product.id}`} value={editing.stock} onChange={e => updateEditField(product.id, 'stock', e.target.value)}
+                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-center transition-all duration-200" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
                         <input

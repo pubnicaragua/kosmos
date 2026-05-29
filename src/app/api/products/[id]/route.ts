@@ -6,6 +6,30 @@ import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) return apiError('Token no proporcionado', 401)
+
+    const decoded = verifyToken(token)
+    if (!decoded) return apiError('Token inválido', 401)
+
+    const product = await prisma.product.findUnique({
+      where: { id: params.id },
+      include: { category: { select: { id: true, name: true } }, company: { select: { name: true } } },
+    })
+    if (!product) return apiError('Producto no encontrado', 404)
+
+    const access = await getCompanyAccess(decoded.userId, product.companyId)
+    if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    return apiSuccess(product)
+  } catch (error) {
+    console.error('Error fetching product:', error)
+    return apiError('Error al obtener producto', 500)
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')

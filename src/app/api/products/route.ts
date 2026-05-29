@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const categoryType = searchParams.get('categoryType')
     const stockFilter = searchParams.get('stockFilter')
     const search = searchParams.get('search')
+    const sku = searchParams.get('sku')
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     const safePage = Number.isNaN(page) || page < 1 ? 1 : page
@@ -64,6 +65,10 @@ export async function GET(request: NextRequest) {
       where.stock = { gte: 100 }
     } else if (stockFilter === 'low') {
       where.stock = { lte: 20 }
+    }
+    
+    if (sku) {
+      where.sku = sku
     }
 
     const [products, total] = await Promise.all([
