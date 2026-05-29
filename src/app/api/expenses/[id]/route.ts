@@ -24,7 +24,16 @@ export async function GET(
     const expense = await prisma.expense.findUnique({
       where: { id: params.id },
       include: {
-        company: { select: { name: true } }
+        company: { select: { name: true } },
+        purchaseRequests: {
+          select: {
+            id: true,
+            requestNumber: true,
+            status: true,
+            requestingArea: true,
+            createdAt: true,
+          }
+        }
       }
     })
 

@@ -760,7 +760,8 @@ export default function GastosPage() {
               {expenses.map((expense) => (
                 <tr 
                   key={expense.id} 
-                  className="border-b border-gray-100 hover:bg-gray-50"
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}
                 >
                   <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -771,7 +772,7 @@ export default function GastosPage() {
                     />
                   </td>
                   {selectedCompany === 'all' && (
-                    <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                    <td className="py-4 px-4">
                       <div className="text-sm font-medium text-gray-900">{expense.company}</div>
                     </td>
                   )}
@@ -783,19 +784,19 @@ export default function GastosPage() {
                   <td className="py-4 px-4">
                     <div className="text-sm font-medium text-gray-900">{expense.provider}</div>
                   </td>
-                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                  <td className="py-4 px-4">
                     <div className="text-sm text-gray-600">{expense.concept}</div>
                   </td>
-                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                  <td className="py-4 px-4">
                     <div className="text-sm text-gray-600">{expense.category}</div>
                   </td>
-                  <td className="py-4 px-4 cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                  <td className="py-4 px-4">
                     <div className="text-sm text-gray-600">{expense.method}</div>
                   </td>
-                  <td className="py-4 px-4 text-right cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                  <td className="py-4 px-4 text-right">
                     <div className="text-sm font-semibold text-gray-900">{formatCurrency(expense.amount)}</div>
                   </td>
-                  <td className="py-4 px-4 text-center cursor-pointer" onClick={() => router.push(`/finanzas/gastos/${expense.id}`)}>
+                  <td className="py-4 px-4 text-center">
                     {getStatusBadge(expense.status)}
                   </td>
                 </tr>
