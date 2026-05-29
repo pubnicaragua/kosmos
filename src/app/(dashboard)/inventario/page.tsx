@@ -384,6 +384,8 @@ function InventarioPageContent() {
                 }
               }, 100)
             }
+            // Clear URL params so it doesn't re-trigger after a save re-fetch
+            router.replace(window.location.pathname, { scroll: false })
           }
         }
       }
