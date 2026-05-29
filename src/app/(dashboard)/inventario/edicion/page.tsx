@@ -231,8 +231,8 @@ function InventarioEdicionPageContent() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await response.json()
-      if (data.success && data.data?.length > 0) {
-        const existingProduct = data.data[0]
+      if (data.success && data.data?.data?.length > 0) {
+        const existingProduct = data.data.data[0]
         setSkuWarning({ index, product: existingProduct })
       }
     } catch (error) {
@@ -444,9 +444,9 @@ function InventarioEdicionPageContent() {
           )
         )
         
-        const existingProductData = skuChecks.find(data => data.success && data.data?.length > 0)
+        const existingProductData = skuChecks.find(data => data.success && data.data?.data?.length > 0)
         if (existingProductData) {
-          const existingProduct = existingProductData.data[0]
+          const existingProduct = existingProductData.data.data[0]
           const rowIndex = rows.findIndex(r => r.sku.trim() === existingProduct.sku)
           setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
           setIsSaving(false)
