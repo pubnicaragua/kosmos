@@ -57,6 +57,7 @@ export default function DashboardsPage() {
   const [companies, setCompanies] = useState<any[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const [isCompaniesReady, setIsCompaniesReady] = useState(false)
   const [visibleKpis, setVisibleKpis] = useState<string[]>([
     'totalSales', 'operationalExpenses', 'pipelineValue', 'activeClients'
   ])
@@ -108,6 +109,38 @@ export default function DashboardsPage() {
     }
 
     try {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+      const isSuperAdmin =
+        storedUser?.role === 'SUPER_ADMIN' || activeCompany?.role === 'SUPER_ADMIN'
+
+      if (!isSuperAdmin) {
+        if (selectedCompany === 'all') {
+          setError('Selecciona una empresa para ver el dashboard')
+          setIsLoading(false)
+          return
+        }
+
+        const companyIdToCheck = selectedCompany
+        if (!companyIdToCheck) {
+          setError('Selecciona una empresa para ver el dashboard')
+          setIsLoading(false)
+          return
+        }
+
+        const permissionRes = await fetch(`/api/permissions/check?module=dashboard&companyId=${companyIdToCheck}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        })
+        const permissionData = await permissionRes.json()
+        const permissionPayload = permissionData.data || permissionData
+        if (!permissionRes.ok || !permissionData.success || !permissionPayload?.canView) {
+          setError('No tienes permisos para ver el dashboard')
+          setIsLoading(false)
+          return
+        }
+      }
+
       const params = new URLSearchParams()
       const { startDate, endDate } = getDateRangeByPeriod(selectedPeriod)
 
@@ -142,7 +175,7 @@ export default function DashboardsPage() {
       const token = localStorage.getItem('accessToken')
       if (!token) {
         setError('No hay sesion activa')
-        setIsLoading(false)
+        setIsCompaniesReady(true)
         return
       }
 
@@ -157,13 +190,18 @@ export default function DashboardsPage() {
           setCompanies(result.data)
 
           const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
-          if (activeCompany?.id && result.data.some((company: any) => company.id === activeCompany.id)) {
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+          if (activeCompany?.id && activeCompany.id !== 'all' && result.data.some((company: any) => company.id === activeCompany.id)) {
             setSelectedCompany(activeCompany.id)
+          } else if (currentUser?.role !== 'SUPER_ADMIN' && result.data.length > 0) {
+            setSelectedCompany(result.data[0].id)
           }
         }
       } catch (fetchError) {
         console.error('Error fetching companies:', fetchError)
         setError('No se pudieron cargar las empresas')
+      } finally {
+        setIsCompaniesReady(true)
       }
     }
 
@@ -171,10 +209,11 @@ export default function DashboardsPage() {
   }, [])
 
   useEffect(() => {
+    if (!isCompaniesReady) return
     fetchDashboardData()
     const interval = setInterval(fetchDashboardData, 30000)
     return () => clearInterval(interval)
-  }, [fetchDashboardData])
+  }, [fetchDashboardData, isCompaniesReady])
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

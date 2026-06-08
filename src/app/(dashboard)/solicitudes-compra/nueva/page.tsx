@@ -62,6 +62,7 @@ export default function NuevaSolicitudPage() {
     currency: 'USD'
   })
   const [quotationFiles, setQuotationFiles] = useState<File[]>([])
+  const [quotationBatchId] = useState(() => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
   const [isUploadingFiles, setIsUploadingFiles] = useState(false)
   const [reasons, setReasons] = useState<PurchaseReason[]>([])
   const [showReasonsModal, setShowReasonsModal] = useState(false)
@@ -138,15 +139,20 @@ export default function NuevaSolicitudPage() {
         for (const file of quotationFiles) {
           const uploadFormData = new FormData()
           uploadFormData.append('file', file)
+          uploadFormData.append(
+            'folder',
+            `purchase-requests/${selectedCompany}/drafts/${quotationBatchId}/quotations`
+          )
           const uploadRes = await fetch('/api/upload', {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}` },
             body: uploadFormData,
           })
           const uploadData = await uploadRes.json()
-          if (uploadData.success) {
-            quotationUrls.push(uploadData.data.url)
+          if (!uploadData.success || !uploadData.data?.url) {
+            throw new Error(uploadData.error || 'No se pudo subir una cotizacion')
           }
+          quotationUrls.push(uploadData.data.url)
         }
       }
       

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -31,6 +31,13 @@ interface Company {
   id: string
   name: string
   logo: string | null
+}
+
+interface InventorySummary {
+  totalProducts: number
+  totalStock: number
+  lowStockProducts: number
+  inventoryValue: number
 }
 
 const STOCK_TABS = [
@@ -65,17 +72,25 @@ function InventarioPageContent() {
   const searchParams = useSearchParams()
   const permissions = useModulePermissions('inventario', { requireAction: 'view' })
   const [products, setProducts] = useState<Product[]>([])
+  const [summary, setSummary] = useState<InventorySummary>({
+    totalProducts: 0,
+    totalStock: 0,
+    lowStockProducts: 0,
+    inventoryValue: 0,
+  })
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedTab, setSelectedTab] = useState('all')
   const [categoryType, setCategoryType] = useState('all')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const [itemsPerPage, setItemsPerPage] = useState(25)
   const [showFilters, setShowFilters] = useState(false)
+  const [showFlowGuide, setShowFlowGuide] = useState(false)
   const [editingRows, setEditingRows] = useState<Record<string, EditingProduct>>({})
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
@@ -85,6 +100,57 @@ function InventarioPageContent() {
 
   const normalizeCategoryName = (value: string) =>
     value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const getStockTone = (stock: number) => {
+    if (stock <= 10) {
+      return {
+        label: 'Crítico',
+        pill: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+        card: 'border-rose-200 bg-rose-50/60',
+        dot: 'bg-rose-500',
+      }
+    }
+    if (stock <= 20) {
+      return {
+        label: 'Bajo',
+        pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+        card: 'border-amber-200 bg-amber-50/60',
+        dot: 'bg-amber-500',
+      }
+    }
+    return {
+      label: 'OK',
+      pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+      card: 'border-emerald-200 bg-emerald-50/60',
+      dot: 'bg-emerald-500',
+    }
+  }
+
+  const productTiles = useMemo(() => {
+    const accents = [
+      'from-sky-500 to-cyan-400',
+      'from-indigo-500 to-violet-400',
+      'from-emerald-500 to-teal-400',
+      'from-amber-500 to-orange-400',
+      'from-fuchsia-500 to-pink-400',
+      'from-slate-700 to-slate-500',
+    ]
+
+    return products.map((product, index) => ({
+      ...product,
+      accent: accents[index % accents.length],
+      stockTone: getStockTone(product.stock),
+      initials: product.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join('') || 'PR',
+    }))
+  }, [products])
 
   const startEditing = (product: Product) => {
     setEditingRows(prev => ({
@@ -349,6 +415,12 @@ function InventarioPageContent() {
         setProducts(data.data.data || [])
         setTotalItems(data.data.pagination?.total || 0)
         setTotalPages(data.data.pagination?.totalPages || 1)
+        setSummary({
+          totalProducts: data.data.summary?.totalProducts ?? data.data.pagination?.total ?? 0,
+          totalStock: data.data.summary?.totalStock ?? 0,
+          lowStockProducts: data.data.summary?.lowStockProducts ?? 0,
+          inventoryValue: data.data.summary?.inventoryValue ?? 0,
+        })
         
         const editId = searchParams?.get('edit')
         const action = searchParams?.get('action')
@@ -425,7 +497,10 @@ function InventarioPageContent() {
 
   const handleMermas = () => {
     setSelectedTab('low')
-    setShowFilters(true) // Open filters to show selectable stock range
+  }
+
+  const handleFlowGuide = () => {
+    setShowFlowGuide(true)
   }
 
   const handleImportOrUpdate = () => {
@@ -510,6 +585,413 @@ function InventarioPageContent() {
       </div>
     )
   }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-2xl shadow-slate-200/50">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-white/80">
+              Centro de inventario
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-white">Inventario</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/70">
+                KPIs arriba, filtros en pills y vista de cuadrícula o tabla sin tocar la lógica de negocio.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {permissions.canEdit && (
+              <Button variant="outline" onClick={handleMermas} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+                Re-stock
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleFlowGuide} className="h-10 border-cyan-200/30 bg-cyan-400/10 text-cyan-50 hover:bg-cyan-400/20">
+              Cómo funciona
+            </Button>
+            <Button variant="outline" onClick={handleDownloadTemplate} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+              Plantilla
+            </Button>
+            {permissions.canExport && (
+              <Button variant="outline" onClick={handleExport} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+                Exportar
+              </Button>
+            )}
+            {permissions.canCreate && (
+              <>
+                <Button onClick={() => router.push('/inventario/edicion?type=PRODUCTO')} className="h-10 bg-cyan-500 text-slate-950 hover:bg-cyan-400">
+                  Agregar Producto
+                </Button>
+                <Button onClick={() => router.push('/inventario/edicion?type=SERVICIO')} variant="outline" className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+                  Agregar Servicio
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Total productos</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-3xl font-black text-slate-900">{summary.totalProducts.toLocaleString('es-NI')}</p>
+              <p className="text-sm text-slate-500">Registrados en el sistema</p>
+            </div>
+            <div className="rounded-2xl bg-slate-900 px-3 py-2 text-xs font-bold text-white">SKU / stock</div>
+          </div>
+        </Card>
+        <Card className="border-rose-200 bg-rose-50 p-5 shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-rose-500">Stock bajo</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-3xl font-black text-rose-700">{summary.lowStockProducts.toLocaleString('es-NI')}</p>
+              <p className="text-sm text-rose-700/80">Productos críticos o bajos</p>
+            </div>
+            <div className="rounded-2xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">Alertas</div>
+          </div>
+        </Card>
+        <Card className="border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-600">Valor inventario</p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-3xl font-black text-emerald-800">$ {formatCurrency(summary.inventoryValue)}</p>
+              <p className="text-sm text-emerald-800/80">Stock x costo</p>
+            </div>
+            <div className="rounded-2xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Valor</div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {STOCK_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedTab(tab.id)}
+                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors ${
+                  selectedTab === tab.id
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+            {CATEGORY_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCategoryType(tab.id)}
+                className={`rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                  categoryType === tab.id
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+            {permissions.canEdit && (
+              <Button variant="outline" onClick={() => setShowCategoryModal(true)} className="h-10 rounded-full border-slate-200">
+                + Categoría
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="rounded-2xl bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors ${
+                  viewMode === 'grid' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Cuadrícula
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`rounded-xl px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors ${
+                  viewMode === 'table' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Tabla
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="w-full lg:max-w-xs">
+            <Select
+              options={[
+                { value: 'all', label: 'TODAS LAS EMPRESAS' },
+                ...companies.map((company) => ({ value: company.id, label: company.name })),
+              ]}
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="w-full lg:max-w-md">
+            <Input
+              type="text"
+              placeholder="Buscar producto, categoría o SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              fullWidth
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {productTiles.map((product) => (
+                <div key={product.id} className={`overflow-hidden rounded-3xl border p-5 shadow-sm ${product.stockTone.card}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${product.accent} text-lg font-black text-white shadow-lg`}>
+                      {product.initials}
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${product.stockTone.pill}`}>
+                        {product.stockTone.label}
+                      </span>
+                      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">{product.sku}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-lg font-black text-slate-900">{product.name}</h3>
+                    </div>
+                    <p className="text-sm leading-relaxed text-slate-600 line-clamp-2">
+                      {product.description || 'Sin descripción'}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
+                      {product.category?.name || 'Sin categoría'}
+                    </span>
+                    <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
+                      Stock {product.stock}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-white/80 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">$ {formatCurrency(product.cost)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">$ {formatCurrency(product.price)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Margen</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">
+                        {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    {permissions.canEdit ? (
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => router.push(`/inventario/edicion?edit=${product.id}`)}
+                      >
+                        Editar
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setSelectedTab('low')}
+                    >
+                      Ver alertas
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Producto</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Stock</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Categoría</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">SKU</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Margen</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {products.map((product) => {
+                    const tone = getStockTone(product.stock)
+                    return (
+                      <tr key={product.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-4">
+                          <div className="space-y-1">
+                            <p className="font-bold text-slate-900">{product.name}</p>
+                            <p className="text-xs text-slate-500 line-clamp-1">{product.description || 'Sin descripción'}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase tracking-widest ${tone.pill}`}>
+                            {product.stock}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">{product.category?.name || 'Sin categoría'}</td>
+                        <td className="px-4 py-4 text-sm font-mono text-slate-500">{product.sku}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-700">$ {formatCurrency(product.cost)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">$ {formatCurrency(product.price)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">
+                          {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          {permissions.canEdit ? (
+                            <Button variant="outline" className="h-9" onClick={() => router.push(`/inventario/edicion?edit=${product.id}`)}>
+                              Editar
+                            </Button>
+                          ) : null}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {products.length === 0 && (
+            <div className="flex min-h-[260px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50">
+              <div className="text-center">
+                <p className="text-lg font-black text-slate-900">Sin productos</p>
+                <p className="mt-1 text-sm text-slate-500">No se encontraron resultados con los filtros actuales.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+          <div>
+            Mostrando {showingFrom} a {showingTo} de {totalItems} resultados
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Por página:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="75">75</option>
+            </select>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </Button>
+          {visiblePages.map((page, index) => {
+            const previousPage = visiblePages[index - 1]
+            const hasGap = previousPage && page - previousPage > 1
+
+            return (
+              <div key={page} className="flex items-center gap-2">
+                {hasGap && <span className="text-slate-400">...</span>}
+                <button
+                  onClick={() => setCurrentPage(page)}
+                  className={`h-9 w-9 rounded-xl text-sm font-bold ${
+                    currentPage === page ? 'bg-slate-900 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              </div>
+            )
+          })}
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+
+      {showFlowGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-100 p-6">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Cómo funciona el nuevo inventario</h2>
+                <p className="mt-1 text-sm text-slate-500">Guía rápida de flujo y lógica sin tocar la regla de negocio actual.</p>
+              </div>
+              <button onClick={() => setShowFlowGuide(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                ✕
+              </button>
+            </div>
+            <div className="grid gap-4 p-6 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">1. Lectura rápida</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  KPIs arriba para ver total de productos, stock bajo y valor inventario sin entrar a listas largas.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">2. Filtros rápidos</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  Pills horizontales para cambiar entre stock crítico, stock bajo y categoría sin abrir selects pesados.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">3. Vista visual</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  La cuadrícula prioriza lectura visual. Como el modelo no guarda imagen de producto, usa un tile visual consistente; si luego agregas `imageUrl`, se enchufa aquí.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">4. Lógica intacta</p>
+                <p className="mt-2 text-sm text-slate-700">
+                  Crear, editar, exportar y mover a re-stock sigue usando los mismos endpoints y la misma validación. Solo cambia la presentación.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
+              <Button variant="outline" onClick={() => setShowFlowGuide(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
 
   return (
     <div className="space-y-6">

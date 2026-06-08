@@ -168,6 +168,13 @@ export function Sidebar() {
   }, [loadPermissions, syncUserFromStorage])
 
   const isItemVisible = (itemId: string): boolean => {
+    const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+    if (itemId === 'dashboards') {
+      if (isSuperAdmin) return true
+      if (allowedModules?.has('dashboard')) return true
+      return false
+    }
+
     if (allowedModules === null) return true // full access
     const moduleKey = NAV_TO_MODULE[itemId]
     if (!moduleKey) return true // unknown items always visible

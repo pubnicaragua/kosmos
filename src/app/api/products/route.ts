@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       where.sku = sku
     }
 
-    const [products, total] = await Promise.all([
+    const [products, total, summaryProducts] = await Promise.all([
       prisma.product.findMany({
         where,
         include: {
@@ -83,7 +83,26 @@ export async function GET(request: NextRequest) {
         take: safeLimit,
       }),
       prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        select: {
+          stock: true,
+          cost: true,
+        },
+      }),
     ])
+
+    const summary = summaryProducts.reduce(
+      (acc, product) => {
+        const stock = Number(product.stock) || 0
+        const cost = Number(product.cost) || 0
+        acc.totalStock += stock
+        acc.lowStock += stock <= 20 ? 1 : 0
+        acc.inventoryValue += stock * cost
+        return acc
+      },
+      { totalStock: 0, lowStock: 0, inventoryValue: 0 }
+    )
 
     return apiSuccess({
       data: products,
@@ -92,6 +111,12 @@ export async function GET(request: NextRequest) {
         limit: safeLimit,
         total,
         totalPages: Math.ceil(total / safeLimit),
+      },
+      summary: {
+        totalProducts: total,
+        totalStock: summary.totalStock,
+        lowStockProducts: summary.lowStock,
+        inventoryValue: summary.inventoryValue,
       },
     })
   } catch (error) {

@@ -157,6 +157,10 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       setIsUploadingSupport(target)
       const formData = new FormData()
       formData.append('file', file)
+      formData.append(
+        'folder',
+        `purchase-requests/${request.requestNumber}/support/${target}`
+      )
 
       const response = await fetch('/api/upload', {
         method: 'POST',

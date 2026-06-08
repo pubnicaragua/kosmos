@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { getCompanyAccess, getModuleAccess, getAccessibleCompanies } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,26 +25,30 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: payload.userId },
-      select: { companyId: true, role: true },
-    })
+    const { companyIds, isSuperAdmin } = await getAccessibleCompanies(payload.userId)
+    const selectedCompanyId = companyId && companyId !== 'all' ? companyId : null
 
-    const isSuperAdmin = userCompanies.some((uc) => uc.role === 'SUPER_ADMIN')
-    let companyIds = userCompanies.map((uc) => uc.companyId)
-
-    if (isSuperAdmin) {
-      const allCompanies = await prisma.company.findMany({
-        select: { id: true },
-      })
-      companyIds = allCompanies.map((company) => company.id)
+    if (!isSuperAdmin && !selectedCompanyId) {
+      return errorResponse('El dashboard requiere una empresa seleccionada', 403)
     }
 
-    if (companyId && !companyIds.includes(companyId)) {
+    if (selectedCompanyId && !companyIds.includes(selectedCompanyId)) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 
-    const scopedCompanyIds = companyId ? [companyId] : companyIds
+    if (selectedCompanyId) {
+      const companyAccess = await getCompanyAccess(payload.userId, selectedCompanyId)
+      if (!companyAccess.canAccess) {
+        return errorResponse('No tienes acceso a esta empresa', 403)
+      }
+
+      const dashboardAccess = await getModuleAccess(payload.userId, selectedCompanyId, 'dashboard')
+      if (!dashboardAccess.canView) {
+        return errorResponse('No tienes permisos para ver el dashboard', 403)
+      }
+    }
+
+    const scopedCompanyIds = selectedCompanyId ? [selectedCompanyId] : companyIds
     const dateWhere: any = {}
     if (startDate) dateWhere.gte = new Date(startDate)
     if (endDate) dateWhere.lte = new Date(endDate)

@@ -70,6 +70,34 @@ export async function getModuleAccess(
     }
   }
 
+  // Dashboard is explicit. No inherited access for non-SUPER_ADMIN users.
+  // It must be granted by role/custom role, not by fallback USER access.
+  if (module === 'dashboard') {
+    const dashboardPerm = userCompany.customRole?.permissions.find((p) => p.module === module)
+
+    if (dashboardPerm) {
+      return {
+        canAccess: true,
+        canView: Boolean(dashboardPerm.canView),
+        canCreate: Boolean(dashboardPerm.canCreate),
+        canEdit: Boolean(dashboardPerm.canEdit),
+        canDelete: Boolean(dashboardPerm.canDelete),
+        canExport: Boolean(dashboardPerm.canExport),
+        restrictedByCustomRole: true,
+      }
+    }
+
+    return {
+      canAccess: true,
+      canView: false,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+      canExport: false,
+      restrictedByCustomRole: Boolean(userCompany.customRole),
+    }
+  }
+
   // If user has customRole, check if module has specific permissions
   if (userCompany.customRole) {
     const perm = userCompany.customRole.permissions.find((p) => p.module === module)
