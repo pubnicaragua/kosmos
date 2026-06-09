@@ -6,6 +6,30 @@ import { getCompanyAccess } from '@/lib/company-access'
 
 export const dynamic = 'force-dynamic'
 
+const parseAssignedUsers = (value?: string | null) => {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const isUserAssigned = (
+  ticket: { assignedUsers: string | null; assignedTo: string | null },
+  userId: string,
+  userName?: string | null
+) => {
+  if (parseAssignedUsers(ticket.assignedUsers).includes(userId)) return true
+  if (!userName) return false
+  return (ticket.assignedTo || '')
+    .split(',')
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(userName.trim().toLowerCase())
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -26,6 +50,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const access = await getCompanyAccess(decoded.userId, ticket.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { name: true },
+    })
+    if (!isUserAssigned(ticket, decoded.userId, currentUser?.name)) {
+      return apiError('Solo el usuario asignado puede cambiar el estado del ticket', 403)
+    }
 
     const updated = await prisma.ticket.update({
       where: { id: params.id },

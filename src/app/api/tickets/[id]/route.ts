@@ -35,6 +35,9 @@ const isUserAssigned = (
     .includes(userName.trim().toLowerCase())
 }
 
+const isUnassignedTicket = (ticket: { assignedUsers: string | null; assignedTo: string | null }) =>
+  parseAssignedUsers(ticket.assignedUsers).length === 0 && !(ticket.assignedTo || '').trim()
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -62,7 +65,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       select: { name: true },
     })
 
-    if (!isAdmin && !isUserAssigned(ticket, decoded.userId, currentUser?.name)) {
+    const canObserve =
+      isAdmin ||
+      ticket.createdBy === decoded.userId ||
+      isUserAssigned(ticket, decoded.userId, currentUser?.name) ||
+      isUnassignedTicket(ticket)
+
+    if (!canObserve) {
       return apiError('No tienes acceso a este ticket', 403)
     }
 
@@ -89,24 +98,57 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
     const moduleAccess = await getModuleAccess(decoded.userId, ticket.companyId, 'tickets-soporte')
-    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar tickets', 403)
+    if (!moduleAccess.canAccess || !moduleAccess.canView) {
+      return apiError('No tienes permisos para ver tickets', 403)
+    }
 
     const isAdminForUpdate = isAdminRole(access.effectiveRole)
     const currentUserForUpdate = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { name: true },
+      select: { id: true, name: true },
     })
 
-    if (!isAdminForUpdate && !isUserAssigned(ticket, decoded.userId, currentUserForUpdate?.name)) {
+    const currentlyAssignedToUser = isUserAssigned(ticket, decoded.userId, currentUserForUpdate?.name)
+    const canObserve =
+      isAdminForUpdate ||
+      ticket.createdBy === decoded.userId ||
+      currentlyAssignedToUser ||
+      isUnassignedTicket(ticket)
+
+    if (!canObserve) {
       return apiError('No tienes acceso a este ticket', 403)
     }
 
-    if (
-      !isAdminForUpdate &&
-      ticket.createdBy === decoded.userId &&
-      (ticket.status === 'ASIGNADO' || ticket.status === 'EN_PROCESO')
-    ) {
-      return apiError('No puedes editar este ticket en su estado actual', 403)
+    if (body.action === 'take') {
+      if (!isUnassignedTicket(ticket)) {
+        return apiError('Este ticket ya fue tomado por otro usuario', 409)
+      }
+      if (ticket.createdBy === decoded.userId) {
+        return apiError('El creador del ticket no puede tomarlo', 403)
+      }
+      if (!moduleAccess.canEdit) {
+        return apiError('No tienes permisos para tomar tickets', 403)
+      }
+
+      const assigneeName = currentUserForUpdate?.name || 'Usuario asignado'
+      const updated = await prisma.ticket.update({
+        where: { id: params.id },
+        data: {
+          assignedUsers: JSON.stringify([decoded.userId]),
+          assignedTo: assigneeName,
+          status: ticket.status === 'NUEVO' ? 'ASIGNADO' : ticket.status,
+          responseTime: ticket.responseTime || Math.floor((Date.now() - ticket.createdAt.getTime()) / 60000),
+        },
+        include: { client: { select: { id: true, name: true } } },
+      })
+
+      return apiSuccess(updated)
+    }
+
+    if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar tickets', 403)
+
+    if (body.status && !currentlyAssignedToUser) {
+      return apiError('Solo el usuario asignado puede cambiar el estado del ticket', 403)
     }
 
     const nextAssignedUsers = Array.isArray(body.assignedUsers)

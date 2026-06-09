@@ -80,11 +80,19 @@ export async function POST(req: Request) {
       requestType, 
       priority, 
       notes, 
+      quotationFiles,
       items 
     } = body
 
     if (!companyId || !items || items.length === 0) {
       return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 })
+    }
+
+    const quotationUrls = Array.isArray(quotationFiles)
+      ? quotationFiles.filter((url: unknown) => typeof url === 'string' && url.trim())
+      : []
+    if (quotationUrls.length === 0) {
+      return NextResponse.json({ success: false, error: 'Debes adjuntar al menos una cotización' }, { status: 400 })
     }
 
     const access = await getCompanyAccess(decoded.userId, companyId)
@@ -120,6 +128,8 @@ export async function POST(req: Request) {
         priority,
         notes,
         currency: body.currency || 'USD',
+        quotationFiles: quotationUrls,
+        quotationUrl: quotationUrls[0] || null,
         status: 'PENDIENTE',
         items: {
           create: items.map((item: any) => ({
@@ -175,7 +185,7 @@ export async function POST(req: Request) {
             data: {
               userId,
               title: 'Solicitud de Compra Requiere Aprobación',
-              message: `Solicitud ${requestNumber} (${requestType}) - Prioridad ${priority} - Monto estimado: $${items.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0).toFixed(2)}`,
+              message: `Solicitud ${requestNumber} (${requestType}) - Prioridad ${priority} - Precio pendiente de aprobaciÃ³n por cotizaciÃ³n`,
               type: 'ASSIGNMENT',
               link: `/solicitudes-compra/${request.id}`
             }

@@ -11,6 +11,23 @@ export const dynamic = 'force-dynamic'
 const isAdminRole = (role: string | null | undefined) =>
   role === 'SUPER_ADMIN' || role === 'ADMIN'
 
+const isUnassignedTicket = {
+  AND: [
+    {
+      OR: [
+        { assignedUsers: null },
+        { assignedUsers: '[]' },
+      ],
+    },
+    {
+      OR: [
+        { assignedTo: null },
+        { assignedTo: '' },
+      ],
+    },
+  ],
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -35,6 +52,10 @@ export async function GET(request: NextRequest) {
     if (companyId) {
       const access = await getCompanyAccess(decoded.userId, companyId)
       isAdmin = isAdminRole(access.effectiveRole)
+      const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'tickets-soporte')
+      if (!moduleAccess.canAccess || !moduleAccess.canView) {
+        return apiError('No tienes permisos para ver tickets', 403)
+      }
     }
 
     const currentUser = !isAdmin
@@ -63,6 +84,8 @@ export async function GET(request: NextRequest) {
     if (!isAdmin) {
       const assignmentFilters: any[] = [
         { assignedUsers: { contains: `"${decoded.userId}"` } },
+        { createdBy: decoded.userId },
+        isUnassignedTicket,
       ]
       if (currentUser?.name) {
         assignmentFilters.push({

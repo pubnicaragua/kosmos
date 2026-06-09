@@ -707,6 +707,10 @@ model PurchaseRequest {
   approvedAt       DateTime?               @map("approved_at")
   rejectedReason   String?                 @map("rejected_reason")
   quotationUrl     String?                 @map("quotation_url") // URL de cotización subida
+  quotationFiles   Json?                   @map("quotation_files")
+  selectedQuotationUrl String?             @map("selected_quotation_url")
+  supplierName     String?                 @map("supplier_name")
+  finalAmount      Float?                  @map("final_amount")
   purchaseOrderUrl String?                 @map("purchase_order_url") // URL de OC subida
   evidenceUrl      String?                 @map("evidence_url") // URL de evidencia de recepción
   purchasedAt      DateTime?               @map("purchased_at")

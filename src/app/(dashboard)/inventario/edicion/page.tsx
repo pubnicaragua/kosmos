@@ -38,7 +38,8 @@ interface Company {
 function InventarioEdicionPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const permissions = useModulePermissions('inventario', { requireAction: 'create' })
+  const editProductId = searchParams.get('edit')
+  const permissions = useModulePermissions('inventario', { requireAction: editProductId ? 'edit' : 'create' })
   const productType = searchParams.get('type') || 'PRODUCTO'
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedCompany, setSelectedCompany] = useState('all')
@@ -54,6 +55,7 @@ function InventarioEdicionPageContent() {
   const [skuWarning, setSkuWarning] = useState<{ index: number; product: any } | null>(null)
   const [checkingSku, setCheckingSku] = useState<number | null>(null)
   const isService = productType === 'SERVICIO'
+  const isEditMode = Boolean(editProductId)
 
   const normalizeCategoryName = (value: string) =>
     value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -98,6 +100,50 @@ function InventarioEdicionPageContent() {
       console.error('Error fetching categories:', error)
     }
   }, [selectedCompany])
+
+  const fetchProductForEdit = useCallback(async () => {
+    if (!editProductId) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/products/${editProductId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+
+      if (!data.success) {
+        alert(data.error || 'No se pudo cargar el producto')
+        router.push('/inventario')
+        return
+      }
+
+      const product = data.data
+      setSelectedCompany(product.companyId)
+      setRows([
+        {
+          id: product.id,
+          tempId: 1,
+          name: product.name || '',
+          unit: product.unit || 'UNI',
+          categoryId: product.categoryId || '',
+          categoryName: product.category?.name || '',
+          description: product.description || '',
+          sku: product.sku || '',
+          cost: Number(product.cost || 0),
+          price: Number(product.price || 0),
+          netMargin: Number(product.netMargin || 0),
+          stock: Number(product.stock || 0),
+          isNew: false,
+        },
+      ])
+    } catch (error) {
+      console.error('Error fetching product for edit:', error)
+      alert('Error al cargar producto')
+      router.push('/inventario')
+    }
+  }, [editProductId, router])
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -180,6 +226,10 @@ function InventarioEdicionPageContent() {
   }, [fetchCompanies])
 
   useEffect(() => {
+    fetchProductForEdit()
+  }, [fetchProductForEdit])
+
+  useEffect(() => {
     fetchCategories()
   }, [fetchCategories])
 
@@ -233,7 +283,9 @@ function InventarioEdicionPageContent() {
       const data = await response.json()
       if (data.success && data.data?.data?.length > 0) {
         const existingProduct = data.data.data[0]
-        setSkuWarning({ index, product: existingProduct })
+        if (!editProductId || existingProduct.id !== editProductId) {
+          setSkuWarning({ index, product: existingProduct })
+        }
       }
     } catch (error) {
       console.error('Error checking SKU:', error)
@@ -444,9 +496,11 @@ function InventarioEdicionPageContent() {
           )
         )
         
-        const existingProductData = skuChecks.find(data => data.success && data.data?.data?.length > 0)
-        if (existingProductData) {
-          const existingProduct = existingProductData.data.data[0]
+        const existingProduct = skuChecks
+          .flatMap(data => data.success && Array.isArray(data.data?.data) ? data.data.data : [])
+          .find(product => !editProductId || product.id !== editProductId)
+
+        if (existingProduct) {
           const rowIndex = rows.findIndex(r => r.sku.trim() === existingProduct.sku)
           setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
           setIsSaving(false)
@@ -504,6 +558,48 @@ function InventarioEdicionPageContent() {
 
     if (createdCategories.length > 0) {
       setCategories((prev) => [...prev, ...createdCategories])
+    }
+
+    if (editProductId) {
+      const row = rowsWithSku[0]
+
+      try {
+        const response = await fetch(`/api/products/${editProductId}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: row.name,
+            unit: row.unit,
+            categoryId:
+              row.categoryId ||
+              categoryMap.get(normalizeCategoryName(row.categoryName || '')) ||
+              null,
+            description: row.description || null,
+            sku: row.sku,
+            stock: isService ? 0 : row.stock ?? 0,
+            cost: row.cost,
+            price: row.price,
+            netMargin: row.netMargin,
+          }),
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          alert('Producto actualizado exitosamente')
+          router.push('/inventario')
+        } else {
+          alert(data.error || 'Error al actualizar producto')
+        }
+      } catch (error) {
+        console.error('Error updating product:', error)
+        alert('Error al actualizar producto')
+      } finally {
+        setIsSaving(false)
+      }
+      return
     }
 
     setIsSaving(true)

@@ -90,6 +90,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       rejectedReason,
       notes,
       quotationUrl,
+      selectedQuotationUrl,
+      supplierName,
+      finalAmount,
       purchaseOrderUrl,
       evidenceUrl,
       departmentId: nextDepartmentId,
@@ -129,6 +132,32 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'No tienes permisos para aprobar esta solicitud' }, { status: 403 })
     }
 
+    if (status && currentRequest.requestedBy === decoded.userId) {
+      return NextResponse.json({ success: false, error: 'El creador no puede aprobar ni avanzar su propia solicitud' }, { status: 403 })
+    }
+
+    if (status === 'RECIBIDO' && currentRequest.approvedBy === decoded.userId) {
+      return NextResponse.json({ success: false, error: 'El usuario que aprobó no puede marcar la recepción' }, { status: 403 })
+    }
+
+    if (status === 'APROBADA') {
+      const quotationOptions = Array.isArray(currentRequest.quotationFiles)
+        ? currentRequest.quotationFiles.filter((url: any) => typeof url === 'string' && url.trim())
+        : currentRequest.quotationUrl
+          ? [currentRequest.quotationUrl]
+          : []
+      const chosenQuotation = selectedQuotationUrl || quotationUrl
+      if (!chosenQuotation || !quotationOptions.includes(chosenQuotation)) {
+        return NextResponse.json({ success: false, error: 'Debes seleccionar una cotización válida' }, { status: 400 })
+      }
+      if (!supplierName || typeof supplierName !== 'string' || !supplierName.trim()) {
+        return NextResponse.json({ success: false, error: 'Debes indicar el proveedor seleccionado' }, { status: 400 })
+      }
+      if (!Number.isFinite(Number(finalAmount)) || Number(finalAmount) <= 0) {
+        return NextResponse.json({ success: false, error: 'Debes indicar el precio final aprobado' }, { status: 400 })
+      }
+    }
+
     if (status === 'COMPRADO') {
       const purchaseProof = purchaseOrderUrl ?? currentRequest.purchaseOrderUrl
       if (!purchaseProof) {
@@ -146,23 +175,29 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const updateData: any = {}
     if (status) updateData.status = status
     if (quotationUrl !== undefined) updateData.quotationUrl = quotationUrl
+    if (selectedQuotationUrl !== undefined) updateData.selectedQuotationUrl = selectedQuotationUrl
+    if (supplierName !== undefined) updateData.supplierName = supplierName
+    if (finalAmount !== undefined) updateData.finalAmount = Number(finalAmount)
     if (purchaseOrderUrl !== undefined) updateData.purchaseOrderUrl = purchaseOrderUrl
     if (evidenceUrl !== undefined) updateData.evidenceUrl = evidenceUrl
     if (nextDepartmentId !== undefined) updateData.departmentId = nextDepartmentId
     if (status === 'APROBADA') {
       updateData.approvedBy = decoded.userId
       updateData.approvedAt = new Date()
+      updateData.quotationUrl = selectedQuotationUrl || quotationUrl || currentRequest.quotationUrl
     } else if (status === 'RECHAZADA') {
       updateData.rejectedReason = rejectedReason || 'Rechazado por el administrador'
     } else if (status === 'COMPRADO' && currentRequest.status !== 'COMPRADO') {
       updateData.purchasedAt = new Date()
       
       // CREATE EXPENSE AUTOMATICALLY
-      const totalAmount = currentRequest.items.reduce((sum, item) => sum + (item.totalCost || 0), 0)
+      const totalAmount = Number(currentRequest.finalAmount) > 0
+        ? Number(currentRequest.finalAmount)
+        : currentRequest.items.reduce((sum, item) => sum + (item.totalCost || 0), 0)
       const expense = await prisma.expense.create({
         data: {
           companyId: currentRequest.companyId,
-          provider: 'Compras Directas',
+          provider: currentRequest.supplierName || 'Compras Directas',
           concept: `Compra derivada de Solicitud ${currentRequest.requestNumber}`,
           category: 'Compras',
           method: 'Efectivo/Transferencia',
@@ -189,6 +224,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       const receiptMap = new Map<string, number>(
         validReceivedItems.map((entry: any) => [entry.itemId, Number(entry.receivedQuantity)])
       )
+      const totalRequestedQuantity = currentRequest.items.reduce(
+        (sum, item) => sum + (Number(item.requestedQuantity) || 0),
+        0
+      )
+      const approvedUnitCost = Number(currentRequest.finalAmount) > 0 && totalRequestedQuantity > 0
+        ? Number(currentRequest.finalAmount) / totalRequestedQuantity
+        : 0
 
       // UPDATE INVENTORY AUTOMATICALLY
       for (const item of currentRequest.items) {
@@ -218,6 +260,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 }))?.id || null
               : null
 
+            const inventoryCost = Number(item.unitCost) > 0 ? Number(item.unitCost) : approvedUnitCost
+
             await prisma.product.create({
               data: {
                 companyId: currentRequest.companyId,
@@ -226,8 +270,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 categoryId,
                 stock: quantityToReceive,
                 minStock: item.minimumStock || 0,
-                cost: item.unitCost || 0,
-                price: (item.unitCost || 0) * 1.3,
+                cost: inventoryCost,
+                price: inventoryCost * 1.3,
                 type: 'PRODUCT'
               }
             })

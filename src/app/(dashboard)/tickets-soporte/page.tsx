@@ -837,11 +837,68 @@ export default function TicketsSoportePage() {
     [currentUserId, currentUserName, currentUserRole]
   )
 
+  const isTicketAssignedToCurrentUser = useCallback(
+    (ticket: Ticket) => {
+      if (!currentUserId) return false
+      const assignedUserIds = parseAssignedUserIds(ticket.assignedUsers)
+      if (assignedUserIds.includes(currentUserId)) return true
+      if (!currentUserName || !ticket.assignedTo) return false
+      return ticket.assignedTo
+        .split(',')
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+        .includes(currentUserName.trim().toLowerCase())
+    },
+    [currentUserId, currentUserName]
+  )
+
+  const isTicketUnassigned = (ticket: Ticket) =>
+    parseAssignedUserIds(ticket.assignedUsers).length === 0 && !(ticket.assignedTo || '').trim()
+
+  const canTakeTicket = useCallback(
+    (ticket: Ticket) =>
+      Boolean(currentUserId) &&
+      isTicketUnassigned(ticket) &&
+      ticket.createdBy !== currentUserId &&
+      permissions.canEdit,
+    [currentUserId, permissions.canEdit]
+  )
+
+  const handleTakeTicket = async (ticketId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'take' }),
+      })
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo tomar el ticket')
+        return
+      }
+      setTickets((prev) => prev.map((ticket) => (ticket.id === ticketId ? data.data : ticket)))
+    } catch (error) {
+      console.error('Error taking ticket:', error)
+      alert('Error al tomar el ticket')
+    }
+  }
+
   const getTotalAmount = (status: string) => {
     return getTicketsByStatus(status).reduce((sum, t) => sum + (t.amount || 0), 0)
   }
 
   const handleDragStart = (ticketId: string) => {
+    const ticket = tickets.find((item) => item.id === ticketId)
+    if (!ticket || !isTicketAssignedToCurrentUser(ticket)) {
+      setDraggedTicket(null)
+      return
+    }
     setDraggedTicket(ticketId)
   }
 
@@ -868,6 +925,10 @@ export default function TicketsSoportePage() {
 
     // Reorder within same column
     const draggedObj = tickets.find(t => t.id === draggedTicket)
+    if (!draggedObj || !isTicketAssignedToCurrentUser(draggedObj)) {
+      setDraggedTicket(null)
+      return
+    }
     if (draggedObj && draggedObj.status === newStatus && dragOverCardId && dragOverCardId !== draggedTicket) {
       setTickets(prev => {
         const colItems = prev.filter(t => t.status === newStatus)
@@ -1317,11 +1378,13 @@ export default function TicketsSoportePage() {
                     const previewImage = getTicketPreviewImage(ticket)
                     const mediaCount = getTicketMediaUrls(ticket).length
                     const statusFlags = getTicketStageFlags(ticket.status)
+                    const canMoveTicket = isTicketAssignedToCurrentUser(ticket)
+                    const showTakeButton = canTakeTicket(ticket)
                     
                     return (
                       <div
                         key={ticket.id}
-                        draggable
+                        draggable={canMoveTicket}
                         onClick={() => router.push(`/tickets-soporte/${ticket.id}`)}
                         onDragStart={() => handleDragStart(ticket.id)}
                         onDragOver={(e) => handleDragOverCard(e, ticket.id)}
@@ -1363,6 +1426,18 @@ export default function TicketsSoportePage() {
                           </button>
                         )}
                       </div>
+                      {showTakeButton && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTakeTicket(ticket.id)
+                          }}
+                          className="mb-3 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                        >
+                          Tomar ticket
+                        </button>
+                      )}
                       <h4 className="font-bold text-sm text-gray-900 mb-1 line-clamp-2 leading-tight">{ticket.title}</h4>
                       <p className="text-[11px] text-gray-500 mb-2 truncate font-medium">{ticket.client?.name || 'Venta General'}</p>
                       

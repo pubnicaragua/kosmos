@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, Plus, Trash2, Save, ShoppingCart, 
-  ChevronRight, Calculator, AlertCircle, Info, Send, Settings, X
+  ChevronRight, AlertCircle, Send, Settings, X
 } from 'lucide-react'
 import { 
   Input, Select, Button, Card, Badge
@@ -128,6 +128,10 @@ export default function NuevaSolicitudPage() {
       alert('Selecciona el tipo de solicitud')
       return
     }
+    if (quotationFiles.length === 0) {
+      alert('Debes adjuntar al menos una cotización')
+      return
+    }
 
     try {
       setIsSaving(true)
@@ -184,7 +188,7 @@ export default function NuevaSolicitudPage() {
     }
   }
 
-  const totalAmount = itemsArray.reduce((sum: number, i: any) => sum + (i.unitCost * i.requestedQuantity), 0)
+  const totalQuantity = itemsArray.reduce((sum: number, i: any) => sum + i.requestedQuantity, 0)
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -362,19 +366,20 @@ export default function NuevaSolicitudPage() {
                             if (skuValue && skuValue.length >= 3 && selectedCompany) {
                               try {
                                 const token = localStorage.getItem('accessToken')
-                                const res = await fetch(`/api/products?companyId=${selectedCompany}&sku=${skuValue}`, {
+                                const res = await fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(skuValue)}`, {
                                   headers: { Authorization: `Bearer ${token}` }
                                 })
                                 const data = await res.json()
-                                if (data.success && data.data.length > 0) {
-                                  const existing = data.data[0]
-                                  if (confirm(`Producto "${existing.name}" ya existe en inventario con SKU ${existing.sku}. ¿Deseas usar los datos existentes?`)) {
-                                    updateItem(item.tempId, 'productId', existing.id)
-                                    updateItem(item.tempId, 'productName', existing.name)
-                                    updateItem(item.tempId, 'category', existing.category?.name || '')
-                                    updateItem(item.tempId, 'currentStock', existing.stock || 0)
-                                    updateItem(item.tempId, 'unitCost', existing.cost || 0)
-                                  }
+                                const matches = data.success
+                                  ? (Array.isArray(data.data?.data) ? data.data.data : Array.isArray(data.data) ? data.data : [])
+                                  : []
+                                if (matches.length > 0) {
+                                  const existing = matches[0]
+                                  updateItem(item.tempId, 'productId', existing.id)
+                                  updateItem(item.tempId, 'productName', existing.name)
+                                  updateItem(item.tempId, 'category', existing.category?.name || '')
+                                  updateItem(item.tempId, 'currentStock', existing.stock || 0)
+                                  updateItem(item.tempId, 'unitCost', existing.cost || 0)
                                 }
                               } catch (err) {
                                 console.error('Error checking SKU:', err)
@@ -396,7 +401,7 @@ export default function NuevaSolicitudPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoría</label>
                         <Input 
@@ -461,7 +466,7 @@ export default function NuevaSolicitudPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="hidden">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Última Venta</label>
                         <Input 
@@ -499,7 +504,7 @@ export default function NuevaSolicitudPage() {
                       </div>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex justify-between items-center">
+                    <div className="hidden">
                       <div className="space-y-1">
                         <p className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Subtotal Estimado</p>
                         <p className="text-2xl font-black text-blue-600">{formData.currency === 'NIO' ? 'C$' : '$'}{(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
@@ -677,12 +682,12 @@ export default function NuevaSolicitudPage() {
               </div>
               <div className="flex justify-between items-center opacity-80 text-sm">
                 <span>Cant. Total</span>
-                <span className="font-bold">{items.reduce((sum, i) => sum + i.requestedQuantity, 0)}</span>
+                <span className="font-bold">{totalQuantity}</span>
               </div>
               <div className="pt-4 mt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
-                  <span className="text-sm font-bold">TOTAL ESTIMADO</span>
-                  <p className="text-3xl font-black">{formData.currency === 'NIO' ? 'C$' : '$'}{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  <span className="text-sm font-bold">PRECIO FINAL</span>
+                  <p className="text-sm font-black text-right">Se define al aprobar cotizaciÃ³n</p>
                 </div>
               </div>
             </div>
@@ -799,3 +804,4 @@ export default function NuevaSolicitudPage() {
     </div>
   )
 }
+

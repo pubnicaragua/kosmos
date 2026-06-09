@@ -30,10 +30,14 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false)
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [quotationUrl, setQuotationUrl] = useState('')
+  const [selectedQuotationUrl, setSelectedQuotationUrl] = useState('')
+  const [supplierName, setSupplierName] = useState('')
+  const [finalAmount, setFinalAmount] = useState('')
   const [purchaseOrderUrl, setPurchaseOrderUrl] = useState('')
   const [evidenceUrl, setEvidenceUrl] = useState('')
   const [isUploadingSupport, setIsUploadingSupport] = useState<'quotation' | 'purchase' | 'evidence' | null>(null)
@@ -55,6 +59,9 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       if (data.success) {
         setRequest(data.data)
         setQuotationUrl(data.data.quotationUrl || '')
+        setSelectedQuotationUrl(data.data.selectedQuotationUrl || data.data.quotationUrl || '')
+        setSupplierName(data.data.supplierName || '')
+        setFinalAmount(data.data.finalAmount != null ? String(data.data.finalAmount) : '')
         setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
         setEvidenceUrl(data.data.evidenceUrl || '')
         const draft = Object.fromEntries(
@@ -113,9 +120,13 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       if (data.success) {
         setRequest(data.data)
         setIsRejectModalOpen(false)
+        setIsApproveModalOpen(false)
         setIsPurchaseModalOpen(false)
         setIsReceiveModalOpen(false)
         setQuotationUrl(data.data.quotationUrl || '')
+        setSelectedQuotationUrl(data.data.selectedQuotationUrl || data.data.quotationUrl || '')
+        setSupplierName(data.data.supplierName || '')
+        setFinalAmount(data.data.finalAmount != null ? String(data.data.finalAmount) : '')
         setPurchaseOrderUrl(data.data.purchaseOrderUrl || '')
         setEvidenceUrl(data.data.evidenceUrl || '')
         const draft = Object.fromEntries(
@@ -141,6 +152,19 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         currentUser?.role === 'ADMIN' ||
         currentUser?.role === 'MANAGER')
   )
+
+  const quotationOptions = Array.isArray(request?.quotationFiles)
+    ? request.quotationFiles.filter((url: any) => typeof url === 'string' && url.trim())
+    : request?.quotationUrl
+      ? [request.quotationUrl]
+      : []
+  const approvedAmount = Number(request?.finalAmount || 0)
+  const displayAmount = approvedAmount > 0
+    ? approvedAmount
+    : request?.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0) || 0
+  const totalRequestedQuantity = request?.items.reduce((sum: number, i: any) => sum + (i.requestedQuantity || 0), 0) || 0
+  const canAdvanceRequest = canApprove && request?.requestedBy !== currentUser?.id
+  const canReceiveRequest = canAdvanceRequest && request?.approvedBy !== currentUser?.id
 
   const handlePrint = () => {
     window.print()
@@ -220,7 +244,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           <Button variant="outline" className="font-bold rounded-xl border-slate-200" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" /> IMPRIMIR
           </Button>
-          {request.status === 'PENDIENTE' && canApprove && (
+          {request.status === 'PENDIENTE' && canAdvanceRequest && (
             <>
               <Button 
                 onClick={() => setIsRejectModalOpen(true)}
@@ -231,7 +255,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                 RECHAZAR
               </Button>
               <Button 
-                onClick={() => updateStatus('APROBADA')}
+                onClick={() => setIsApproveModalOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 font-bold rounded-xl px-8 shadow-lg shadow-blue-100"
                 disabled={isUpdating}
               >
@@ -239,7 +263,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               </Button>
             </>
           )}
-          {request.status === 'APROBADA' && canApprove && (
+          {request.status === 'APROBADA' && canAdvanceRequest && (
             <Button 
               onClick={() => setIsPurchaseModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl px-8 shadow-lg shadow-indigo-100"
@@ -248,7 +272,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               MARCAR COMO COMPRADO
             </Button>
           )}
-          {request.status === 'COMPRADO' && canApprove && (
+          {request.status === 'COMPRADO' && canReceiveRequest && (
             <Button 
               onClick={() => setIsReceiveModalOpen(true)}
               className="bg-green-600 hover:bg-green-700 font-bold rounded-xl px-8 shadow-lg shadow-green-100"
@@ -281,9 +305,11 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   </div>
                 </div>
                 <div className="text-right space-y-2">
-                  <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">Monto Estimado</p>
+                  <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">{approvedAmount > 0 ? 'Monto Aprobado' : 'Monto Pendiente'}</p>
                   <p className="text-4xl font-black text-blue-400">
-                    {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    {approvedAmount > 0
+                      ? `${request.currency === 'NIO' ? 'C$' : '$'}${displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                      : 'Pendiente'}
                   </p>
                 </div>
               </div>
@@ -325,6 +351,36 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               </div>
 
               <div className="h-px bg-slate-100" />
+
+              {approvedAmount > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Proveedor</p>
+                    <p className="font-bold text-blue-900">{request.supplierName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Precio final</p>
+                    <p className="font-black text-blue-900">
+                      {request.currency === 'NIO' ? 'C$' : '$'}{approvedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Cotizacion aprobada</p>
+                    {request.selectedQuotationUrl || request.quotationUrl ? (
+                      <a
+                        href={request.selectedQuotationUrl || request.quotationUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-sm font-bold text-blue-700 hover:text-blue-900"
+                      >
+                        Ver archivo <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <p className="font-bold text-blue-900">N/A</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-6">
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Productos Solicitados</h3>
@@ -370,7 +426,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                           <td className="px-6 py-4 text-right font-medium text-slate-600">
                             {item.monthlyAverage?.toFixed(1) || '0.0'}
                           </td>
-                          <td className="px-6 py-4 text-right font-black text-slate-900">{request.currency === 'NIO' ? 'C$' : '$'}{(item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                          <td className="px-6 py-4 text-right font-black text-slate-900">{request.currency === 'NIO' ? 'C$' : '$'}{(approvedAmount > 0 && totalRequestedQuantity > 0 ? (displayAmount * (item.requestedQuantity || 0)) / totalRequestedQuantity : item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -485,6 +541,77 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={isApproveModalOpen}
+        onClose={() => setIsApproveModalOpen(false)}
+        title="Aprobar solicitud"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Cotización seleccionada *</label>
+            <select
+              value={selectedQuotationUrl}
+              onChange={(e) => setSelectedQuotationUrl(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            >
+              <option value="">Seleccionar cotización...</option>
+              {quotationOptions.map((url: string, index: number) => (
+                <option key={url} value={url}>
+                  Cotización {index + 1}
+                </option>
+              ))}
+            </select>
+            {selectedQuotationUrl && (
+              <a href={selectedQuotationUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-600">
+                Ver cotización <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Proveedor *</label>
+            <input
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+              placeholder="Nombre del proveedor"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Precio final aprobado *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={finalAmount}
+              onChange={(e) => setFinalAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setIsApproveModalOpen(false)}>CANCELAR</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
+              disabled={isUpdating}
+              onClick={() => {
+                if (!selectedQuotationUrl || !supplierName.trim() || !(Number(finalAmount) > 0)) {
+                  alert('Selecciona cotización, proveedor y precio final')
+                  return
+                }
+                updateStatus('APROBADA', {
+                  selectedQuotationUrl,
+                  quotationUrl: selectedQuotationUrl,
+                  supplierName: supplierName.trim(),
+                  finalAmount: Number(finalAmount),
+                })
+              }}
+            >
+              CONFIRMAR APROBACIÓN
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={isPurchaseModalOpen}
@@ -776,7 +903,9 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
           <tbody>
             {request.items.map((item: any) => {
               const qty = item.requestedQuantity || 1;
-              const total = item.totalCost || 0;
+              const total = approvedAmount > 0 && totalRequestedQuantity > 0
+                ? (displayAmount * qty) / totalRequestedQuantity
+                : item.totalCost || 0;
               const unitPrice = total / qty;
               return (
                 <tr key={item.id} className="text-center h-8">
@@ -803,7 +932,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
             <div className="flex border border-[#005ea2] border-t-0">
               <div className="flex-1 p-2 text-right">SUBTOTAL</div>
               <div className="w-24 p-2 text-right border-l border-[#005ea2]">
-                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {request.currency === 'NIO' ? 'C$' : '$'}{displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
             <div className="flex border border-[#005ea2] border-t-0">
@@ -815,7 +944,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
             <div className="flex border border-[#005ea2] border-t-0">
               <div className="flex-1 p-2 text-right font-bold uppercase">TOTAL</div>
               <div className="w-24 p-2 text-right border-l border-[#005ea2] font-bold bg-gray-100">
-                {request.currency === 'NIO' ? 'C$' : '$'}{request.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {request.currency === 'NIO' ? 'C$' : '$'}{displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </div>
             </div>
           </div>
