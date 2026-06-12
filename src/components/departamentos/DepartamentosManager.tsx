@@ -17,6 +17,7 @@ interface Department {
     userId: string
     role: string | null
     isApprover: boolean
+    isReceiver: boolean
   }[]
   _count: {
     userDepartments: number
@@ -43,7 +44,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    userAssignments: [] as { userId: string; role: string; isApprover: boolean }[],
+    userAssignments: [] as { userId: string; role: string; isApprover: boolean; isReceiver: boolean }[],
   })
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
           userId: ud.userId,
           role: ud.role || '',
           isApprover: ud.isApprover,
+          isReceiver: ud.isReceiver || false,
         })),
       })
     } else {
@@ -166,7 +168,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const addUserAssignment = () => {
     setFormData(prev => ({
       ...prev,
-      userAssignments: [...prev.userAssignments, { userId: '', role: '', isApprover: false }],
+      userAssignments: [...prev.userAssignments, { userId: '', role: '', isApprover: false, isReceiver: false }],
     }))
   }
 
@@ -244,6 +246,12 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                   {dept.userDepartments.filter(ud => ud.isApprover).length} aprobadores
                 </span>
               </div>
+              <div className="flex items-center gap-1">
+                <UserCheck className="w-4 h-4 text-blue-500" />
+                <span>
+                  {dept.userDepartments.filter(ud => ud.isReceiver).length} receptores
+                </span>
+              </div>
             </div>
 
             {dept._count.purchaseRequests > 0 && (
@@ -267,6 +275,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingDept ? 'Editar Departamento' : 'Nuevo Departamento'}
+        size="xl"
       >
         <div className="space-y-4">
           <Input
@@ -325,22 +334,35 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                     className="w-full md:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
                   />
 
-                  <div className="flex items-center justify-between w-full md:w-auto">
-                    <label className="flex items-center gap-1 text-sm whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={ua.isApprover}
-                        onChange={e =>
-                          updateUserAssignment(index, 'isApprover', e.target.checked)
-                        }
-                        className="rounded"
-                      />
-                      Aprobador
-                    </label>
+                  <div className="flex items-center justify-between w-full md:w-auto flex-1 gap-4">
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={ua.isApprover}
+                          onChange={e =>
+                            updateUserAssignment(index, 'isApprover', e.target.checked)
+                          }
+                          className="rounded"
+                        />
+                        Aprobador
+                      </label>
+                      <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={ua.isReceiver}
+                          onChange={e =>
+                            updateUserAssignment(index, 'isReceiver', e.target.checked)
+                          }
+                          className="rounded"
+                        />
+                        Receptor
+                      </label>
+                    </div>
 
                     <button
                       onClick={() => removeUserAssignment(index)}
-                      className="p-1 hover:bg-gray-200 rounded"
+                      className="p-1 hover:bg-gray-200 rounded ml-auto"
                     >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>

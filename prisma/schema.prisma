@@ -951,6 +951,7 @@ model UserDepartment {
   departmentId String     @map("department_id")
   role         String?
   isApprover   Boolean    @default(false) @map("is_approver")
+  isReceiver   Boolean    @default(false) @map("is_receiver")
   createdAt    DateTime   @default(now()) @map("created_at")
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 

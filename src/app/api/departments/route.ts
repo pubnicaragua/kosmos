@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
             userId: true,
             role: true,
             isApprover: true,
+            isReceiver: true,
           },
         },
         _count: {
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
                 userId: ua.userId,
                 role: ua.role || null,
                 isApprover: ua.isApprover || false,
+                isReceiver: ua.isReceiver || false,
               })),
             }
           : undefined,

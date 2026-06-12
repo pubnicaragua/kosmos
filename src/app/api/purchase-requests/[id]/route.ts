@@ -50,6 +50,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       : null
     const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
 
+    const isDeptReceiver = departmentId
+      ? await prisma.userDepartment.findFirst({
+          where: {
+            departmentId,
+            userId: decoded.userId,
+            isReceiver: true,
+          },
+        })
+      : null
+    const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
+
     const [requestedByUser, approvedByUser] = await Promise.all([
       request.requestedBy
         ? prisma.user.findUnique({ where: { id: request.requestedBy }, select: { id: true, name: true } })
@@ -67,6 +78,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         requestedByName: requestedByUser?.name || null,
         approvedByName: approvedByUser?.name || null,
         canApprove,
+        canReceive,
       }
     })
   } catch (error) {
@@ -128,8 +140,23 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       : null
     const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
 
-    if (status && !canApprove) {
+    const isDeptReceiver = currentDepartmentId
+      ? await prisma.userDepartment.findFirst({
+          where: {
+            departmentId: currentDepartmentId,
+            userId: decoded.userId,
+            isReceiver: true,
+          },
+        })
+      : null
+    const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
+
+    if (status && !['RECIBIDO', 'COMPRADO'].includes(status) && !canApprove) {
       return NextResponse.json({ success: false, error: 'No tienes permisos para aprobar esta solicitud' }, { status: 403 })
+    }
+
+    if (status === 'RECIBIDO' && !canReceive) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos de Receptor en este departamento' }, { status: 403 })
     }
 
     if (status && currentRequest.requestedBy === decoded.userId) {

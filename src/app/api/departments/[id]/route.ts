@@ -83,6 +83,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             userId: ua.userId,
             role: ua.role || null,
             isApprover: ua.isApprover || false,
+            isReceiver: ua.isReceiver || false,
           })),
         })
       }
