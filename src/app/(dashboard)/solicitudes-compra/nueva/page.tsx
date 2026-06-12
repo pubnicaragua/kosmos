@@ -365,12 +365,25 @@ export default function NuevaSolicitudPage() {
                           onChange={async (e) => {
                             const skuValue = e.target.value
                             
-                            // Synchronously update SKU and unlock fields by clearing productId
-                            setItems(prev => prev.map(i => i.tempId === item.tempId ? { 
-                              ...i, 
-                              sku: skuValue,
-                              productId: '' 
-                            } : i))
+                            // Synchronously update SKU and unlock/clear fields if it was an autofilled product
+                            setItems(prev => prev.map(i => {
+                              if (i.tempId === item.tempId) {
+                                if (i.productId) {
+                                  return {
+                                    ...i,
+                                    sku: skuValue,
+                                    productId: '',
+                                    productName: '',
+                                    description: '',
+                                    category: '',
+                                    currentStock: 0,
+                                    unitCost: 0
+                                  }
+                                }
+                                return { ...i, sku: skuValue }
+                              }
+                              return i
+                            }))
                             
                             if (skuValue && skuValue.length >= 3 && selectedCompany) {
                               try {
