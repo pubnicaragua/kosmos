@@ -123,11 +123,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
     }
 
-    const moduleAccess = await getModuleAccess(decoded.userId, currentRequest.companyId, 'solicitudes-compra')
-    if (!moduleAccess.canEdit) {
-      return NextResponse.json({ success: false, error: 'No tienes permisos para editar solicitudes de compra' }, { status: 403 })
-    }
-
     const currentDepartmentId = currentRequest.departmentId
     const isDeptApprover = currentDepartmentId
       ? await prisma.userDepartment.findFirst({
@@ -150,6 +145,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         })
       : null
     const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
+
+    const moduleAccess = await getModuleAccess(decoded.userId, currentRequest.companyId, 'solicitudes-compra')
+    if (!moduleAccess.canEdit && !canApprove && !canReceive) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para editar solicitudes de compra' }, { status: 403 })
+    }
 
     if (status && status !== 'RECIBIDO' && !canApprove) {
       return NextResponse.json({ success: false, error: 'No tienes permisos para realizar esta acción' }, { status: 403 })
