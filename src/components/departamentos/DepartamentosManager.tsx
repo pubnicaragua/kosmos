@@ -303,11 +303,11 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
 
             <div className="space-y-2">
               {formData.userAssignments.map((ua, index) => (
-                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                <div key={index} className="flex flex-wrap md:flex-nowrap items-center gap-2 p-2 bg-gray-50 rounded">
                   <select
                     value={ua.userId}
                     onChange={e => updateUserAssignment(index, 'userId', e.target.value)}
-                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="flex-1 min-w-[150px] px-2 py-1 border border-gray-300 rounded text-sm"
                   >
                     <option value="">Seleccionar usuario</option>
                     {users.map(user => (
@@ -322,27 +322,29 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                     value={ua.role}
                     onChange={e => updateUserAssignment(index, 'role', e.target.value)}
                     placeholder="Rol"
-                    className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-full md:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
                   />
 
-                  <label className="flex items-center gap-1 text-sm whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={ua.isApprover}
-                      onChange={e =>
-                        updateUserAssignment(index, 'isApprover', e.target.checked)
-                      }
-                      className="rounded"
-                    />
-                    Aprobador
-                  </label>
+                  <div className="flex items-center justify-between w-full md:w-auto">
+                    <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={ua.isApprover}
+                        onChange={e =>
+                          updateUserAssignment(index, 'isApprover', e.target.checked)
+                        }
+                        className="rounded"
+                      />
+                      Aprobador
+                    </label>
 
-                  <button
-                    onClick={() => removeUserAssignment(index)}
-                    className="p-1 hover:bg-gray-200 rounded"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </button>
+                    <button
+                      onClick={() => removeUserAssignment(index)}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
+                  </div>
                 </div>
               ))}
 
