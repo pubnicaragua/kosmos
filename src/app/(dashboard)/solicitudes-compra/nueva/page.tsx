@@ -117,7 +117,7 @@ export default function NuevaSolicitudPage() {
   }
 
   const updateItem = (tempId: number, field: keyof RequestItem, value: any) => {
-    setItems(itemsArray.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
+    setItems(prev => prev.map(item => item.tempId === tempId ? { ...item, [field]: value } : item))
   }
 
 
@@ -373,13 +373,18 @@ export default function NuevaSolicitudPage() {
                                 const matches = data.success
                                   ? (Array.isArray(data.data?.data) ? data.data.data : Array.isArray(data.data) ? data.data : [])
                                   : []
-                                if (matches.length > 0) {
-                                  const existing = matches[0]
-                                  updateItem(item.tempId, 'productId', existing.id)
-                                  updateItem(item.tempId, 'productName', existing.name)
-                                  updateItem(item.tempId, 'category', existing.category?.name || '')
-                                  updateItem(item.tempId, 'currentStock', existing.stock || 0)
-                                  updateItem(item.tempId, 'unitCost', existing.cost || 0)
+                                
+                                const exactMatch = matches.find((m: any) => m.sku?.toLowerCase() === skuValue.toLowerCase())
+                                
+                                if (exactMatch) {
+                                  setItems(prev => prev.map(i => i.tempId === item.tempId ? {
+                                    ...i,
+                                    productId: exactMatch.id,
+                                    productName: exactMatch.name,
+                                    category: exactMatch.category?.name || '',
+                                    currentStock: exactMatch.stock || 0,
+                                    unitCost: exactMatch.cost || 0
+                                  } : i))
                                 }
                               } catch (err) {
                                 console.error('Error checking SKU:', err)
