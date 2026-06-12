@@ -151,8 +151,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       : null
     const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
 
-    if (status && !['RECIBIDO', 'COMPRADO'].includes(status) && !canApprove) {
-      return NextResponse.json({ success: false, error: 'No tienes permisos para aprobar esta solicitud' }, { status: 403 })
+    if (status && status !== 'RECIBIDO' && !canApprove) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para realizar esta acción' }, { status: 403 })
     }
 
     if (status === 'RECIBIDO' && !canReceive) {
