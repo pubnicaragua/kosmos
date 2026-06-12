@@ -182,9 +182,18 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const updateUserAssignment = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      userAssignments: prev.userAssignments.map((ua, i) =>
-        i === index ? { ...ua, [field]: value } : ua
-      ),
+      userAssignments: prev.userAssignments.map((ua, i) => {
+        if (i !== index) return ua
+
+        const newUa = { ...ua, [field]: value }
+        if (field === 'isApprover' && value === true) {
+          newUa.isReceiver = false
+        }
+        if (field === 'isReceiver' && value === true) {
+          newUa.isApprover = false
+        }
+        return newUa
+      }),
     }))
   }
 
