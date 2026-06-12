@@ -582,7 +582,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
             />
           </div>
           <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Precio final aprobado *</label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Precio Total Aprobado *</label>
             <input
               type="number"
               min="0"
