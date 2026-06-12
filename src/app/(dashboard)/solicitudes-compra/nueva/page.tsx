@@ -399,15 +399,20 @@ export default function NuevaSolicitudPage() {
                                 const exactMatch = matches.find((m: any) => m.sku?.toLowerCase() === skuValue.toLowerCase())
                                 
                                 if (exactMatch) {
-                                  setItems(prev => prev.map(i => i.tempId === item.tempId ? {
-                                    ...i,
-                                    productId: exactMatch.id,
-                                    productName: exactMatch.name,
-                                    description: exactMatch.description || '',
-                                    category: exactMatch.category?.name || '',
-                                    currentStock: exactMatch.stock || 0,
-                                    unitCost: exactMatch.cost || 0
-                                  } : i))
+                                  setItems(prev => prev.map(i => {
+                                    if (i.tempId === item.tempId && i.sku === skuValue) {
+                                      return {
+                                        ...i,
+                                        productId: exactMatch.id,
+                                        productName: exactMatch.name,
+                                        description: exactMatch.description || '',
+                                        category: exactMatch.category?.name || '',
+                                        currentStock: exactMatch.stock || 0,
+                                        unitCost: exactMatch.cost || 0
+                                      }
+                                    }
+                                    return i
+                                  }))
                                 }
                               } catch (err) {
                                 console.error('Error checking SKU:', err)
