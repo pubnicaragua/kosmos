@@ -227,18 +227,18 @@ export default function SolicitudesCompraPage() {
           </div>
           <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
             <Button 
-              variant={view === 'kanban' ? 'secondary' : 'ghost'} 
+              variant="ghost"
               size="sm" 
               onClick={() => setView('kanban')}
-              className={`rounded-lg h-9 font-bold text-[11px] uppercase tracking-wider ${view === 'kanban' ? 'bg-white shadow-sm' : ''}`}
+              className={`rounded-lg h-9 font-bold text-[11px] uppercase tracking-wider ${view === 'kanban' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
               KANBAN
             </Button>
             <Button 
-              variant={view === 'list' ? 'secondary' : 'ghost'} 
+              variant="ghost"
               size="sm" 
               onClick={() => setView('list')}
-              className={`rounded-lg h-9 font-bold text-[11px] uppercase tracking-wider ${view === 'list' ? 'bg-white shadow-sm' : ''}`}
+              className={`rounded-lg h-9 font-bold text-[11px] uppercase tracking-wider ${view === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
             >
               LISTA
             </Button>
