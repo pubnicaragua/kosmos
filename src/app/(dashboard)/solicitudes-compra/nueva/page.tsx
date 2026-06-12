@@ -405,9 +405,22 @@ export default function NuevaSolicitudPage() {
                           placeholder="Ej: Laptop Dell Inspiron 15"
                           value={item.productName}
                           onChange={(e) => updateItem(item.tempId, 'productName', e.target.value)}
+                          disabled={!!item.productId}
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descripción</label>
+                      <Input 
+                        type="text"
+                        placeholder="Descripción adicional, especificaciones, etc."
+                        value={item.description || ''}
+                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                        disabled={!!item.productId}
+                        className="bg-white border-slate-200 rounded-xl"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -418,6 +431,7 @@ export default function NuevaSolicitudPage() {
                           placeholder="SSD, RAM, Cámara, etc."
                           value={item.category}
                           onChange={(e) => updateItem(item.tempId, 'category', e.target.value)}
+                          disabled={!!item.productId}
                           className="bg-white border-slate-200 rounded-xl"
                         />
                       </div>
@@ -428,6 +442,7 @@ export default function NuevaSolicitudPage() {
                           min="0"
                           value={item.currentStock}
                           onChange={(e) => updateItem(item.tempId, 'currentStock', parseInt(e.target.value) || 0)}
+                          disabled={!!item.productId}
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
                       </div>
@@ -475,16 +490,7 @@ export default function NuevaSolicitudPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descripción</label>
-                      <Input 
-                        type="text"
-                        placeholder="Descripción adicional, especificaciones, etc."
-                        value={item.description || ''}
-                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
-                        className="bg-white border-slate-200 rounded-xl"
-                      />
-                    </div>
+
 
                     <div className="hidden">
                       <div className="space-y-1.5">
