@@ -364,7 +364,13 @@ export default function NuevaSolicitudPage() {
                           value={item.sku}
                           onChange={async (e) => {
                             const skuValue = e.target.value
-                            updateItem(item.tempId, 'sku', skuValue)
+                            
+                            // Synchronously update SKU and unlock fields by clearing productId
+                            setItems(prev => prev.map(i => i.tempId === item.tempId ? { 
+                              ...i, 
+                              sku: skuValue,
+                              productId: '' 
+                            } : i))
                             
                             if (skuValue && skuValue.length >= 3 && selectedCompany) {
                               try {
