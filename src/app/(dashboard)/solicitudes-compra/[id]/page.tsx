@@ -553,11 +553,14 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       >
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Cotización seleccionada *</label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">
+              Cotización seleccionada {quotationOptions.length > 0 ? '*' : '(No hay archivos en la solicitud)'}
+            </label>
             <select
               value={selectedQuotationUrl}
               onChange={(e) => setSelectedQuotationUrl(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={quotationOptions.length === 0}
             >
               <option value="">Seleccionar cotización...</option>
               {quotationOptions.map((url: string, index: number) => (
@@ -599,8 +602,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl"
               disabled={isUpdating}
               onClick={() => {
-                if (!selectedQuotationUrl || !supplierName.trim() || !(Number(finalAmount) > 0)) {
-                  alert('Selecciona cotización, proveedor y precio final')
+                if ((quotationOptions.length > 0 && !selectedQuotationUrl) || !supplierName.trim() || !(Number(finalAmount) > 0)) {
+                  alert('Revisa los campos obligatorios (proveedor, precio y cotización si aplica)')
                   return
                 }
                 updateStatus('APROBADA', {

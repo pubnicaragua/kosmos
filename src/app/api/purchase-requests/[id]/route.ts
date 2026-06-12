@@ -174,7 +174,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           ? [currentRequest.quotationUrl]
           : []
       const chosenQuotation = selectedQuotationUrl || quotationUrl
-      if (!chosenQuotation || !quotationOptions.includes(chosenQuotation)) {
+      if (quotationOptions.length > 0 && (!chosenQuotation || !quotationOptions.includes(chosenQuotation))) {
         return NextResponse.json({ success: false, error: 'Debes seleccionar una cotización válida' }, { status: 400 })
       }
       if (!supplierName || typeof supplierName !== 'string' || !supplierName.trim()) {
