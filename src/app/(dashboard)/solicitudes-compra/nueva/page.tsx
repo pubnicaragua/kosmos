@@ -21,6 +21,7 @@ interface RequestItem {
   currentStock: number
   requestedQuantity: number
   reason: string
+  description: string
   unitCost: number
   monthlyAverage: number
   lastSaleDate: string
@@ -80,6 +81,7 @@ export default function NuevaSolicitudPage() {
       currentStock: 0, 
       requestedQuantity: 1, 
       reason: 'Agotado',
+      description: '',
       unitCost: 0,
       monthlyAverage: 0,
       lastSaleDate: '',
@@ -89,7 +91,7 @@ export default function NuevaSolicitudPage() {
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, requestedQuantity: 1, reason: 'Agotado', unitCost: 0, monthlyAverage: 0, lastSaleDate: '', currency: 'USD' }]
+    if (!items || !Array.isArray(items)) return [{ tempId: Date.now(), productId: '', productName: '', sku: '', category: '', currentStock: 0, requestedQuantity: 1, reason: 'Agotado', description: '', unitCost: 0, monthlyAverage: 0, lastSaleDate: '', currency: 'USD' }]
     return items
   }, [items])
 
@@ -103,6 +105,7 @@ export default function NuevaSolicitudPage() {
       currentStock: 0, 
       requestedQuantity: 1, 
       reason: 'Agotado',
+      description: '',
       unitCost: 0,
       monthlyAverage: 0,
       lastSaleDate: '',
@@ -381,6 +384,7 @@ export default function NuevaSolicitudPage() {
                                     ...i,
                                     productId: exactMatch.id,
                                     productName: exactMatch.name,
+                                    description: exactMatch.description || '',
                                     category: exactMatch.category?.name || '',
                                     currentStock: exactMatch.stock || 0,
                                     unitCost: exactMatch.cost || 0
@@ -469,6 +473,17 @@ export default function NuevaSolicitudPage() {
                           className="bg-white border-slate-200 rounded-xl"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descripción</label>
+                      <Input 
+                        type="text"
+                        placeholder="Descripción adicional, especificaciones, etc."
+                        value={item.description || ''}
+                        onChange={(e) => updateItem(item.tempId, 'description', e.target.value)}
+                        className="bg-white border-slate-200 rounded-xl"
+                      />
                     </div>
 
                     <div className="hidden">
