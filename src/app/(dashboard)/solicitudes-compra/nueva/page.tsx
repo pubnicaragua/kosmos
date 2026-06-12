@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, Plus, Trash2, Save, ShoppingCart, 
-  ChevronRight, AlertCircle, Send, Settings, X
+  ChevronRight, AlertCircle, Send, Settings, X, Eraser
 } from 'lucide-react'
 import { 
   Input, Select, Button, Card, Badge
@@ -347,12 +347,35 @@ export default function NuevaSolicitudPage() {
             <div className="space-y-6">
               {itemsArray.map((item: any, index: number) => (
                 <div key={item.tempId} className="p-6 bg-slate-50/50 rounded-2xl border border-slate-100 relative group transition-all hover:bg-white hover:shadow-md">
-                  <button 
-                    onClick={() => removeItem(item.tempId)}
-                    className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setItems(prev => prev.map(i => i.tempId === item.tempId ? {
+                          ...i,
+                          sku: '',
+                          productId: '',
+                          productName: '',
+                          description: '',
+                          category: '',
+                          currentStock: 0,
+                          unitCost: 0
+                        } : i))
+                      }}
+                      className="p-2 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all"
+                      title="Limpiar campos"
+                    >
+                      <Eraser className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => removeItem(item.tempId)}
+                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      title="Eliminar producto"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                   
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
