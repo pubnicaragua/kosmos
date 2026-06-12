@@ -345,25 +345,27 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
 
                   <div className="flex items-center justify-between w-full md:w-auto flex-1 gap-4">
                     <div className="flex gap-4">
-                      <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                      <label className={`flex items-center gap-1 text-sm whitespace-nowrap ${ua.isReceiver ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <input
                           type="checkbox"
                           checked={ua.isApprover}
                           onChange={e =>
                             updateUserAssignment(index, 'isApprover', e.target.checked)
                           }
-                          className="rounded"
+                          disabled={ua.isReceiver}
+                          className="rounded disabled:opacity-50"
                         />
                         Aprobador
                       </label>
-                      <label className="flex items-center gap-1 text-sm whitespace-nowrap">
+                      <label className={`flex items-center gap-1 text-sm whitespace-nowrap ${ua.isApprover ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <input
                           type="checkbox"
                           checked={ua.isReceiver}
                           onChange={e =>
                             updateUserAssignment(index, 'isReceiver', e.target.checked)
                           }
-                          className="rounded"
+                          disabled={ua.isApprover}
+                          className="rounded disabled:opacity-50"
                         />
                         Receptor
                       </label>
