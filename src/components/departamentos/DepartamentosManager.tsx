@@ -49,6 +49,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   })
   const [memberUserIds, setMemberUserIds] = useState<string[]>([])
   const [originalMemberUserIds, setOriginalMemberUserIds] = useState<string[]>([])
+  const [memberRoles, setMemberRoles] = useState<Record<string, string>>({})
   const [userToAdd, setUserToAdd] = useState('')
   const [permissionsDept, setPermissionsDept] = useState<Department | null>(null)
 
@@ -105,14 +106,20 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
         description: dept.description || '',
       })
       const memberIds = dept.userDepartments.map((ud) => ud.userId)
+      const rolesMap: Record<string, string> = {}
+      for (const ud of dept.userDepartments) {
+        if (ud.role) rolesMap[ud.userId] = ud.role
+      }
       setMemberUserIds(memberIds)
       setOriginalMemberUserIds(memberIds)
+      setMemberRoles(rolesMap)
       setUserToAdd('')
     } else {
       setEditingDept(null)
       setFormData({ name: '', description: '' })
       setMemberUserIds([])
       setOriginalMemberUserIds([])
+      setMemberRoles({})
       setUserToAdd('')
     }
     setShowModal(true)
@@ -152,6 +159,9 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
         const ops: Promise<any>[] = []
         const toAdd = memberUserIds.filter((id) => !originalMemberUserIds.includes(id))
         const toRemove = originalMemberUserIds.filter((id) => !memberUserIds.includes(id))
+        const existingByUser = new Map(
+          editingDept.userDepartments.map((ud) => [ud.userId, ud])
+        )
 
         for (const userId of toAdd) {
           ops.push(
@@ -161,6 +171,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
               body: JSON.stringify({
                 userId,
                 departmentId: editingDept.id,
+                role: memberRoles[userId] || null,
                 isApprover: false,
                 isReceiver: false,
                 isBuyer: false,
@@ -168,9 +179,6 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
             })
           )
         }
-        const existingByUser = new Map(
-          editingDept.userDepartments.map((ud) => [ud.userId, ud])
-        )
         for (const userId of toRemove) {
           const existing = existingByUser.get(userId)
           if (!existing) continue
@@ -181,6 +189,22 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
             })
           )
         }
+        for (const userId of memberUserIds) {
+          const existing = existingByUser.get(userId)
+          if (!existing) continue
+          const newRole = memberRoles[userId] || ''
+          const oldRole = existing.role || ''
+          if (newRole !== oldRole) {
+            ops.push(
+              fetch(`/api/department-assignments/${existing.id}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ role: newRole || null }),
+              })
+            )
+          }
+        }
+
         if (ops.length > 0) {
           await Promise.all(ops)
         }
@@ -382,20 +406,34 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                     return (
                       <div
                         key={uid}
-                        className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-slate-50"
+                        className="flex flex-col gap-2 rounded px-2 py-2 hover:bg-slate-50 md:flex-row md:items-center"
                       >
-                        <div>
+                        <div className="flex-1">
                           <div className="text-sm font-medium text-slate-900">
                             {u?.name ?? uid}
                           </div>
                           <div className="text-xs text-slate-500">{u?.email ?? ''}</div>
                         </div>
+                        <input
+                          type="text"
+                          value={memberRoles[uid] ?? ''}
+                          onChange={(e) =>
+                            setMemberRoles((prev) => ({ ...prev, [uid]: e.target.value }))
+                          }
+                          placeholder="Rol (ej: Coordinador, Analista...)"
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm md:w-56"
+                        />
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
                             setMemberUserIds((prev) => prev.filter((id) => id !== uid))
-                          }
-                          className="rounded p-1 text-red-600 hover:bg-red-50"
+                            setMemberRoles((prev) => {
+                              const next = { ...prev }
+                              delete next[uid]
+                              return next
+                            })
+                          }}
+                          className="self-end rounded p-1 text-red-600 hover:bg-red-50 md:self-center"
                           title="Quitar del departamento"
                         >
                           <Trash2 className="h-4 w-4" />

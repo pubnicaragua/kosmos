@@ -5,18 +5,17 @@ import { Modal } from '@/components/ui-kit/Modal'
 import { Button } from '@/components/ui-kit/Button'
 import { Save } from 'lucide-react'
 
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
 interface Assignment {
   id: string
   userId: string
   isApprover: boolean
   isReceiver: boolean
   isBuyer: boolean
+  user: {
+    id: string
+    name: string
+    email: string
+  }
 }
 
 interface Department {
@@ -42,7 +41,6 @@ export function DepartmentAssignmentsModal({
   initialDepartmentId,
 }: Props) {
   const [selectedDeptId, setSelectedDeptId] = useState<string>('')
-  const [users, setUsers] = useState<User[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [flags, setFlags] = useState<Record<string, UserFlags>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -65,7 +63,6 @@ export function DepartmentAssignmentsModal({
     if (isOpen && selectedDeptId) {
       fetchData()
     } else {
-      setUsers([])
       setAssignments({})
       setFlags({})
     }
@@ -79,15 +76,11 @@ export function DepartmentAssignmentsModal({
       const token = localStorage.getItem('accessToken')
       const headers = { Authorization: `Bearer ${token}` }
 
-      const [uRes, aRes] = await Promise.all([
-        fetch(`/api/companies/${companyId}/users`, { headers }),
-        fetch(`/api/department-assignments?companyId=${companyId}&departmentId=${selectedDeptId}`, { headers }),
-      ])
-      const [uData, aData] = await Promise.all([uRes.json(), aRes.json()])
-
-      const userList: User[] = uData.success
-        ? uData.data.map((m: any) => ({ id: m.user.id, name: m.user.name, email: m.user.email }))
-        : []
+      const aRes = await fetch(
+        `/api/department-assignments?companyId=${companyId}&departmentId=${selectedDeptId}`,
+        { headers }
+      )
+      const aData = await aRes.json()
 
       const map: Record<string, Assignment> = {}
       const initialFlags: Record<string, UserFlags> = {}
@@ -99,17 +92,15 @@ export function DepartmentAssignmentsModal({
             isApprover: a.isApprover,
             isReceiver: a.isReceiver,
             isBuyer: a.isBuyer,
+            user: a.user,
+          }
+          initialFlags[a.userId] = {
+            isApprover: a.isApprover,
+            isReceiver: a.isReceiver,
+            isBuyer: a.isBuyer,
           }
         }
       }
-      for (const u of userList) {
-        initialFlags[u.id] = {
-          isApprover: map[u.id]?.isApprover ?? false,
-          isReceiver: map[u.id]?.isReceiver ?? false,
-          isBuyer: map[u.id]?.isBuyer ?? false,
-        }
-      }
-      setUsers(userList)
       setAssignments(map)
       setFlags(initialFlags)
     } catch {
@@ -135,29 +126,14 @@ export function DepartmentAssignmentsModal({
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
       const ops: Promise<any>[] = []
-      for (const u of users) {
-        const f = flags[u.id]
+      for (const a of Object.values(assignments)) {
+        const f = flags[a.userId]
         if (!f) continue
         const hasAny = f.isApprover || f.isReceiver || f.isBuyer
-        const existing = assignments[u.id]
 
-        if (hasAny && !existing) {
+        if (hasAny) {
           ops.push(
-            fetch('/api/department-assignments', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({
-                userId: u.id,
-                departmentId: selectedDeptId,
-                isApprover: f.isApprover,
-                isReceiver: f.isReceiver,
-                isBuyer: f.isBuyer,
-              }),
-            })
-          )
-        } else if (hasAny && existing) {
-          ops.push(
-            fetch(`/api/department-assignments/${existing.id}`, {
+            fetch(`/api/department-assignments/${a.id}`, {
               method: 'PUT',
               headers,
               body: JSON.stringify({
@@ -167,9 +143,9 @@ export function DepartmentAssignmentsModal({
               }),
             })
           )
-        } else if (!hasAny && existing) {
+        } else {
           ops.push(
-            fetch(`/api/department-assignments/${existing.id}`, {
+            fetch(`/api/department-assignments/${a.id}`, {
               method: 'DELETE',
               headers,
             })
@@ -233,8 +209,13 @@ export function DepartmentAssignmentsModal({
 
         {isLoading ? (
           <div className="py-8 text-center text-sm text-slate-500">Cargando...</div>
-        ) : users.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-500">No hay usuarios en esta empresa.</div>
+        ) : Object.keys(assignments).length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+            <p className="text-sm font-medium text-slate-700">No hay usuarios en este departamento</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Agrega usuarios desde el modal de Editar Departamento para poder asignarles permisos.
+            </p>
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
@@ -255,19 +236,23 @@ export function DepartmentAssignmentsModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map((u) => {
-                  const f = flags[u.id] ?? { isApprover: false, isReceiver: false, isBuyer: false }
+                {Object.values(assignments).map((a) => {
+                  const f = flags[a.userId] ?? {
+                    isApprover: a.isApprover,
+                    isReceiver: a.isReceiver,
+                    isBuyer: a.isBuyer,
+                  }
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/50">
+                    <tr key={a.id} className="hover:bg-slate-50/50">
                       <td className="px-3 py-2">
-                        <div className="font-medium text-slate-900">{u.name}</div>
-                        <div className="text-xs text-slate-500">{u.email}</div>
+                        <div className="font-medium text-slate-900">{a.user.name}</div>
+                        <div className="text-xs text-slate-500">{a.user.email}</div>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <input
                           type="checkbox"
                           checked={f.isApprover}
-                          onChange={() => toggle(u.id, 'isApprover')}
+                          onChange={() => toggle(a.userId, 'isApprover')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -275,7 +260,7 @@ export function DepartmentAssignmentsModal({
                         <input
                           type="checkbox"
                           checked={f.isReceiver}
-                          onChange={() => toggle(u.id, 'isReceiver')}
+                          onChange={() => toggle(a.userId, 'isReceiver')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -283,7 +268,7 @@ export function DepartmentAssignmentsModal({
                         <input
                           type="checkbox"
                           checked={f.isBuyer}
-                          onChange={() => toggle(u.id, 'isBuyer')}
+                          onChange={() => toggle(a.userId, 'isBuyer')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -299,7 +284,10 @@ export function DepartmentAssignmentsModal({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={saving || isLoading || users.length === 0}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || isLoading || Object.keys(assignments).length === 0}
+          >
             <Save className="mr-2 h-4 w-4" />
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>
