@@ -22,7 +22,7 @@ export async function PUT(
       return errorResponse('Token inválido o expirado', 401)
     }
 
-    // Verificar que el usuario que hace la petición es SUPER_ADMIN
+    // Verificar que el usuario que hace la petición es SUPER_ADMIN o ADMIN
     const requestingUser = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
@@ -34,12 +34,12 @@ export async function PUT(
       return errorResponse('Usuario no encontrado', 404)
     }
 
-    const isSuperAdmin = requestingUser.userCompanies.some(
-      (uc) => uc.role === 'SUPER_ADMIN'
+    const hasPermission = requestingUser.userCompanies.some(
+      (uc) => uc.role === 'SUPER_ADMIN' || uc.role === 'ADMIN'
     )
 
-    if (!isSuperAdmin) {
-      return errorResponse('Solo SUPER_ADMIN puede cambiar contraseñas', 403)
+    if (!hasPermission) {
+      return errorResponse('Solo SUPER_ADMIN o ADMIN puede cambiar contraseñas', 403)
     }
 
     const body = await request.json()
