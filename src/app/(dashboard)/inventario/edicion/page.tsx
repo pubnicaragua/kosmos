@@ -6,6 +6,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { Input } from '@/components/ui-kit/Input'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
+import { EditProductModal, type EditProductTarget } from '@/components/inventory/EditProductModal'
 
 interface ProductRow {
   id: string
@@ -54,6 +55,7 @@ function InventarioEdicionPageContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [skuWarning, setSkuWarning] = useState<{ index: number; product: any } | null>(null)
   const [checkingSku, setCheckingSku] = useState<number | null>(null)
+  const [editingProduct, setEditingProduct] = useState<EditProductTarget | null>(null)
   const isService = productType === 'SERVICIO'
   const isEditMode = Boolean(editProductId)
 
@@ -296,13 +298,19 @@ function InventarioEdicionPageContent() {
 
   const handleSkuWarningAction = (action: 'increase' | 'edit' | 'ignore') => {
     if (!skuWarning) return
-    
+
     if (action === 'increase') {
       // Redirect to edit page with quantity increase mode
       router.push(`/inventario/edicion?edit=${skuWarning.product.id}&action=increase`)
     } else if (action === 'edit') {
-      // Redirect to edit the existing product
-      router.push(`/inventario/edicion?edit=${skuWarning.product.id}`)
+      // Open the edit modal for the existing product with this SKU
+      setEditingProduct({
+        id: skuWarning.product.id,
+        name: skuWarning.product.name,
+        sku: skuWarning.product.sku,
+        stock: skuWarning.product.stock,
+        price: skuWarning.product.price,
+      })
     } else {
       // Clear the SKU field and continue
       const updated = [...rows]
@@ -1060,6 +1068,15 @@ function InventarioEdicionPageContent() {
           </div>
         </div>
       )}
+
+      <EditProductModal
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSaved={() => {
+          setEditingProduct(null)
+          fetchCategories()
+        }}
+      />
     </div>
   )
 }
