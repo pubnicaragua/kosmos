@@ -15,6 +15,7 @@ interface Department {
   description: string | null
   isActive: boolean
   userDepartments: {
+    id: string
     userId: string
     role: string | null
     isApprover: boolean
@@ -26,12 +27,19 @@ interface Department {
   }
 }
 
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
 interface DepartamentosManagerProps {
   companyId: string
 }
 
 export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const [departments, setDepartments] = useState<Department[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingDept, setEditingDept] = useState<Department | null>(null)
@@ -39,11 +47,15 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
     name: '',
     description: '',
   })
+  const [memberUserIds, setMemberUserIds] = useState<string[]>([])
+  const [originalMemberUserIds, setOriginalMemberUserIds] = useState<string[]>([])
+  const [userToAdd, setUserToAdd] = useState('')
   const [permissionsDept, setPermissionsDept] = useState<Department | null>(null)
 
   useEffect(() => {
     if (companyId) {
       fetchDepartments()
+      fetchUsers()
     }
   }, [companyId])
 
@@ -64,6 +76,27 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('accessToken')
+      const res = await fetch(`/api/companies/${companyId}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success) {
+        setUsers(
+          data.data.map((m: any) => ({
+            id: m.user.id,
+            name: m.user.name,
+            email: m.user.email,
+          }))
+        )
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
   const handleOpenModal = (dept?: Department) => {
     if (dept) {
       setEditingDept(dept)
@@ -71,9 +104,16 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
         name: dept.name,
         description: dept.description || '',
       })
+      const memberIds = dept.userDepartments.map((ud) => ud.userId)
+      setMemberUserIds(memberIds)
+      setOriginalMemberUserIds(memberIds)
+      setUserToAdd('')
     } else {
       setEditingDept(null)
       setFormData({ name: '', description: '' })
+      setMemberUserIds([])
+      setOriginalMemberUserIds([])
+      setUserToAdd('')
     }
     setShowModal(true)
   }
@@ -99,12 +139,55 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
       })
 
       const data = await res.json()
-      if (data.success) {
-        setShowModal(false)
-        fetchDepartments()
-      } else {
+      if (!data.success) {
         alert(data.error || 'Error al guardar departamento')
+        return
       }
+
+      if (editingDept) {
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+        const ops: Promise<any>[] = []
+        const toAdd = memberUserIds.filter((id) => !originalMemberUserIds.includes(id))
+        const toRemove = originalMemberUserIds.filter((id) => !memberUserIds.includes(id))
+
+        for (const userId of toAdd) {
+          ops.push(
+            fetch('/api/department-assignments', {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                userId,
+                departmentId: editingDept.id,
+                isApprover: false,
+                isReceiver: false,
+                isBuyer: false,
+              }),
+            })
+          )
+        }
+        const existingByUser = new Map(
+          editingDept.userDepartments.map((ud) => [ud.userId, ud])
+        )
+        for (const userId of toRemove) {
+          const existing = existingByUser.get(userId)
+          if (!existing) continue
+          ops.push(
+            fetch(`/api/department-assignments/${existing.id}`, {
+              method: 'DELETE',
+              headers,
+            })
+          )
+        }
+        if (ops.length > 0) {
+          await Promise.all(ops)
+        }
+      }
+
+      setShowModal(false)
+      fetchDepartments()
     } catch (error) {
       console.error('Error saving department:', error)
       alert('Error al guardar departamento')
@@ -147,6 +230,10 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setPermissionsDept(departments[0] ?? null)}>
+            <UserCog className="w-4 h-4 mr-2" />
+            Permisos solicitud de compra
+          </Button>
           <Button onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Departamento
@@ -208,18 +295,6 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                 </Badge>
               </div>
             )}
-
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setPermissionsDept(dept)}
-              >
-                <UserCog className="w-4 h-4 mr-2" />
-                Permisos solicitud de compra
-              </Button>
-            </div>
           </Card>
         ))}
 
@@ -258,9 +333,85 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
             />
           </div>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            Los permisos de usuarios se gestionan desde el botón <strong>Permisos solicitud de compra</strong> en cada departamento.
-          </div>
+          {editingDept && (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">
+                  Usuarios del departamento
+                </label>
+              </div>
+
+              <div className="mb-2 flex items-center gap-2">
+                <select
+                  value={userToAdd}
+                  onChange={(e) => setUserToAdd(e.target.value)}
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Agregar usuario...</option>
+                  {users
+                    .filter((u) => !memberUserIds.includes(u.id))
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!userToAdd}
+                  onClick={() => {
+                    if (!userToAdd) return
+                    setMemberUserIds((prev) => [...prev, userToAdd])
+                    setUserToAdd('')
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-1 rounded-lg border border-slate-200 p-2">
+                {memberUserIds.length === 0 ? (
+                  <p className="py-2 text-center text-sm text-slate-500">
+                    Sin usuarios asignados
+                  </p>
+                ) : (
+                  memberUserIds.map((uid) => {
+                    const u = users.find((x) => x.id === uid)
+                    return (
+                      <div
+                        key={uid}
+                        className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-slate-50"
+                      >
+                        <div>
+                          <div className="text-sm font-medium text-slate-900">
+                            {u?.name ?? uid}
+                          </div>
+                          <div className="text-xs text-slate-500">{u?.email ?? ''}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMemberUserIds((prev) => prev.filter((id) => id !== uid))
+                          }
+                          className="rounded p-1 text-red-600 hover:bg-red-50"
+                          title="Quitar del departamento"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              <p className="mt-2 text-xs text-slate-500">
+                Los permisos (Aprobador / Receptor / Comprador) se gestionan desde el botón
+                <strong> Permisos solicitud de compra</strong>.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-4">
             <Button onClick={handleSave} className="flex-1">
@@ -277,7 +428,8 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
         isOpen={permissionsDept !== null}
         onClose={() => setPermissionsDept(null)}
         companyId={companyId}
-        department={permissionsDept}
+        departments={departments}
+        initialDepartmentId={permissionsDept?.id ?? null}
       />
     </div>
   )

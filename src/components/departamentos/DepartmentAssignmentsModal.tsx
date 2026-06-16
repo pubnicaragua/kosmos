@@ -28,12 +28,20 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   companyId: string
-  department: Department | null
+  departments: Department[]
+  initialDepartmentId?: string | null
 }
 
 type UserFlags = { isApprover: boolean; isReceiver: boolean; isBuyer: boolean }
 
-export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, department }: Props) {
+export function DepartmentAssignmentsModal({
+  isOpen,
+  onClose,
+  companyId,
+  departments,
+  initialDepartmentId,
+}: Props) {
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('')
   const [users, setUsers] = useState<User[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [flags, setFlags] = useState<Record<string, UserFlags>>({})
@@ -42,13 +50,29 @@ export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, departm
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isOpen && department) {
-      fetchData()
+    if (isOpen) {
+      if (initialDepartmentId) {
+        setSelectedDeptId(initialDepartmentId)
+      } else if (departments.length === 1) {
+        setSelectedDeptId(departments[0].id)
+      } else {
+        setSelectedDeptId('')
+      }
     }
-  }, [isOpen, department?.id])
+  }, [isOpen, initialDepartmentId, departments])
+
+  useEffect(() => {
+    if (isOpen && selectedDeptId) {
+      fetchData()
+    } else {
+      setUsers([])
+      setAssignments({})
+      setFlags({})
+    }
+  }, [isOpen, selectedDeptId])
 
   async function fetchData() {
-    if (!department) return
+    if (!selectedDeptId) return
     setIsLoading(true)
     setError(null)
     try {
@@ -57,7 +81,7 @@ export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, departm
 
       const [uRes, aRes] = await Promise.all([
         fetch(`/api/companies/${companyId}/users`, { headers }),
-        fetch(`/api/department-assignments?companyId=${companyId}&departmentId=${department.id}`, { headers }),
+        fetch(`/api/department-assignments?companyId=${companyId}&departmentId=${selectedDeptId}`, { headers }),
       ])
       const [uData, aData] = await Promise.all([uRes.json(), aRes.json()])
 
@@ -103,7 +127,7 @@ export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, departm
   }
 
   async function handleSave() {
-    if (!department) return
+    if (!selectedDeptId) return
     setSaving(true)
     setError(null)
     try {
@@ -124,7 +148,7 @@ export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, departm
               headers,
               body: JSON.stringify({
                 userId: u.id,
-                departmentId: department.id,
+                departmentId: selectedDeptId,
                 isApprover: f.isApprover,
                 isReceiver: f.isReceiver,
                 isBuyer: f.isBuyer,
@@ -175,9 +199,31 @@ export function DepartmentAssignmentsModal({ isOpen, onClose, companyId, departm
       size="lg"
     >
       <div className="space-y-4">
-        <p className="text-sm text-slate-500">
-          Marca los permisos para cada usuario del departamento <span className="font-semibold text-slate-700">{department?.name}</span>. Los permisos son combinables.
-        </p>
+        {departments.length > 1 && (
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              Departamento
+            </label>
+            <select
+              value={selectedDeptId}
+              onChange={(e) => setSelectedDeptId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary focus:outline-none"
+            >
+              <option value="">Seleccionar departamento</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {selectedDeptId && (
+          <p className="text-sm text-slate-500">
+            Marca los permisos para cada usuario. Los permisos son combinables.
+          </p>
+        )}
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
