@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
         user: { select: { id: true, name: true, email: true } },
         department: { select: { id: true, name: true } },
       },
-      orderBy: [{ user: { name: 'asc' } }, { department: { name: 'asc' } }],
     })
 
     return apiSuccess(assignments)
