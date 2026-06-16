@@ -5,17 +5,19 @@ import { Modal } from '@/components/ui-kit/Modal'
 import { Button } from '@/components/ui-kit/Button'
 import { Save } from 'lucide-react'
 
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
 interface Assignment {
   id: string
   userId: string
   isApprover: boolean
   isReceiver: boolean
   isBuyer: boolean
-  user: {
-    id: string
-    name: string
-    email: string
-  }
+  departmentId: string
 }
 
 interface Department {
@@ -38,10 +40,9 @@ export function DepartmentAssignmentsModal({
   onClose,
   companyId,
   departments,
-  initialDepartmentId,
 }: Props) {
-  const [selectedDeptId, setSelectedDeptId] = useState<string>('')
-  const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
+  const [users, setUsers] = useState<User[]>([])
+  const [existingAssignments, setExistingAssignments] = useState<Record<string, Assignment[]>>({})
   const [flags, setFlags] = useState<Record<string, UserFlags>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -49,68 +50,81 @@ export function DepartmentAssignmentsModal({
 
   useEffect(() => {
     if (isOpen) {
-      if (initialDepartmentId) {
-        setSelectedDeptId(initialDepartmentId)
-      } else if (departments.length === 1) {
-        setSelectedDeptId(departments[0].id)
-      } else {
-        setSelectedDeptId('')
-      }
-    }
-  }, [isOpen, initialDepartmentId, departments])
-
-  useEffect(() => {
-    if (isOpen && selectedDeptId) {
       fetchData()
     } else {
-      setAssignments({})
+      setUsers([])
+      setExistingAssignments({})
       setFlags({})
     }
-  }, [isOpen, selectedDeptId])
+  }, [isOpen])
 
   async function fetchData() {
-    if (!selectedDeptId) return
     setIsLoading(true)
     setError(null)
     try {
       const token = localStorage.getItem('accessToken')
       const headers = { Authorization: `Bearer ${token}` }
 
-      const aRes = await fetch(
-        `/api/department-assignments?companyId=${companyId}&departmentId=${selectedDeptId}`,
-        { headers, cache: 'no-store' }
-      )
-      const aData = await aRes.json()
+      // Obtener todos los usuarios de la empresa
+      const uRes = await fetch(`/api/companies/${companyId}/users`, { headers })
+      const uData = await uRes.json()
 
-      if (!aRes.ok || !aData.success) {
-        setError(aData.error || `Error ${aRes.status} al cargar asignaciones`)
-        setAssignments({})
-        setFlags({})
+      if (!uRes.ok || !uData.success) {
+        setError(uData.error || 'Error al cargar usuarios')
+        setIsLoading(false)
         return
       }
 
-      const map: Record<string, Assignment> = {}
+      const companyUsers = uData.data.map((m: any) => m.user)
+      setUsers(companyUsers)
+
+      // Obtener todas las asignaciones de la empresa
+      const aRes = await fetch(`/api/department-assignments?companyId=${companyId}`, { headers, cache: 'no-store' })
+      const aData = await aRes.json()
+
+      if (!aRes.ok || !aData.success) {
+        setError(aData.error || 'Error al cargar asignaciones')
+        setIsLoading(false)
+        return
+      }
+
+      const assignmentsByUserId: Record<string, Assignment[]> = {}
       const initialFlags: Record<string, UserFlags> = {}
+
       for (const a of aData.data) {
-        map[a.userId] = {
+        if (!assignmentsByUserId[a.userId]) assignmentsByUserId[a.userId] = []
+        assignmentsByUserId[a.userId].push({
           id: a.id,
           userId: a.userId,
+          departmentId: a.departmentId,
           isApprover: a.isApprover,
           isReceiver: a.isReceiver,
           isBuyer: a.isBuyer,
-          user: a.user,
-        }
-        initialFlags[a.userId] = {
-          isApprover: a.isApprover,
-          isReceiver: a.isReceiver,
-          isBuyer: a.isBuyer,
+        })
+
+        if (!initialFlags[a.userId]) {
+          initialFlags[a.userId] = { isApprover: a.isApprover, isReceiver: a.isReceiver, isBuyer: a.isBuyer }
+        } else {
+          initialFlags[a.userId].isApprover ||= a.isApprover
+          initialFlags[a.userId].isReceiver ||= a.isReceiver
+          initialFlags[a.userId].isBuyer ||= a.isBuyer
         }
       }
-      setAssignments(map)
-      setFlags(initialFlags)
+
+      setExistingAssignments(assignmentsByUserId)
+      
+      // Asegurar que todos los usuarios tengan flags inicializados
+      const completeFlags = { ...initialFlags }
+      for (const user of companyUsers) {
+        if (!completeFlags[user.id]) {
+          completeFlags[user.id] = { isApprover: false, isReceiver: false, isBuyer: false }
+        }
+      }
+      setFlags(completeFlags)
+
     } catch (err) {
-      console.error('Error cargando asignaciones:', err)
-      setError('Error de red al cargar asignaciones')
+      console.error('Error cargando datos:', err)
+      setError('Error de red al cargar datos')
     } finally {
       setIsLoading(false)
     }
@@ -124,7 +138,6 @@ export function DepartmentAssignmentsModal({
   }
 
   async function handleSave() {
-    if (!selectedDeptId) return
     setSaving(true)
     setError(null)
     try {
@@ -132,28 +145,42 @@ export function DepartmentAssignmentsModal({
       const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
       const ops: Promise<any>[] = []
-      for (const a of Object.values(assignments)) {
-        const f = flags[a.userId]
-        if (!f) continue
-        const hasAny = f.isApprover || f.isReceiver || f.isBuyer
 
-        if (hasAny) {
+      for (const user of users) {
+        const f = flags[user.id]
+        if (!f) continue
+        
+        const userAssignments = existingAssignments[user.id] || []
+        const hasAnyFlags = f.isApprover || f.isReceiver || f.isBuyer
+
+        if (userAssignments.length > 0) {
+          // Actualizar todas las asignaciones existentes del usuario
+          for (const a of userAssignments) {
+            ops.push(
+              fetch(`/api/department-assignments/${a.id}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({
+                  isApprover: f.isApprover,
+                  isReceiver: f.isReceiver,
+                  isBuyer: f.isBuyer,
+                }),
+              })
+            )
+          }
+        } else if (hasAnyFlags && departments.length > 0) {
+          // Si no tiene asignaciones pero se le marcaron permisos, crear una en el primer departamento disponible
           ops.push(
-            fetch(`/api/department-assignments/${a.id}`, {
-              method: 'PUT',
+            fetch('/api/department-assignments', {
+              method: 'POST',
               headers,
               body: JSON.stringify({
+                userId: user.id,
+                departmentId: departments[0].id,
                 isApprover: f.isApprover,
                 isReceiver: f.isReceiver,
                 isBuyer: f.isBuyer,
               }),
-            })
-          )
-        } else {
-          ops.push(
-            fetch(`/api/department-assignments/${a.id}`, {
-              method: 'DELETE',
-              headers,
             })
           )
         }
@@ -181,31 +208,9 @@ export function DepartmentAssignmentsModal({
       size="lg"
     >
       <div className="space-y-4">
-        {departments.length > 1 && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Departamento
-            </label>
-            <select
-              value={selectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary focus:outline-none"
-            >
-              <option value="">Seleccionar departamento</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {selectedDeptId && (
-          <p className="text-sm text-slate-500">
-            Marca los permisos para cada usuario. Los permisos son combinables.
-          </p>
-        )}
+        <p className="text-sm text-slate-500">
+          Marca los permisos para cada usuario. Los permisos aplican a nivel de sistema.
+        </p>
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -214,18 +219,15 @@ export function DepartmentAssignmentsModal({
         )}
 
         {isLoading ? (
-          <div className="py-8 text-center text-sm text-slate-500">Cargando...</div>
-        ) : Object.keys(assignments).length === 0 ? (
+          <div className="py-8 text-center text-sm text-slate-500">Cargando usuarios...</div>
+        ) : users.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-            <p className="text-sm font-medium text-slate-700">No hay usuarios en este departamento</p>
-            <p className="mt-1 text-xs text-slate-500">
-              Agrega usuarios desde el modal de Editar Departamento para poder asignarles permisos.
-            </p>
+            <p className="text-sm font-medium text-slate-700">No hay usuarios en la empresa</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[60vh]">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                 <tr>
                   <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
                     Usuario
@@ -242,23 +244,19 @@ export function DepartmentAssignmentsModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {Object.values(assignments).map((a) => {
-                  const f = flags[a.userId] ?? {
-                    isApprover: a.isApprover,
-                    isReceiver: a.isReceiver,
-                    isBuyer: a.isBuyer,
-                  }
+                {users.map((u) => {
+                  const f = flags[u.id] || { isApprover: false, isReceiver: false, isBuyer: false }
                   return (
-                    <tr key={a.id} className="hover:bg-slate-50/50">
+                    <tr key={u.id} className="hover:bg-slate-50/50">
                       <td className="px-3 py-2">
-                        <div className="font-medium text-slate-900">{a.user.name}</div>
-                        <div className="text-xs text-slate-500">{a.user.email}</div>
+                        <div className="font-medium text-slate-900">{u.name}</div>
+                        <div className="text-xs text-slate-500">{u.email}</div>
                       </td>
                       <td className="px-3 py-2 text-center">
                         <input
                           type="checkbox"
                           checked={f.isApprover}
-                          onChange={() => toggle(a.userId, 'isApprover')}
+                          onChange={() => toggle(u.id, 'isApprover')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -266,7 +264,7 @@ export function DepartmentAssignmentsModal({
                         <input
                           type="checkbox"
                           checked={f.isReceiver}
-                          onChange={() => toggle(a.userId, 'isReceiver')}
+                          onChange={() => toggle(u.id, 'isReceiver')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -274,7 +272,7 @@ export function DepartmentAssignmentsModal({
                         <input
                           type="checkbox"
                           checked={f.isBuyer}
-                          onChange={() => toggle(a.userId, 'isBuyer')}
+                          onChange={() => toggle(u.id, 'isBuyer')}
                           className="h-4 w-4 cursor-pointer"
                         />
                       </td>
@@ -292,7 +290,7 @@ export function DepartmentAssignmentsModal({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving || isLoading || Object.keys(assignments).length === 0}
+            disabled={saving || isLoading || users.length === 0}
           >
             <Save className="mr-2 h-4 w-4" />
             {saving ? 'Guardando...' : 'Guardar'}
