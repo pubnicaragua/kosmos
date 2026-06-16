@@ -299,10 +299,10 @@ function InventarioEdicionPageContent() {
     
     if (action === 'increase') {
       // Redirect to edit page with quantity increase mode
-      router.push(`/inventario?edit=${skuWarning.product.id}&action=increase`)
+      router.push(`/inventario/edicion?edit=${skuWarning.product.id}&action=increase`)
     } else if (action === 'edit') {
       // Redirect to edit the existing product
-      router.push(`/inventario?edit=${skuWarning.product.id}`)
+      router.push(`/inventario/edicion?edit=${skuWarning.product.id}`)
     } else {
       // Clear the SKU field and continue
       const updated = [...rows]
