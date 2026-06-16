@@ -187,9 +187,19 @@ export function DepartmentAssignmentsModal({
       }
 
       const results = await Promise.all(ops)
-      const failed = results.filter((r) => !r.ok)
+      const failed: string[] = []
+      for (const r of results) {
+        if (!r.ok) {
+          try {
+            const d = await r.json()
+            failed.push(d.error || `HTTP ${r.status}`)
+          } catch {
+            failed.push(`HTTP ${r.status}`)
+          }
+        }
+      }
       if (failed.length > 0) {
-        setError(`${failed.length} operación(es) fallaron`)
+        setError(`Error: ${failed.join(', ')}`)
         return
       }
       onClose()

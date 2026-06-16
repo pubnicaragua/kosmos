@@ -91,27 +91,32 @@ export async function POST(request: NextRequest) {
       return apiError('El usuario no pertenece a esta empresa', 400)
     }
 
+    // Upsert: crear o actualizar si ya existe
     const existing = await prisma.userDepartment.findFirst({
       where: { userId, departmentId },
     })
-    if (existing) return apiError('El usuario ya está asignado a este departamento', 409)
 
-    const created = await prisma.userDepartment.create({
-      data: {
-        userId,
-        departmentId,
-        role: role || null,
-        isApprover,
-        isReceiver,
-        isBuyer,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        department: { select: { id: true, name: true } },
-      },
-    })
+    let result
+    if (existing) {
+      result = await prisma.userDepartment.update({
+        where: { id: existing.id },
+        data: { isApprover, isReceiver, isBuyer, role: role || existing.role },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          department: { select: { id: true, name: true } },
+        },
+      })
+    } else {
+      result = await prisma.userDepartment.create({
+        data: { userId, departmentId, role: role || null, isApprover, isReceiver, isBuyer },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          department: { select: { id: true, name: true } },
+        },
+      })
+    }
 
-    return apiSuccess(created, undefined, 201)
+    return apiSuccess(result, undefined, 201)
   } catch (error: any) {
     console.error('Error creating department assignment:', error?.message)
     return apiError('Error al crear asignación', 500)

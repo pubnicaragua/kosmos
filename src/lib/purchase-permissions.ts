@@ -20,10 +20,10 @@ export interface PurchasePermissions {
 /**
  * Devuelve los permisos de un usuario sobre las acciones de una solicitud de compra.
  * Admin/SUPER_ADMIN tienen todos los permisos. En otro caso, se evalúan los flags
- * del UserDepartment del departamento concreto de la solicitud.
+ * del UserDepartment a nivel de empresa completa (cualquier departamento).
  *
- * Los flags son combinables: un usuario puede ser aprobador + receptor + comprador
- * a la vez en el mismo departamento, o tenerlos en departamentos distintos.
+ * Si el usuario tiene isApprover=true en cualquier departamento de la empresa,
+ * puede aprobar solicitudes sin importar el departamento de la solicitud.
  */
 export async function getPurchasePermissions(
   userId: string,
@@ -33,24 +33,35 @@ export async function getPurchasePermissions(
   const access = await getCompanyAccess(userId, companyId)
   const isAdmin = isAdminRole(access.effectiveRole)
 
-  const assignment = departmentId
-    ? await prisma.userDepartment.findFirst({
-        where: { userId, departmentId },
-        select: { isApprover: true, isReceiver: true, isBuyer: true, role: true },
-      })
-    : null
+  // Buscar en TODOS los departamentos de la empresa para obtener permisos combinados
+  const assignments = await prisma.userDepartment.findMany({
+    where: {
+      userId,
+      department: { companyId },
+    },
+    select: { isApprover: true, isReceiver: true, isBuyer: true, role: true },
+  })
+
+  const canApprove = isAdmin || assignments.some((a) => a.isApprover)
+  const canReceive = isAdmin || assignments.some((a) => a.isReceiver)
+  const canBuy = isAdmin || assignments.some((a) => a.isBuyer)
+
+  const primaryAssignment =
+    assignments.find((a) => a.isApprover || a.isReceiver || a.isBuyer) ??
+    assignments[0] ??
+    null
 
   return {
-    canApprove: isAdmin || Boolean(assignment?.isApprover),
-    canReceive: isAdmin || Boolean(assignment?.isReceiver),
-    canBuy: isAdmin || Boolean(assignment?.isBuyer),
+    canApprove,
+    canReceive,
+    canBuy,
     isAdmin,
-    departmentAssignment: assignment
+    departmentAssignment: primaryAssignment
       ? {
-          isApprover: assignment.isApprover,
-          isReceiver: assignment.isReceiver,
-          isBuyer: assignment.isBuyer,
-          role: assignment.role,
+          isApprover: assignments.some((a) => a.isApprover),
+          isReceiver: assignments.some((a) => a.isReceiver),
+          isBuyer: assignments.some((a) => a.isBuyer),
+          role: primaryAssignment.role,
         }
       : null,
   }
