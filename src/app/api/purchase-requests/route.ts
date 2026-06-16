@@ -185,7 +185,7 @@ export async function POST(req: Request) {
             data: {
               userId,
               title: 'Solicitud de Compra Requiere Aprobación',
-              message: `Solicitud ${requestNumber} (${requestType}) - Prioridad ${priority} - Precio pendiente de aprobaciÃ³n por cotizaciÃ³n`,
+              message: `Solicitud ${requestNumber} (${requestType}) - Prioridad ${priority} - Precio pendiente de aprobación por cotización`,
               type: 'ASSIGNMENT',
               link: `/solicitudes-compra/${request.id}`
             }
