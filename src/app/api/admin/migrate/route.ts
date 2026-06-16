@@ -2,11 +2,23 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
-  try {
-    // Add the column if it doesn't exist
-    await prisma.$executeRawUnsafe(`ALTER TABLE "user_departments" ADD COLUMN IF NOT EXISTS "is_receiver" BOOLEAN NOT NULL DEFAULT false;`)
-    return NextResponse.json({ success: true, message: 'Columna agregada exitosamente' })
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message })
+  const results: string[] = []
+  const errors: string[] = []
+
+  const migrations = [
+    `ALTER TABLE "user_departments" ADD COLUMN IF NOT EXISTS "is_receiver" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "user_departments" ADD COLUMN IF NOT EXISTS "is_buyer" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "user_departments" ADD COLUMN IF NOT EXISTS "is_approver" BOOLEAN NOT NULL DEFAULT false`,
+  ]
+
+  for (const sql of migrations) {
+    try {
+      await prisma.$executeRawUnsafe(sql)
+      results.push(`OK: ${sql.substring(0, 60)}...`)
+    } catch (error: any) {
+      errors.push(`ERR: ${error.message}`)
+    }
   }
+
+  return NextResponse.json({ success: errors.length === 0, results, errors })
 }
