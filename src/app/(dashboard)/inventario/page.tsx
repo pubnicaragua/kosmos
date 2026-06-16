@@ -97,6 +97,10 @@ function InventarioPageContent() {
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [editModalProduct, setEditModalProduct] = useState<Product | null>(null)
+  const [editModalForm, setEditModalForm] = useState<EditingProduct | null>(null)
+  const [isEditModalSaving, setIsEditModalSaving] = useState(false)
+  const [editModalError, setEditModalError] = useState<string | null>(null)
 
   const normalizeCategoryName = (value: string) =>
     value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -290,6 +294,149 @@ function InventarioPageContent() {
       
       return { ...prev, [productId]: updated }
     })
+  }
+
+  const openEditModal = (product: Product) => {
+    setEditModalProduct(product)
+    setEditModalForm({
+      name: product.name,
+      sku: product.sku,
+      description: product.description || '',
+      stock: String(product.stock),
+      cost: String(product.cost),
+      price: String(product.price),
+      netMargin: product.netMargin != null ? String(product.netMargin) : '',
+      promotion: product.promotion || '',
+      promotionCost: product.promotionCost != null ? String(product.promotionCost) : '',
+      promotionDiscount: product.promotionDiscount != null ? String(product.promotionDiscount) : '',
+      categoryId: product.category?.id || '',
+      categoryName: product.category?.name || '',
+    })
+    setEditModalError(null)
+  }
+
+  const closeEditModal = () => {
+    setEditModalProduct(null)
+    setEditModalForm(null)
+    setEditModalError(null)
+  }
+
+  const updateEditModalField = (field: keyof EditingProduct, value: string) => {
+    setEditModalForm(prev => {
+      if (!prev) return prev
+      const updated = { ...prev, [field]: value }
+      if (field === 'categoryName') {
+        const matchedCategory = categories.find(
+          (cat) =>
+            cat.id === value ||
+            normalizeCategoryName(cat.name) === normalizeCategoryName(value)
+        )
+        updated.categoryId = matchedCategory?.id || ''
+      }
+      if (field === 'cost' || field === 'price') {
+        const cost = field === 'cost' ? parseFloat(value) || 0 : parseFloat(updated.cost) || 0
+        const price = field === 'price' ? parseFloat(value) || 0 : parseFloat(updated.price) || 0
+        if (cost > 0) {
+          const margin = ((price - cost) / cost) * 100
+          updated.netMargin = (Math.round(margin * 100) / 100).toString()
+        }
+      }
+      return updated
+    })
+  }
+
+  const saveEditModal = async () => {
+    if (!editModalProduct || !editModalForm) return
+
+    const parsedCost = parseFloat(editModalForm.cost) || 0
+    const parsedPrice = parseFloat(editModalForm.price) || 0
+    if (parsedPrice < parsedCost) {
+      setEditModalError('El precio de venta no puede ser menor al costo')
+      return
+    }
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    setIsEditModalSaving(true)
+    setEditModalError(null)
+
+    try {
+      let resolvedCategoryId = editModalForm.categoryId || ''
+      const typedCategoryName = (editModalForm.categoryName || '').trim()
+
+      if (typedCategoryName) {
+        const matchedCategory = categories.find(
+          (cat) =>
+            cat.id === typedCategoryName ||
+            normalizeCategoryName(cat.name) === normalizeCategoryName(typedCategoryName)
+        )
+
+        if (matchedCategory) {
+          resolvedCategoryId = matchedCategory.id
+        } else {
+          if (selectedCompany === 'all') {
+            setEditModalError('Selecciona una empresa para crear una nueva categoría')
+            setIsEditModalSaving(false)
+            return
+          }
+
+          const createCategoryRes = await fetch('/api/product-categories', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: typedCategoryName,
+              companyId: selectedCompany,
+            }),
+          })
+
+          const createCategoryData = await createCategoryRes.json()
+          if (!createCategoryData.success) {
+            setEditModalError(createCategoryData.error || 'Error al crear categoría')
+            setIsEditModalSaving(false)
+            return
+          }
+
+          const createdCategory = createCategoryData.data
+          resolvedCategoryId = createdCategory.id
+          setCategories(prev => [...prev, createdCategory])
+        }
+      } else {
+        resolvedCategoryId = ''
+      }
+
+      const res = await fetch(`/api/products/${editModalProduct.id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editModalForm.name,
+          sku: editModalForm.sku,
+          description: editModalForm.description || null,
+          stock: Number(editModalForm.stock) || 0,
+          cost: Number(editModalForm.cost) || 0,
+          price: Number(editModalForm.price) || 0,
+          netMargin: editModalForm.netMargin !== '' ? Number(editModalForm.netMargin) : null,
+          promotion: editModalForm.promotion || null,
+          promotionCost: editModalForm.promotionCost !== '' ? Number(editModalForm.promotionCost) : null,
+          promotionDiscount: editModalForm.promotionDiscount !== '' ? Number(editModalForm.promotionDiscount) : null,
+          categoryId: resolvedCategoryId || null,
+        }),
+      })
+
+      if (res.ok) {
+        closeEditModal()
+        fetchData()
+      } else {
+        setEditModalError('Error al guardar cambios')
+      }
+    } catch {
+      setEditModalError('Error al guardar cambios')
+    } finally {
+      setIsEditModalSaving(false)
+    }
   }
 
   const fetchCompanies = useCallback(async () => {
@@ -806,7 +953,7 @@ function InventarioPageContent() {
                       <Button
                         variant="outline"
                         className="flex-1"
-                        onClick={() => router.push(`/inventario/edicion?edit=${product.id}`)}
+                        onClick={() => openEditModal(product)}
                       >
                         Editar
                       </Button>
@@ -862,7 +1009,7 @@ function InventarioPageContent() {
                         </td>
                         <td className="px-4 py-4 text-center">
                           {permissions.canEdit ? (
-                            <Button variant="outline" className="h-9" onClick={() => router.push(`/inventario/edicion?edit=${product.id}`)}>
+                            <Button variant="outline" className="h-9" onClick={() => openEditModal(product)}>
                               Editar
                             </Button>
                           ) : null}
@@ -984,6 +1131,163 @@ function InventarioPageContent() {
             <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
               <Button variant="outline" onClick={() => setShowFlowGuide(false)}>
                 Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editModalProduct && editModalForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-100 p-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-cyan-600">Editar producto</p>
+                <h2 className="mt-1 text-xl font-black text-slate-900">{editModalProduct.name}</h2>
+                <p className="mt-1 text-xs font-mono uppercase tracking-widest text-slate-400">SKU {editModalProduct.sku}</p>
+              </div>
+              <button
+                onClick={closeEditModal}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2">
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre</label>
+                <input
+                  value={editModalForm.name}
+                  onChange={(e) => updateEditModalField('name', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">SKU</label>
+                <input
+                  value={editModalForm.sku}
+                  onChange={(e) => updateEditModalField('sku', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-mono focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Categoría</label>
+                <input
+                  list="edit-modal-category-options"
+                  value={editModalForm.categoryName}
+                  onChange={(e) => updateEditModalField('categoryName', e.target.value)}
+                  placeholder="Categoría..."
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+                <datalist id="edit-modal-category-options">
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.name} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descripción</label>
+                <textarea
+                  value={editModalForm.description}
+                  onChange={(e) => updateEditModalField('description', e.target.value)}
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Stock</label>
+                <input
+                  type="number"
+                  value={editModalForm.stock}
+                  onChange={(e) => updateEditModalField('stock', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Costo</label>
+                <input
+                  type="number"
+                  value={editModalForm.cost}
+                  onChange={(e) => updateEditModalField('cost', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Precio</label>
+                <input
+                  type="number"
+                  value={editModalForm.price}
+                  onChange={(e) => updateEditModalField('price', e.target.value)}
+                  className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${Number(editModalForm.price) < Number(editModalForm.cost) ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-200' : 'border-slate-200 focus:border-slate-900 focus:ring-slate-900/10'}`}
+                />
+                {Number(editModalForm.price) < Number(editModalForm.cost) && (
+                  <p className="text-xs text-red-500">El precio debe ser ≥ al costo</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Margen %</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editModalForm.netMargin}
+                  onChange={(e) => updateEditModalField('netMargin', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Promoción</label>
+                <input
+                  value={editModalForm.promotion}
+                  onChange={(e) => updateEditModalField('promotion', e.target.value)}
+                  placeholder="Nombre de la promo"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Costo promo</label>
+                <input
+                  type="number"
+                  value={editModalForm.promotionCost}
+                  onChange={(e) => updateEditModalField('promotionCost', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Descuento promo %</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editModalForm.promotionDiscount}
+                  onChange={(e) => updateEditModalField('promotionDiscount', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+              </div>
+            </div>
+
+            {editModalError && (
+              <div className="mx-6 mb-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {editModalError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
+              <Button variant="outline" onClick={closeEditModal} disabled={isEditModalSaving}>
+                Cancelar
+              </Button>
+              <Button onClick={saveEditModal} disabled={isEditModalSaving}>
+                {isEditModalSaving ? 'Guardando...' : 'Guardar cambios'}
               </Button>
             </div>
           </div>
