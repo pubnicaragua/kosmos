@@ -153,6 +153,20 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
         currentUser?.role === 'MANAGER')
   )
 
+  const canBuy = Boolean(
+    request?.canBuy ??
+      (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN')
+  )
+
+  const canReceiveUI = Boolean(
+    request?.canReceive ??
+      (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN')
+  )
+
+  const canAdvanceRequest = canApprove
+  const canBuyRequest = canBuy
+  const canReceiveRequest = canReceiveUI
+
   const quotationOptions = Array.isArray(request?.quotationFiles)
     ? request.quotationFiles.filter((url: any) => typeof url === 'string' && url.trim())
     : request?.quotationUrl
@@ -163,12 +177,6 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
     ? approvedAmount
     : request?.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0) || 0
   const totalRequestedQuantity = request?.items.reduce((sum: number, i: any) => sum + (i.requestedQuantity || 0), 0) || 0
-  const canAdvanceRequest = canApprove && request?.requestedBy !== currentUser?.id
-  const canReceiveUI = Boolean(
-    request?.canReceive ??
-      (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN')
-  )
-  const canReceiveRequest = canReceiveUI && request?.requestedBy !== currentUser?.id && request?.approvedBy !== currentUser?.id
 
   const handlePrint = () => {
     window.print()
@@ -267,7 +275,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
               </Button>
             </>
           )}
-          {request.status === 'APROBADA' && canAdvanceRequest && (
+          {request.status === 'APROBADA' && canBuyRequest && (
             <Button 
               onClick={() => setIsPurchaseModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-700 font-bold rounded-xl px-8 shadow-lg shadow-indigo-100"

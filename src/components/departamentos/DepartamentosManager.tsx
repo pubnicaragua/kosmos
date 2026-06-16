@@ -6,7 +6,8 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Badge } from '@/components/ui-kit/Badge'
-import { Building2, Users, Plus, Edit2, Trash2, UserCheck } from 'lucide-react'
+import { Building2, Users, Plus, Edit2, Trash2, UserCheck, UserCog } from 'lucide-react'
+import { DepartmentAssignmentsModal } from '@/components/departamentos/DepartmentAssignmentsModal'
 
 interface Department {
   id: string
@@ -46,6 +47,7 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
     description: '',
     userAssignments: [] as { userId: string; role: string; isApprover: boolean; isReceiver: boolean }[],
   })
+  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false)
 
   useEffect(() => {
     if (companyId) {
@@ -210,10 +212,16 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
             Gestiona los departamentos y asigna usuarios aprobadores
           </p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Departamento
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowAssignmentsModal(true)}>
+            <UserCog className="w-4 h-4 mr-2" />
+            Asignar accesos
+          </Button>
+          <Button onClick={() => handleOpenModal()}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Departamento
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -399,6 +407,12 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
           </div>
         </div>
       </Modal>
+
+      <DepartmentAssignmentsModal
+        isOpen={showAssignmentsModal}
+        onClose={() => setShowAssignmentsModal(false)}
+        companyId={companyId}
+      />
     </div>
   )
 }

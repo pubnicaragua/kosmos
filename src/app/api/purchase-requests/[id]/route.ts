@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { getPurchasePermissions, type PurchasePermissions } from '@/lib/purchase-permissions'
 
 export const dynamic = 'force-dynamic'
-
-const isAdminRole = (role?: string | null) =>
-  role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'MANAGER'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -39,27 +37,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     const departmentId = request.department?.id || request.departmentId
-    const isDeptApprover = departmentId
-      ? await prisma.userDepartment.findFirst({
-          where: {
-            departmentId,
-            userId: decoded.userId,
-            isApprover: true,
-          },
-        })
-      : null
-    const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
-
-    const isDeptReceiver = departmentId
-      ? await prisma.userDepartment.findFirst({
-          where: {
-            departmentId,
-            userId: decoded.userId,
-            isReceiver: true,
-          },
-        })
-      : null
-    const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
+    const perms = await getPurchasePermissions(decoded.userId, request.companyId, departmentId)
 
     const [requestedByUser, approvedByUser] = await Promise.all([
       request.requestedBy
@@ -77,8 +55,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         requestingArea: request.department?.name || request.requestingArea,
         requestedByName: requestedByUser?.name || null,
         approvedByName: approvedByUser?.name || null,
-        canApprove,
-        canReceive,
+        canApprove: perms.canApprove,
+        canReceive: perms.canReceive,
+        canBuy: perms.canBuy,
       }
     })
   } catch (error) {
@@ -124,47 +103,28 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const currentDepartmentId = currentRequest.departmentId
-    const isDeptApprover = currentDepartmentId
-      ? await prisma.userDepartment.findFirst({
-          where: {
-            departmentId: currentDepartmentId,
-            userId: decoded.userId,
-            isApprover: true,
-          },
-        })
-      : null
-    const canApprove = isAdminRole(access.effectiveRole) || Boolean(isDeptApprover)
-
-    const isDeptReceiver = currentDepartmentId
-      ? await prisma.userDepartment.findFirst({
-          where: {
-            departmentId: currentDepartmentId,
-            userId: decoded.userId,
-            isReceiver: true,
-          },
-        })
-      : null
-    const canReceive = isAdminRole(access.effectiveRole) || Boolean(isDeptReceiver)
+    const perms = await getPurchasePermissions(decoded.userId, currentRequest.companyId, currentDepartmentId)
+    const { canApprove, canReceive, canBuy } = perms
 
     const moduleAccess = await getModuleAccess(decoded.userId, currentRequest.companyId, 'solicitudes-compra')
-    if (!moduleAccess.canEdit && !canApprove && !canReceive) {
+    if (!moduleAccess.canEdit && !canApprove && !canReceive && !canBuy) {
       return NextResponse.json({ success: false, error: 'No tienes permisos para editar solicitudes de compra' }, { status: 403 })
     }
 
-    if (status && status !== 'RECIBIDO' && !canApprove) {
-      return NextResponse.json({ success: false, error: 'No tienes permisos para realizar esta acción' }, { status: 403 })
-    }
-
-    if (status === 'RECIBIDO' && !canReceive) {
-      return NextResponse.json({ success: false, error: 'No tienes permisos de Receptor en este departamento' }, { status: 403 })
-    }
-
-    if (status && currentRequest.requestedBy === decoded.userId) {
-      return NextResponse.json({ success: false, error: 'El creador no puede aprobar ni avanzar su propia solicitud' }, { status: 403 })
-    }
-
-    if (status === 'RECIBIDO' && currentRequest.approvedBy === decoded.userId) {
-      return NextResponse.json({ success: false, error: 'El usuario que aprobó no puede marcar la recepción' }, { status: 403 })
+    if (status) {
+      const statusPermission: Record<string, keyof PurchasePermissions> = {
+        APROBADA: 'canApprove',
+        RECHAZADA: 'canApprove',
+        COMPRADO: 'canBuy',
+        RECIBIDO: 'canReceive',
+      }
+      const required = statusPermission[status]
+      if (required && !perms[required]) {
+        return NextResponse.json(
+          { success: false, error: `No tienes permisos para marcar como ${status}` },
+          { status: 403 }
+        )
+      }
     }
 
     if (status === 'APROBADA') {
@@ -350,6 +310,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         requestedByName: requestedByUser?.name || null,
         approvedByName: approvedByUser?.name || null,
         canApprove,
+        canReceive,
+        canBuy,
       },
     })
   } catch (error) {

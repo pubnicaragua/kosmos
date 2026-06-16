@@ -22,6 +22,7 @@ model User {
   userCompanies  UserCompany[]
   templates      Template[]
   quotesCreated  Quote[]          @relation("QuoteCreatedBy")
+  userDepartments UserDepartment[] @relation("UserDepartmentUser")
 
   @@map("users")
 }
@@ -952,8 +953,10 @@ model UserDepartment {
   role         String?
   isApprover   Boolean    @default(false) @map("is_approver")
   isReceiver   Boolean    @default(false) @map("is_receiver")
+  isBuyer      Boolean    @default(false) @map("is_buyer")
   createdAt    DateTime   @default(now()) @map("created_at")
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserDepartmentUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, departmentId])
   @@map("user_departments")
