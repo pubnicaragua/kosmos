@@ -433,10 +433,9 @@ function InventarioPageContent() {
         })
         
         const editId = searchParams?.get('edit')
-        const action = searchParams?.get('action')
         if (editId) {
           let productToEdit = (data.data.data || []).find((p: Product) => p.id === editId)
-          
+
           if (!productToEdit) {
             try {
               const res = await fetch(`/api/products/${editId}`, {
@@ -456,16 +455,7 @@ function InventarioPageContent() {
           }
 
           if (productToEdit) {
-            startEditing(productToEdit)
-            if (action === 'increase') {
-              setTimeout(() => {
-                const stockInput = document.getElementById(`stock-input-${editId}`) as HTMLInputElement
-                if (stockInput) {
-                  stockInput.focus()
-                  stockInput.classList.add('ring-2', 'ring-orange-500', 'border-orange-500')
-                }
-              }, 100)
-            }
+            setEditingProduct(productToEdit)
             // Clear URL params so it doesn't re-trigger after a save re-fetch
             router.replace(window.location.pathname, { scroll: false })
           }

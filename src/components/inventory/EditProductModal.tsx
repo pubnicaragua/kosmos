@@ -160,9 +160,12 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
   const inputBase =
     'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-primary focus:outline-none'
 
+  const labelBase =
+    'text-[10px] font-black uppercase tracking-widest text-slate-500'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-slate-100 p-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-cyan-600">Editar producto</p>
@@ -184,109 +187,110 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
           </div>
         ) : form ? (
           <>
-            <div className="overflow-x-auto p-6">
-              <table className="w-full min-w-[860px]">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="pb-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Producto</th>
-                    <th className="pb-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Unidad</th>
-                    <th className="pb-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Categoría</th>
-                    <th className="pb-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Desc.</th>
-                    <th className="pb-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">SKU</th>
-                    <th className="pb-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Stock</th>
-                    <th className="pb-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</th>
-                    <th className="pb-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</th>
-                    <th className="pb-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Margen %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="py-2 pr-2">
-                      <input
-                        value={form.name}
-                        onChange={(e) => updateField('name', e.target.value)}
-                        className={inputBase}
-                        placeholder="Nombre"
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        value={form.unit}
-                        onChange={(e) => updateField('unit', e.target.value)}
-                        placeholder="UNI"
-                        className={inputBase}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <select
-                        value={form.categoryId}
-                        onChange={(e) => updateField('categoryId', e.target.value)}
-                        className={inputBase}
-                      >
-                        <option value="">Sin categoría</option>
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        value={form.description}
-                        onChange={(e) => updateField('description', e.target.value)}
-                        placeholder="Descripción"
-                        className={inputBase}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        value={form.sku}
-                        onChange={(e) => updateField('sku', e.target.value)}
-                        placeholder="SKU"
-                        className={`${inputBase} font-mono`}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        value={form.stock}
-                        onChange={(e) => updateField('stock', e.target.value)}
-                        className={`${inputBase} text-center`}
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        value={form.cost}
-                        onChange={(e) => updateField('cost', e.target.value)}
-                        className={`${inputBase} text-right`}
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        value={form.price}
-                        onChange={(e) => updateField('price', e.target.value)}
-                        className={`${inputBase} text-right ${Number(form.price) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
-                        placeholder="0"
-                      />
-                    </td>
-                    <td className="py-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={form.netMargin}
-                        onChange={(e) => updateField('netMargin', e.target.value)}
-                        className={`${inputBase} text-right`}
-                        placeholder="0.00"
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-3">
+              <div className="space-y-1">
+                <label className={labelBase}>Producto</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => updateField('name', e.target.value)}
+                  className={inputBase}
+                  placeholder="Nombre del producto"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Unidad</label>
+                <input
+                  value={form.unit}
+                  onChange={(e) => updateField('unit', e.target.value)}
+                  placeholder="UNI"
+                  className={inputBase}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Categoría</label>
+                <select
+                  value={form.categoryId}
+                  onChange={(e) => updateField('categoryId', e.target.value)}
+                  className={inputBase}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Descripción</label>
+                <input
+                  value={form.description}
+                  onChange={(e) => updateField('description', e.target.value)}
+                  placeholder="Descripción del producto"
+                  className={inputBase}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>SKU</label>
+                <input
+                  value={form.sku}
+                  onChange={(e) => updateField('sku', e.target.value)}
+                  placeholder="SKU"
+                  className={`${inputBase} font-mono`}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Stock</label>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => updateField('stock', e.target.value)}
+                  className={`${inputBase} text-center`}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Costo</label>
+                <input
+                  type="number"
+                  value={form.cost}
+                  onChange={(e) => updateField('cost', e.target.value)}
+                  className={`${inputBase} text-right`}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Precio</label>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={(e) => updateField('price', e.target.value)}
+                  className={`${inputBase} text-right ${Number(form.price) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
+                  placeholder="0"
+                />
+                {Number(form.price) < Number(form.cost) && (
+                  <p className="text-xs text-red-500">El precio debe ser ≥ al costo</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Margen %</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.netMargin}
+                  onChange={(e) => updateField('netMargin', e.target.value)}
+                  className={`${inputBase} text-right`}
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             {error && (

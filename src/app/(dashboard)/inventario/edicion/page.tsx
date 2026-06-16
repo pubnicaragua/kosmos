@@ -1073,8 +1073,11 @@ function InventarioEdicionPageContent() {
         product={editingProduct}
         onClose={() => setEditingProduct(null)}
         onSaved={() => {
+          const productId = editingProduct?.id
           setEditingProduct(null)
-          fetchCategories()
+          if (productId) {
+            router.push(`/inventario?edit=${productId}`)
+          }
         }}
       />
     </div>
