@@ -42,9 +42,12 @@ export async function getPurchasePermissions(
     select: { isApprover: true, isReceiver: true, isBuyer: true, role: true },
   })
 
-  const canApprove = isAdmin || assignments.some((a) => a.isApprover)
-  const canReceive = isAdmin || assignments.some((a) => a.isReceiver)
-  const canBuy = isAdmin || assignments.some((a) => a.isBuyer)
+  // Los permisos de solicitud de compra se respetan para TODOS los usuarios,
+  // incluyendo admins. El admin bypass solo aplica si no tiene NINGÚN assignment.
+  const hasAnyAssignment = assignments.length > 0
+  const canApprove = (hasAnyAssignment ? assignments.some((a) => a.isApprover) : isAdmin)
+  const canReceive = (hasAnyAssignment ? assignments.some((a) => a.isReceiver) : isAdmin)
+  const canBuy = (hasAnyAssignment ? assignments.some((a) => a.isBuyer) : isAdmin)
 
   const primaryAssignment =
     assignments.find((a) => a.isApprover || a.isReceiver || a.isBuyer) ??
