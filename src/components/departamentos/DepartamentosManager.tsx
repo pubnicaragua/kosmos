@@ -26,33 +26,24 @@ interface Department {
   }
 }
 
-interface User {
-  id: string
-  name: string
-  email: string
-}
-
 interface DepartamentosManagerProps {
   companyId: string
 }
 
 export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
   const [departments, setDepartments] = useState<Department[]>([])
-  const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingDept, setEditingDept] = useState<Department | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    userAssignments: [] as { userId: string; role: string; isApprover: boolean; isReceiver: boolean }[],
   })
-  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false)
+  const [permissionsDept, setPermissionsDept] = useState<Department | null>(null)
 
   useEffect(() => {
     if (companyId) {
       fetchDepartments()
-      fetchUsers()
     }
   }, [companyId])
 
@@ -73,41 +64,16 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
     }
   }
 
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem('accessToken')
-      const res = await fetch(`/api/companies/${companyId}/users`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.success) {
-        setUsers(data.data.map((m: any) => ({
-          id: m.user.id,
-          name: m.user.name,
-          email: m.user.email,
-        })))
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
-  }
-
   const handleOpenModal = (dept?: Department) => {
     if (dept) {
       setEditingDept(dept)
       setFormData({
         name: dept.name,
         description: dept.description || '',
-        userAssignments: dept.userDepartments.map(ud => ({
-          userId: ud.userId,
-          role: ud.role || '',
-          isApprover: ud.isApprover,
-          isReceiver: ud.isReceiver || false,
-        })),
       })
     } else {
       setEditingDept(null)
-      setFormData({ name: '', description: '', userAssignments: [] })
+      setFormData({ name: '', description: '' })
     }
     setShowModal(true)
   }
@@ -167,38 +133,6 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
     }
   }
 
-  const addUserAssignment = () => {
-    setFormData(prev => ({
-      ...prev,
-      userAssignments: [...prev.userAssignments, { userId: '', role: '', isApprover: false, isReceiver: false }],
-    }))
-  }
-
-  const removeUserAssignment = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      userAssignments: prev.userAssignments.filter((_, i) => i !== index),
-    }))
-  }
-
-  const updateUserAssignment = (index: number, field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      userAssignments: prev.userAssignments.map((ua, i) => {
-        if (i !== index) return ua
-
-        const newUa = { ...ua, [field]: value }
-        if (field === 'isApprover' && value === true) {
-          newUa.isReceiver = false
-        }
-        if (field === 'isReceiver' && value === true) {
-          newUa.isApprover = false
-        }
-        return newUa
-      }),
-    }))
-  }
-
   if (isLoading) {
     return <div className="text-center py-8">Cargando departamentos...</div>
   }
@@ -213,10 +147,6 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowAssignmentsModal(true)}>
-            <UserCog className="w-4 h-4 mr-2" />
-            Asignar accesos
-          </Button>
           <Button onClick={() => handleOpenModal()}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Departamento
@@ -278,6 +208,18 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
                 </Badge>
               </div>
             )}
+
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => setPermissionsDept(dept)}
+              >
+                <UserCog className="w-4 h-4 mr-2" />
+                Permisos solicitud de compra
+              </Button>
+            </div>
           </Card>
         ))}
 
@@ -316,85 +258,8 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Usuarios Asignados
-              </label>
-              <Button variant="outline" size="sm" onClick={addUserAssignment}>
-                <Plus className="w-4 h-4 mr-1" />
-                Agregar Usuario
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              {formData.userAssignments.map((ua, index) => (
-                <div key={index} className="flex flex-wrap md:flex-nowrap items-center gap-2 p-2 bg-gray-50 rounded">
-                  <select
-                    value={ua.userId}
-                    onChange={e => updateUserAssignment(index, 'userId', e.target.value)}
-                    className="flex-1 min-w-[150px] px-2 py-1 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="">Seleccionar usuario</option>
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-
-                  <input
-                    type="text"
-                    value={ua.role}
-                    onChange={e => updateUserAssignment(index, 'role', e.target.value)}
-                    placeholder="Rol"
-                    className="w-full md:w-32 px-2 py-1 border border-gray-300 rounded text-sm"
-                  />
-
-                  <div className="flex items-center justify-between w-full md:w-auto flex-1 gap-4">
-                    <div className="flex gap-4">
-                      <label className={`flex items-center gap-1 text-sm whitespace-nowrap ${ua.isReceiver ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={ua.isApprover}
-                          onChange={e =>
-                            updateUserAssignment(index, 'isApprover', e.target.checked)
-                          }
-                          disabled={ua.isReceiver}
-                          className="rounded disabled:opacity-50"
-                        />
-                        Aprobador
-                      </label>
-                      <label className={`flex items-center gap-1 text-sm whitespace-nowrap ${ua.isApprover ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={ua.isReceiver}
-                          onChange={e =>
-                            updateUserAssignment(index, 'isReceiver', e.target.checked)
-                          }
-                          disabled={ua.isApprover}
-                          className="rounded disabled:opacity-50"
-                        />
-                        Receptor
-                      </label>
-                    </div>
-
-                    <button
-                      onClick={() => removeUserAssignment(index)}
-                      className="p-1 hover:bg-gray-200 rounded ml-auto"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {formData.userAssignments.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-2">
-                  No hay usuarios asignados
-                </p>
-              )}
-            </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Los permisos de usuarios se gestionan desde el botón <strong>Permisos solicitud de compra</strong> en cada departamento.
           </div>
 
           <div className="flex gap-2 pt-4">
@@ -409,9 +274,10 @@ export function DepartamentosManager({ companyId }: DepartamentosManagerProps) {
       </Modal>
 
       <DepartmentAssignmentsModal
-        isOpen={showAssignmentsModal}
-        onClose={() => setShowAssignmentsModal(false)}
+        isOpen={permissionsDept !== null}
+        onClose={() => setPermissionsDept(null)}
         companyId={companyId}
+        department={permissionsDept}
       />
     </div>
   )
