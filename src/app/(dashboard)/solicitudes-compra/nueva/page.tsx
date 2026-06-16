@@ -760,7 +760,7 @@ export default function NuevaSolicitudPage() {
               <div className="pt-4 mt-4 border-t border-white/20">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-bold">PRECIO FINAL</span>
-                  <p className="text-sm font-black text-right">Se define al aprobar cotizaciÃ³n</p>
+                  <p className="text-sm font-black text-right">Se define al aprobar cotización</p>
                 </div>
               </div>
             </div>
