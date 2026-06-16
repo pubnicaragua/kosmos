@@ -8,66 +8,64 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  password       String
-  name           String
-  avatar         String?
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
-  notifications  Notification[]
-  refreshTokens  RefreshToken[]
-  ticketComments TicketComment[]
-  ticketMembers  TicketMember[]
-  userCompanies  UserCompany[]
-  templates      Template[]
-  quotesCreated  Quote[]          @relation("QuoteCreatedBy")
+  id              String           @id @default(cuid())
+  email           String           @unique
+  password        String
+  name            String
+  avatar          String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  notifications   Notification[]
+  quotesCreated   Quote[]          @relation("QuoteCreatedBy")
+  refreshTokens   RefreshToken[]
+  templates       Template[]
+  ticketComments  TicketComment[]
+  ticketMembers   TicketMember[]
+  userCompanies   UserCompany[]
   userDepartments UserDepartment[] @relation("UserDepartmentUser")
 
   @@map("users")
 }
 
 model Company {
-  id                 String              @id @default(cuid())
-  name               String
-  logo               String?
-  industry           String?
-  isActive           Boolean             @default(true) @map("is_active")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  activities         Activity[]
-  clients            Client[]
-  contracts          Contract[]
-  customRoles        CustomRole[]
-  documents          Document[]
-  employees          Employee[]          @relation("CompanyEmployees")
-  expenses           Expense[]
-  incomes            Income[]
-  marketingCampaigns MarketingCampaign[]
-  opportunities      Opportunity[]
-  payrolls           Payroll[]           @relation("CompanyPayrolls")
-  pipelineColumns    PipelineColumn[]
-  productCategories  ProductCategory[]
-  products           Product[]
-  purchaseRequests   PurchaseRequest[]
-  quotes             Quote[]
-  tickets            Ticket[]
-  userCompanies      UserCompany[]
-  departments        Department[]
-  templates          Template[]
-  taskLists          TaskList[]
-  taskAssignments    TaskAssignment[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  logo                   String?
+  industry               String?
+  isActive               Boolean                 @default(true) @map("is_active")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  quotePrimaryColor      String?                 @map("quote_primary_color")
+  quoteHeaderHtml        String?                 @map("quote_header_html")
+  quoteFooterHtml        String?                 @map("quote_footer_html")
+  quoteTerms             String?                 @map("quote_terms")
+  invoicePrimaryColor    String?                 @map("invoice_primary_color")
+  invoiceHeaderHtml      String?                 @map("invoice_header_html")
+  invoiceFooterHtml      String?                 @map("invoice_footer_html")
+  ticketStages           Json?                   @map("ticket_stages")
+  activities             Activity[]
+  clients                Client[]
+  contracts              Contract[]
+  customRoles            CustomRole[]
+  departments            Department[]
+  documents              Document[]
+  employees              Employee[]              @relation("CompanyEmployees")
+  expenses               Expense[]
+  incomes                Income[]
+  marketingCampaigns     MarketingCampaign[]
+  opportunities          Opportunity[]
+  payrolls               Payroll[]               @relation("CompanyPayrolls")
+  pipelineColumns        PipelineColumn[]
+  productCategories      ProductCategory[]
+  products               Product[]
   purchaseRequestReasons PurchaseRequestReason[]
-
-  // Configuración de Plantillas (Proformas y Facturas)
-  quotePrimaryColor   String? @map("quote_primary_color")
-  quoteHeaderHtml     String? @map("quote_header_html") @db.Text
-  quoteFooterHtml     String? @map("quote_footer_html") @db.Text
-  quoteTerms          String? @map("quote_terms") @db.Text
-  invoicePrimaryColor String? @map("invoice_primary_color")
-  invoiceHeaderHtml   String? @map("invoice_header_html") @db.Text
-  invoiceFooterHtml   String? @map("invoice_footer_html") @db.Text
-  ticketStages        Json?   @map("ticket_stages")
+  purchaseRequests       PurchaseRequest[]
+  quotes                 Quote[]
+  taskAssignments        TaskAssignment[]
+  taskLists              TaskList[]
+  templates              Template[]
+  tickets                Ticket[]
+  userCompanies          UserCompany[]
 
   @@map("companies")
 }
@@ -122,7 +120,7 @@ model Income {
   folio             String?
   origen            String?
   clientId          String?      @map("client_id")
-  clientRelation    Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientRelation    Client?      @relation(fields: [clientId], references: [id])
   company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("incomes")
@@ -158,8 +156,8 @@ model Opportunity {
   status        String           @default("Pendiente")
   order         Int              @default(0)
   assignedTo    String?          @map("assigned_to")
-  assignedUsers String?          @map("assigned_users") // JSON array de IDs de usuarios asignados
-  currency      String           @default("USD") // USD o NIO (C$)
+  assignedUsers String?          @map("assigned_users")
+  currency      String           @default("USD")
   closeDate     DateTime?        @map("close_date")
   priority      String?          @default("MEDIA")
   description   String?
@@ -179,7 +177,7 @@ model Document {
   category   String?
   area       String?      @default("General")
   visibility String?      @default("COMPARTIDO")
-  sharedWith String?      @map("shared_with") // JSON array de IDs de usuarios con acceso
+  sharedWith String?      @map("shared_with")
   fileUrl    String       @map("file_url")
   fileSize   Int          @map("file_size")
   uploadedBy String       @map("uploaded_by")
@@ -203,7 +201,7 @@ model Contract {
   status     ContractStatus @default(ACTIVE)
   area       String?        @default("General")
   visibility String?        @default("COMPARTIDO")
-  sharedWith String?        @map("shared_with") // JSON array de IDs de usuarios/áreas con acceso
+  sharedWith String?        @map("shared_with")
   fileUrl    String?        @map("file_url")
   uploadedBy String         @map("uploaded_by")
   createdAt  DateTime       @default(now()) @map("created_at")
@@ -240,9 +238,9 @@ model Client {
   sucursal      String?
   telefonoTutor String?      @map("telefono_tutor")
   company       Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  incomes       Income[]
   quotes        Quote[]
   tickets       Ticket[]
-  incomes       Income[]
 
   @@index([companyId])
   @@index([status])
@@ -254,25 +252,25 @@ model Quote {
   quoteNumber      String        @unique @map("quote_number")
   companyId        String        @map("company_id")
   clientId         String        @map("client_id")
-  contactName      String?       @map("contact_name") // Nombre del contacto
+  contactName      String?       @map("contact_name")
   contactEmail     String?       @map("contact_email")
   contactPhone     String?       @map("contact_phone")
-  assignedTo       String?       @map("assigned_to") // Vendedor asignado (ID de usuario)
-  clientType       ClientType    @default(NUEVO) @map("client_type") // Nuevo, Recurrente, Proyecto
+  assignedTo       String?       @map("assigned_to")
+  clientType       ClientType    @default(NUEVO) @map("client_type")
   status           QuoteStatus   @default(DRAFT)
-  closeProbability Int?          @default(50) @map("close_probability") // Probabilidad de cierre (0-100)
+  closeProbability Int?          @default(50) @map("close_probability")
   currency         String        @default("USD")
   subtotal         Float
   discount         Float         @default(0)
   tax              Float         @default(0)
   total            Float
-  issueDate        DateTime      @default(now()) @map("issue_date") // Fecha de emisión
-  validUntil       DateTime      @map("valid_until") // Fecha de vencimiento
-  sentAt           DateTime?     @map("sent_at") // Fecha de envío
-  approvedAt       DateTime?     @map("approved_at") // Fecha de aprobación
-  rejectedAt       DateTime?     @map("rejected_at") // Fecha de rechazo
-  rejectionReason  String?       @map("rejection_reason") // Motivo de rechazo
-  closedAt         DateTime?     @map("closed_at") // Fecha de cierre
+  issueDate        DateTime      @default(now()) @map("issue_date")
+  validUntil       DateTime      @map("valid_until")
+  sentAt           DateTime?     @map("sent_at")
+  approvedAt       DateTime?     @map("approved_at")
+  rejectedAt       DateTime?     @map("rejected_at")
+  rejectionReason  String?       @map("rejection_reason")
+  closedAt         DateTime?     @map("closed_at")
   notes            String?
   internalNotes    String?       @map("internal_notes")
   terms            String?
@@ -332,8 +330,8 @@ model Product {
   updatedAt            DateTime              @updatedAt @map("updated_at")
   category             ProductCategory?      @relation(fields: [categoryId], references: [id])
   company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  quoteItems           QuoteItem[]
   purchaseRequestItems PurchaseRequestItem[]
+  quoteItems           QuoteItem[]
 
   @@unique([companyId, sku])
   @@index([companyId])
@@ -357,60 +355,52 @@ model ProductCategory {
 }
 
 model Ticket {
-  id            String    @id @default(cuid())
-  ticketNumber  String    @unique @map("ticket_number") // Número autogenerado
-  companyId     String    @map("company_id")
-  clientId      String?   @map("client_id")
-  title         String
-  description   String?   @db.Text
-  type          String    @default("SOPORTE_REMOTO") // Tipo de solicitud
-  status        String    @default("NUEVO")
-  priority      String    @default("MEDIA")
-  assignedTo    String?   @map("assigned_to")
-  assignedUsers String?   @map("assigned_users") // JSON array de IDs de usuarios asignados
-  branch        String? // Sucursal o área
-  isInternal    Boolean   @default(false) @map("is_internal") // Ticket interno (sin cliente)
-  hasCharge     Boolean   @default(false) @map("has_charge") // Indica si tiene cobro
-  amount        Float?
-  currency      String    @default("USD") // USD o NIO (C$)
-  startDate     DateTime? @map("start_date")
-  dueDate       DateTime? @map("due_date")
-  closedAt      DateTime? @map("closed_at")
-  attachments   String? // JSON array de URLs de archivos adjuntos
-  tags          String? // JSON array de tags/etiquetas
-
-  // Información técnica
-  equipmentType    String?   @map("equipment_type") // DVR, NVR, cámara IP, analógica
-  equipmentBrand   String?   @map("equipment_brand")
-  equipmentModel   String?   @map("equipment_model")
-  serialNumber     String?   @map("serial_number")
-  installationDate DateTime? @map("installation_date")
-  installedBy      String?   @map("installed_by") // ID del técnico que instaló
-  evidence         String? // JSON array de URLs de fotos/videos
-
-  // Campos personalizables (5 campos adicionales)
-  customField1 String? @map("custom_field_1")
-  customField2 String? @map("custom_field_2")
-  customField3 String? @map("custom_field_3")
-  customField4 String? @map("custom_field_4")
-  customField5 String? @map("custom_field_5")
-
-  // Métricas
-  responseTime   Int? @map("response_time") // Tiempo de respuesta en minutos
-  resolutionTime Int? @map("resolution_time") // Tiempo de resolución en minutos
-  reopenedCount  Int  @default(0) @map("reopened_count") // Veces que se reabrió
-
-  createdBy String   @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  client     Client?            @relation(fields: [clientId], references: [id])
-  company    Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  comments   TicketComment[]
-  members    TicketMember[]
-  checklists TicketChecklist[]
-  subTasks   TicketSubTask[]
-  auditLogs  TicketAuditLog[]
+  id               String            @id @default(cuid())
+  ticketNumber     String            @unique @map("ticket_number")
+  companyId        String            @map("company_id")
+  clientId         String?           @map("client_id")
+  title            String
+  description      String?
+  type             String            @default("SOPORTE_REMOTO")
+  status           String            @default("NUEVO")
+  priority         String            @default("MEDIA")
+  assignedTo       String?           @map("assigned_to")
+  assignedUsers    String?           @map("assigned_users")
+  branch           String?
+  isInternal       Boolean           @default(false) @map("is_internal")
+  hasCharge        Boolean           @default(false) @map("has_charge")
+  amount           Float?
+  currency         String            @default("USD")
+  startDate        DateTime?         @map("start_date")
+  dueDate          DateTime?         @map("due_date")
+  closedAt         DateTime?         @map("closed_at")
+  attachments      String?
+  tags             String?
+  equipmentType    String?           @map("equipment_type")
+  equipmentBrand   String?           @map("equipment_brand")
+  equipmentModel   String?           @map("equipment_model")
+  serialNumber     String?           @map("serial_number")
+  installationDate DateTime?         @map("installation_date")
+  installedBy      String?           @map("installed_by")
+  evidence         String?
+  customField1     String?           @map("custom_field_1")
+  customField2     String?           @map("custom_field_2")
+  customField3     String?           @map("custom_field_3")
+  customField4     String?           @map("custom_field_4")
+  customField5     String?           @map("custom_field_5")
+  responseTime     Int?              @map("response_time")
+  resolutionTime   Int?              @map("resolution_time")
+  reopenedCount    Int               @default(0) @map("reopened_count")
+  createdBy        String            @map("created_by")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  auditLogs        TicketAuditLog[]
+  checklists       TicketChecklist[]
+  comments         TicketComment[]
+  members          TicketMember[]
+  subTasks         TicketSubTask[]
+  client           Client?           @relation(fields: [clientId], references: [id])
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([status])
@@ -427,7 +417,7 @@ model TicketComment {
   id            String   @id @default(cuid())
   ticketId      String   @map("ticket_id")
   userId        String   @map("user_id")
-  content       String   @db.Text
+  content       String
   attachmentUrl String?  @map("attachment_url")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -443,7 +433,7 @@ model TicketMember {
   id        String   @id @default(cuid())
   ticketId  String   @map("ticket_id")
   userId    String   @map("user_id")
-  role      String   @default("member") // member, reviewer, collaborator
+  role      String   @default("member")
   addedBy   String   @map("added_by")
   createdAt DateTime @default(now()) @map("created_at")
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
@@ -462,8 +452,8 @@ model TicketChecklist {
   position  Int                   @default(0)
   createdAt DateTime              @default(now()) @map("created_at")
   updatedAt DateTime              @updatedAt @map("updated_at")
-  ticket    Ticket                @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   items     TicketChecklistItem[]
+  ticket    Ticket                @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@map("ticket_checklists")
@@ -489,7 +479,7 @@ model TicketSubTask {
   id          String    @id @default(cuid())
   ticketId    String    @map("ticket_id")
   title       String
-  description String?   @db.Text
+  description String?
   assignedTo  String?   @map("assigned_to")
   status      String    @default("PENDIENTE")
   priority    String    @default("MEDIA")
@@ -509,11 +499,11 @@ model TicketAuditLog {
   id        String   @id @default(cuid())
   ticketId  String   @map("ticket_id")
   userId    String   @map("user_id")
-  action    String // created, updated, status_changed, assigned, commented, etc.
-  field     String? // campo modificado
-  oldValue  String? // valor anterior
-  newValue  String? // valor nuevo
-  metadata  String? // JSON con información adicional
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  metadata  String?
   createdAt DateTime @default(now()) @map("created_at")
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
@@ -657,10 +647,10 @@ model Employee {
   socialSecurityNumber String?   @map("social_security_number")
   bloodType            String?   @map("blood_type")
   educationLevel       String?   @map("education_level")
-  benefits             String?   @db.Text
+  benefits             String?
   status               String    @default("ACTIVO")
   photo                String?
-  notes                String?   @db.Text
+  notes                String?
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
   company              Company   @relation("CompanyEmployees", fields: [companyId], references: [id], onDelete: Cascade)
@@ -694,37 +684,37 @@ model Payroll {
 }
 
 model PurchaseRequest {
-  id               String                  @id @default(cuid())
-  requestNumber    String                  @unique @map("request_number") // Autogenerado
-  companyId        String                  @map("company_id")
-  departmentId     String?                 @map("department_id")
-  requestDate      DateTime                @default(now()) @map("request_date")
-  requestingArea   String                  @map("requesting_area") // Área solicitante
-  requestedBy      String                  @map("requested_by") // ID del usuario solicitante
-  requestType      PurchaseRequestType     @default(REPOSICION) @map("request_type")
-  priority         PurchaseRequestPriority @default(MEDIA)
-  status           PurchaseRequestStatus   @default(PENDIENTE)
-  approvedBy       String?                 @map("approved_by") // ID del usuario que aprobó
-  approvedAt       DateTime?               @map("approved_at")
-  rejectedReason   String?                 @map("rejected_reason")
-  quotationUrl     String?                 @map("quotation_url") // URL de cotización subida
-  quotationFiles   Json?                   @map("quotation_files")
-  selectedQuotationUrl String?             @map("selected_quotation_url")
-  supplierName     String?                 @map("supplier_name")
-  finalAmount      Float?                  @map("final_amount")
-  purchaseOrderUrl String?                 @map("purchase_order_url") // URL de OC subida
-  evidenceUrl      String?                 @map("evidence_url") // URL de evidencia de recepción
-  purchasedAt      DateTime?               @map("purchased_at")
-  receivedAt       DateTime?               @map("received_at")
-  expenseId        String?                 @map("expense_id")
-  notes            String?                 @db.Text
-  currency         String                  @default("USD")
-  createdAt        DateTime                @default(now()) @map("created_at")
-  updatedAt        DateTime                @updatedAt @map("updated_at")
-  company          Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  department       Department?             @relation("DepartmentRequests", fields: [departmentId], references: [id], onDelete: SetNull)
-  expense          Expense?                @relation("ExpensePurchaseRequests", fields: [expenseId], references: [id], onUpdate: NoAction)
-  items            PurchaseRequestItem[]
+  id                   String                  @id @default(cuid())
+  requestNumber        String                  @unique @map("request_number")
+  companyId            String                  @map("company_id")
+  departmentId         String?                 @map("department_id")
+  requestDate          DateTime                @default(now()) @map("request_date")
+  requestingArea       String                  @map("requesting_area")
+  requestedBy          String                  @map("requested_by")
+  requestType          PurchaseRequestType     @default(REPOSICION) @map("request_type")
+  priority             PurchaseRequestPriority @default(MEDIA)
+  status               PurchaseRequestStatus   @default(PENDIENTE)
+  approvedBy           String?                 @map("approved_by")
+  approvedAt           DateTime?               @map("approved_at")
+  rejectedReason       String?                 @map("rejected_reason")
+  quotationUrl         String?                 @map("quotation_url")
+  purchaseOrderUrl     String?                 @map("purchase_order_url")
+  evidenceUrl          String?                 @map("evidence_url")
+  purchasedAt          DateTime?               @map("purchased_at")
+  receivedAt           DateTime?               @map("received_at")
+  expenseId            String?                 @map("expense_id")
+  notes                String?
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+  currency             String                  @default("USD")
+  finalAmount          Float?                  @map("final_amount")
+  quotationFiles       Json?                   @map("quotation_files")
+  selectedQuotationUrl String?                 @map("selected_quotation_url")
+  supplierName         String?                 @map("supplier_name")
+  items                PurchaseRequestItem[]
+  company              Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department           Department?             @relation("DepartmentRequests", fields: [departmentId], references: [id])
+  expense              Expense?                @relation("ExpensePurchaseRequests", fields: [expenseId], references: [id], onUpdate: NoAction)
 
   @@index([companyId])
   @@index([departmentId])
@@ -738,26 +728,211 @@ model PurchaseRequest {
 model PurchaseRequestItem {
   id                String          @id @default(cuid())
   purchaseRequestId String          @map("purchase_request_id")
-  productId         String?         @map("product_id") // Referencia al producto del inventario
-  sku               String? // Código SKU
+  productId         String?         @map("product_id")
+  sku               String?
   productName       String          @map("product_name")
   category          String?
   currentStock      Int?            @map("current_stock")
   minimumStock      Int?            @map("minimum_stock")
   requestedQuantity Int             @map("requested_quantity")
-  reason            String? // Motivo: Agotado, Alta demanda, Proyecto
+  reason            String?
   lastSaleDate      DateTime?       @map("last_sale_date")
-  monthlyAverage    Float?          @map("monthly_average") // Promedio de ventas mensuales
+  monthlyAverage    Float?          @map("monthly_average")
   unitCost          Float?          @map("unit_cost")
   totalCost         Float?          @map("total_cost")
   createdAt         DateTime        @default(now()) @map("created_at")
   updatedAt         DateTime        @updatedAt @map("updated_at")
-  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
   product           Product?        @relation(fields: [productId], references: [id])
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
 
   @@index([purchaseRequestId])
   @@index([productId])
   @@map("purchase_request_items")
+}
+
+model Template {
+  id        String       @id @default(cuid())
+  name      String
+  type      TemplateType
+  fileUrl   String?
+  content   String?
+  module    String
+  isActive  Boolean      @default(true)
+  companyId String
+  createdBy String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  company   Company      @relation(fields: [companyId], references: [id])
+  user      User         @relation(fields: [createdBy], references: [id])
+
+  @@map("templates")
+}
+
+model Department {
+  id               String            @id @default(cuid())
+  name             String
+  description      String?
+  companyId        String            @map("company_id")
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  purchaseRequests PurchaseRequest[] @relation("DepartmentRequests")
+  userDepartments  UserDepartment[]
+
+  @@map("departments")
+}
+
+model UserDepartment {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  departmentId String     @map("department_id")
+  role         String?
+  isApprover   Boolean    @default(false) @map("is_approver")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  isReceiver   Boolean    @default(false) @map("is_receiver")
+  isBuyer      Boolean    @default(false) @map("is_buyer")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserDepartmentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+  @@map("user_departments")
+}
+
+model TaskList {
+  id              String           @id @default(cuid())
+  companyId       String           @map("company_id")
+  name            String
+  description     String?
+  area            String?
+  frequency       TaskFrequency    @default(DAILY)
+  isActive        Boolean          @default(true) @map("is_active")
+  requireEvidence Boolean          @default(false) @map("require_evidence")
+  createdBy       String           @map("created_by")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  assignments     TaskAssignment[]
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  templates       TaskTemplate[]
+
+  @@index([companyId])
+  @@index([area])
+  @@index([frequency])
+  @@map("task_lists")
+}
+
+model TaskTemplate {
+  id               String          @id @default(cuid())
+  taskListId       String          @map("task_list_id")
+  title            String
+  description      String?
+  order            Int             @default(0)
+  requirePhoto     Boolean         @default(false) @map("require_photo")
+  requireVideo     Boolean         @default(false) @map("require_video")
+  estimatedMinutes Int?            @map("estimated_minutes")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  executions       TaskExecution[]
+  taskList         TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+
+  @@index([taskListId])
+  @@index([order])
+  @@map("task_templates")
+}
+
+model TaskAssignment {
+  id          String          @id @default(cuid())
+  companyId   String          @map("company_id")
+  taskListId  String          @map("task_list_id")
+  assignedTo  String          @map("assigned_to")
+  assignedBy  String          @map("assigned_by")
+  dueDate     DateTime?       @map("due_date")
+  priority    TaskPriority    @default(MEDIUM)
+  status      TaskStatus      @default(PENDING)
+  startedAt   DateTime?       @map("started_at")
+  completedAt DateTime?       @map("completed_at")
+  notes       String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  taskList    TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  executions  TaskExecution[]
+
+  @@index([companyId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("task_assignments")
+}
+
+model TaskExecution {
+  id               String         @id @default(cuid())
+  assignmentId     String         @map("assignment_id")
+  templateId       String         @map("template_id")
+  completed        Boolean        @default(false)
+  completedAt      DateTime?      @map("completed_at")
+  completedBy      String?        @map("completed_by")
+  evidencePhotoUrl String?        @map("evidence_photo_url")
+  evidenceVideoUrl String?        @map("evidence_video_url")
+  notes            String?
+  latitude         Float?
+  longitude        Float?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  assignment       TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  template         TaskTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@index([completed])
+  @@map("task_executions")
+}
+
+model TaskNotification {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  assignmentId String?   @map("assignment_id")
+  title        String
+  message      String
+  type         String    @default("TASK_ASSIGNED")
+  read         Boolean   @default(false)
+  readAt       DateTime? @map("read_at")
+  sentPush     Boolean   @default(false) @map("sent_push")
+  pushSentAt   DateTime? @map("push_sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([read])
+  @@map("task_notifications")
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  endpoint   String   @unique
+  keys       Json
+  deviceInfo String?  @map("device_info")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model PurchaseRequestReason {
+  id          String              @id @default(cuid())
+  companyId   String              @map("company_id")
+  requestType PurchaseRequestType @map("request_type")
+  name        String
+  description String?
+  isActive    Boolean             @default(true) @map("is_active")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, requestType, name])
+  @@index([companyId])
+  @@index([requestType])
+  @@map("purchase_request_reasons")
 }
 
 enum UserRole {
@@ -908,58 +1083,9 @@ enum ClientType {
   PROYECTO
 }
 
-model Template {
-  id        String       @id @default(cuid())
-  name      String
-  type      TemplateType
-  fileUrl   String?
-  content   String?      @db.Text
-  module    String // cotizacion, factura, inventario, contrato, etc
-  isActive  Boolean      @default(true)
-  companyId String
-  company   Company      @relation(fields: [companyId], references: [id])
-  createdBy String
-  user      User         @relation(fields: [createdBy], references: [id])
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  @@map("templates")
-}
-
 enum TemplateType {
-  EDITABLE // Plantilla editable en el sistema
-  STATIC // Archivo estatico (PDF/XLSX)
-}
-
-model Department {
-  id               String            @id @default(cuid())
-  name             String
-  description      String?
-  companyId        String            @map("company_id")
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  isActive         Boolean           @default(true) @map("is_active")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  userDepartments  UserDepartment[]
-  purchaseRequests PurchaseRequest[] @relation("DepartmentRequests")
-
-  @@map("departments")
-}
-
-model UserDepartment {
-  id           String     @id @default(cuid())
-  userId       String     @map("user_id")
-  departmentId String     @map("department_id")
-  role         String?
-  isApprover   Boolean    @default(false) @map("is_approver")
-  isReceiver   Boolean    @default(false) @map("is_receiver")
-  isBuyer      Boolean    @default(false) @map("is_buyer")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  user         User       @relation("UserDepartmentUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, departmentId])
-  @@map("user_departments")
+  EDITABLE
+  STATIC
 }
 
 enum TaskFrequency {
@@ -982,141 +1108,4 @@ enum TaskStatus {
   COMPLETED
   OVERDUE
   CANCELLED
-}
-
-model TaskList {
-  id              String           @id @default(cuid())
-  companyId       String           @map("company_id")
-  name            String
-  description     String?
-  area            String?
-  frequency       TaskFrequency    @default(DAILY)
-  isActive        Boolean          @default(true) @map("is_active")
-  requireEvidence Boolean          @default(false) @map("require_evidence")
-  createdBy       String           @map("created_by")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  templates       TaskTemplate[]
-  assignments     TaskAssignment[]
-
-  @@index([companyId])
-  @@index([area])
-  @@index([frequency])
-  @@map("task_lists")
-}
-
-model TaskTemplate {
-  id               String          @id @default(cuid())
-  taskListId       String          @map("task_list_id")
-  title            String
-  description      String?
-  order            Int             @default(0)
-  requirePhoto     Boolean         @default(false) @map("require_photo")
-  requireVideo     Boolean         @default(false) @map("require_video")
-  estimatedMinutes Int?            @map("estimated_minutes")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  taskList         TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
-  executions       TaskExecution[]
-
-  @@index([taskListId])
-  @@index([order])
-  @@map("task_templates")
-}
-
-model TaskAssignment {
-  id          String          @id @default(cuid())
-  companyId   String          @map("company_id")
-  taskListId  String          @map("task_list_id")
-  assignedTo  String          @map("assigned_to")
-  assignedBy  String          @map("assigned_by")
-  dueDate     DateTime?       @map("due_date")
-  priority    TaskPriority    @default(MEDIUM)
-  status      TaskStatus      @default(PENDING)
-  startedAt   DateTime?       @map("started_at")
-  completedAt DateTime?       @map("completed_at")
-  notes       String?
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  taskList    TaskList        @relation(fields: [taskListId], references: [id], onDelete: Cascade)
-  executions  TaskExecution[]
-
-  @@index([companyId])
-  @@index([assignedTo])
-  @@index([status])
-  @@index([dueDate])
-  @@map("task_assignments")
-}
-
-model TaskExecution {
-  id                String        @id @default(cuid())
-  assignmentId      String        @map("assignment_id")
-  templateId        String        @map("template_id")
-  completed         Boolean       @default(false)
-  completedAt       DateTime?     @map("completed_at")
-  completedBy       String?       @map("completed_by")
-  evidencePhotoUrl  String?       @map("evidence_photo_url")
-  evidenceVideoUrl  String?       @map("evidence_video_url")
-  notes             String?
-  latitude          Float?
-  longitude         Float?
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  assignment        TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  template          TaskTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  @@index([assignmentId])
-  @@index([completed])
-  @@map("task_executions")
-}
-
-model TaskNotification {
-  id           String    @id @default(cuid())
-  userId       String    @map("user_id")
-  assignmentId String?   @map("assignment_id")
-  title        String
-  message      String
-  type         String    @default("TASK_ASSIGNED")
-  read         Boolean   @default(false)
-  readAt       DateTime? @map("read_at")
-  sentPush     Boolean   @default(false) @map("sent_push")
-  pushSentAt   DateTime? @map("push_sent_at")
-  createdAt    DateTime  @default(now()) @map("created_at")
-
-  @@index([userId])
-  @@index([read])
-  @@map("task_notifications")
-}
-
-model PushSubscription {
-  id         String   @id @default(cuid())
-  userId     String   @map("user_id")
-  endpoint   String   @unique
-  keys       Json
-  deviceInfo String?  @map("device_info")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  @@index([userId])
-  @@map("push_subscriptions")
-}
-
-// Motivos de Solicitud de Compra - CRUD por tipo de solicitud
-model PurchaseRequestReason {
-  id          String              @id @default(cuid())
-  companyId   String              @map("company_id")
-  requestType PurchaseRequestType @map("request_type")
-  name        String
-  description String?
-  isActive    Boolean             @default(true) @map("is_active")
-  createdAt   DateTime            @default(now()) @map("created_at")
-  updatedAt   DateTime            @updatedAt @map("updated_at")
-  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@unique([companyId, requestType, name])
-  @@index([companyId])
-  @@index([requestType])
-  @@map("purchase_request_reasons")
 }

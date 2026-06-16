@@ -78,33 +78,39 @@ export function DepartmentAssignmentsModal({
 
       const aRes = await fetch(
         `/api/department-assignments?companyId=${companyId}&departmentId=${selectedDeptId}`,
-        { headers }
+        { headers, cache: 'no-store' }
       )
       const aData = await aRes.json()
 
+      if (!aRes.ok || !aData.success) {
+        setError(aData.error || `Error ${aRes.status} al cargar asignaciones`)
+        setAssignments({})
+        setFlags({})
+        return
+      }
+
       const map: Record<string, Assignment> = {}
       const initialFlags: Record<string, UserFlags> = {}
-      if (aData.success) {
-        for (const a of aData.data) {
-          map[a.userId] = {
-            id: a.id,
-            userId: a.userId,
-            isApprover: a.isApprover,
-            isReceiver: a.isReceiver,
-            isBuyer: a.isBuyer,
-            user: a.user,
-          }
-          initialFlags[a.userId] = {
-            isApprover: a.isApprover,
-            isReceiver: a.isReceiver,
-            isBuyer: a.isBuyer,
-          }
+      for (const a of aData.data) {
+        map[a.userId] = {
+          id: a.id,
+          userId: a.userId,
+          isApprover: a.isApprover,
+          isReceiver: a.isReceiver,
+          isBuyer: a.isBuyer,
+          user: a.user,
+        }
+        initialFlags[a.userId] = {
+          isApprover: a.isApprover,
+          isReceiver: a.isReceiver,
+          isBuyer: a.isBuyer,
         }
       }
       setAssignments(map)
       setFlags(initialFlags)
-    } catch {
-      setError('Error al cargar datos')
+    } catch (err) {
+      console.error('Error cargando asignaciones:', err)
+      setError('Error de red al cargar asignaciones')
     } finally {
       setIsLoading(false)
     }
