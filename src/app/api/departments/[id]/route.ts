@@ -90,9 +90,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     return apiSuccess(department)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating department:', error)
-    return apiError('Error al actualizar departamento', 500)
+    return apiError(`Error al actualizar departamento: ${error.message || 'Desconocido'}`, 500)
   }
 }
 

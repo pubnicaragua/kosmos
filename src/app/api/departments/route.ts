@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       include: {
         userDepartments: {
           select: {
+            id: true,
             userId: true,
             role: true,
             isApprover: true,

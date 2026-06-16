@@ -3,13 +3,22 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const res = await prisma.userDepartment.findFirst({
-      select: { isReceiver: true }
+    const existing = await prisma.department.findFirst();
+    if (!existing) {
+      console.log('No departments found');
+      return;
+    }
+    const res = await prisma.department.update({
+      where: { id: existing.id },
+      data: { name: existing.name },
+      include: { userDepartments: true }
     });
-    console.log("Success! isReceiver exists. Result:", res);
+    console.log('SUCCESS');
   } catch(e) {
-    console.error("Error:", e.message);
+    console.error('ERROR:', e);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-main().finally(() => prisma.$disconnect());
+main();
