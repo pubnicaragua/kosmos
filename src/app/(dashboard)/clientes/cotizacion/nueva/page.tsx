@@ -408,7 +408,7 @@ useEffect(() => {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-x-auto w-full min-h-[400px]">
+            <div className="overflow-x-auto w-full">
               <table className="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200">
