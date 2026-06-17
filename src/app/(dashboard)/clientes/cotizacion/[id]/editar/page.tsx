@@ -287,10 +287,10 @@ export default function EditarCotizacionPage() {
             />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-6 overflow-hidden">
             <h3 className="text-sm font-medium text-gray-700 mb-3">PRODUCTOS / SERVICIOS</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase w-8">#</th>

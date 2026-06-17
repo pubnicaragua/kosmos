@@ -407,9 +407,9 @@ useEffect(() => {
             />
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-x-visible">
-              <table className="w-full table-fixed">
+          <div className="bg-white rounded-lg shadow p-6 overflow-hidden">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
