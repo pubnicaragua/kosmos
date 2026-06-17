@@ -680,6 +680,16 @@ useEffect(() => {
                   </div>
                 )}
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Términos y Condiciones</label>
+                <textarea
+                  value={terms}
+                  onChange={(e) => setTerms(e.target.value)}
+                  placeholder="Términos..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                  rows={3}
+                />
+              </div>
             </div>
           </div>
         </div>

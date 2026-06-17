@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { Button } from '@/components/ui-kit/Button'
-import { Select } from '@/components/ui-kit/Select'
-import { Input } from '@/components/ui-kit/Input'
+import { Button, Select, Input, ProductAutocomplete } from '@/components/ui-kit'
 
 interface QuoteItem {
   id?: string
@@ -160,6 +158,22 @@ export default function EditarCotizacionPage() {
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
     const updated = [...items]
     updated[index] = { ...updated[index], [field]: value }
+    if (field === 'description') {
+      updated[index].productId = ''
+    }
+    updated[index].total = recalculateItemTotal(updated[index], taxApplies)
+    setItems(updated)
+  }
+
+  const selectProduct = (index: number, product: any) => {
+    if (!product) return
+    const updated = [...items]
+    updated[index] = {
+      ...updated[index],
+      productId: product.id,
+      description: product.name,
+      unitPrice: product.price || 0,
+    }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
   }
@@ -308,16 +322,45 @@ export default function EditarCotizacionPage() {
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-2 px-2">
-                        <Input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => updateItem(index, 'description', e.target.value)}
-                          placeholder="Descripción..."
-                          fullWidth
-                          readOnly={!!item.productId}
-                          className={item.productId ? "bg-gray-50 cursor-not-allowed text-gray-600" : ""}
-                          title={item.productId ? "Producto del catálogo - no editable" : ""}
-                        />
+                        {item.productId ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={item.description}
+                              readOnly
+                              className="flex-1 px-3 py-2 text-sm font-semibold bg-gray-50 border border-gray-300 rounded-lg cursor-not-allowed text-gray-700"
+                              title="Producto de inventario - no editable"
+                            />
+                            <button
+                              onClick={() => {
+                                const updated = [...items]
+                                updated[index] = {
+                                  ...updated[index],
+                                  productId: '',
+                                  description: '',
+                                  unitPrice: 0,
+                                }
+                                setItems(updated)
+                              }}
+                              className="px-2 py-2 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
+                              title="Desvincular producto"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <ProductAutocomplete
+                            companyId={selectedCompany}
+                            value={item.description}
+                            onChange={(val) => updateItem(index, 'description', val)}
+                            onSelect={(prod) => selectProduct(index, prod as any)}
+                            placeholder="Buscar producto o SKU..."
+                            className="w-full"
+                            inputClassName="text-sm font-semibold"
+                          />
+                        )}
                       </td>
                       <td className="py-2 px-2">
                         <Input
