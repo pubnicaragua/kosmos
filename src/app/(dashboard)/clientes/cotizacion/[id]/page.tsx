@@ -438,11 +438,10 @@ export default function DetalleCotizacionPage() {
               <span className="font-extrabold">{quote.client.name.toUpperCase()}</span>
             </div>
             <div className="p-2 space-y-0.5 text-xs">
-              <div><span className="font-semibold">Atención:</span> {quote.client.contactName || ''}</div>
-              <div><span className="font-semibold">Email:</span> {quote.client.email || ''}</div>
-              <div><span className="font-semibold"># Telf:</span> {quote.client.phone || ''}</div>
-              <div><span className="font-semibold">Ruc:</span> {quote.client.ruc || ''}</div>
-              <div><span className="font-semibold">Teléfono:</span> {quote.client.phone || ''}</div>
+              <div><span className="font-semibold">Atención:</span> {quote.contactName || quote.client.contactName || quote.client.name}</div>
+              <div><span className="font-semibold">Email:</span> {quote.contactEmail || quote.client.email || ''}</div>
+              <div><span className="font-semibold">Teléfono:</span> {quote.contactPhone || quote.client.phone || ''}</div>
+              {quote.client.ruc && <div><span className="font-semibold">Ruc:</span> {quote.client.ruc}</div>}
             </div>
           </div>
         </div>

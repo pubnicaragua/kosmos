@@ -54,7 +54,7 @@ function NuevaCotizacionContent() {
   const [paymentMethod, setPaymentMethod] = useState<'CONTADO' | 'CREDITO'>('CONTADO')
   const [taxApplies, setTaxApplies] = useState(true)
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0])
-  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+  const [validUntil, setValidUntil] = useState(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
   const [seller, setSeller] = useState('')
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isAdminRole, setIsAdminRole] = useState(false)
