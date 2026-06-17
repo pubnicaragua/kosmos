@@ -408,18 +408,18 @@ useEffect(() => {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-visible">
-              <table className="w-full table-fixed">
+            <div className="overflow-x-auto w-full min-h-[400px]">
+              <table className="w-full table-fixed min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-8">#</th>
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-auto min-w-[200px]">PRODUCTO/SERVICIO</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-20">CANT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-20">DESC. %</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">TOTAL</th>
-                    <th className="w-8"></th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[40%]">PRODUCTO/SERVICIO</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">CANT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">PRECIO UNIT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">DESC. %</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">IMPUESTO</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">TOTAL</th>
+                    <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
