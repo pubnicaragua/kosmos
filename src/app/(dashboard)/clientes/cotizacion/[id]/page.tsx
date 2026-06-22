@@ -36,6 +36,7 @@ interface Quote {
     phone: string | null
     contactName: string | null
     ruc?: string | null
+    cedula?: string | null
     address?: string | null
   }
   items: Array<{
