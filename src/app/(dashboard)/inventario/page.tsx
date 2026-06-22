@@ -534,7 +534,9 @@ function InventarioPageContent() {
       selectedCompany
     )
     setShowTemplateModal(false)
-  }  const handleExport = () => {
+  }
+  
+  const handleExport = () => {
     if (!products.length) {
       alert('No hay productos para exportar')
       return
