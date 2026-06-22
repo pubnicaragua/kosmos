@@ -534,9 +534,7 @@ function InventarioPageContent() {
       selectedCompany
     )
     setShowTemplateModal(false)
-  }
-
-  const handleExport = () => {
+  }  const handleExport = () => {
     if (!products.length) {
       alert('No hay productos para exportar')
       return
@@ -1386,6 +1384,8 @@ function InventarioPageContent() {
         </div>
       </div>
 
+
+
       {/* Modal de explicación de plantilla */}
       {showTemplateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
@@ -1456,7 +1456,7 @@ function InventarioPageContent() {
                   <li>Descarga la plantilla haciendo clic en &quot;Descargar Plantilla&quot;</li>
                   <li>Llena los datos de tus productos siguiendo el ejemplo incluido</li>
                   <li>Guarda el archivo Excel con tus datos</li>
-                  <li>Ve a &quot;Agregar Producto&quot; y usa la opción de importación masiva</li>
+                  <li>Ve a &quot;Importar&quot; en el Inventario para cargar el archivo</li>
                   <li>Selecciona tu archivo y confirma la importación</li>
                 </ol>
               </div>
