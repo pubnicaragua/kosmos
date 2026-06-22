@@ -166,7 +166,11 @@ export default function DetalleCotizacionPage() {
     doc.text(`Cliente: ${quote.client.name}`, 20, y)
     y += 7
     if (quote.client.ruc) {
-      doc.text(`Ruc / Cédula: ${quote.client.ruc}`, 20, y)
+      doc.text(`Ruc: ${quote.client.ruc}`, 20, y)
+      y += 7
+    }
+    if (quote.client.cedula) {
+      doc.text(`Cédula: ${quote.client.cedula}`, 20, y)
       y += 7
     }
     if (quote.client.email) {
@@ -467,7 +471,8 @@ export default function DetalleCotizacionPage() {
                     {validContact && <div><span className="font-semibold">Atención:</span> {validContact}</div>}
                     {email && <div><span className="font-semibold">Email:</span> {email}</div>}
                     {phone && <div><span className="font-semibold">Teléfono:</span> {phone}</div>}
-                    {quote.client.ruc && <div><span className="font-semibold">Ruc / Cédula:</span> {quote.client.ruc}</div>}
+                    {quote.client.ruc && <div><span className="font-semibold">Ruc:</span> {quote.client.ruc}</div>}
+                    {quote.client.cedula && <div><span className="font-semibold">Cédula:</span> {quote.client.cedula}</div>}
                     {quote.client.address && <div><span className="font-semibold">Dirección:</span> {quote.client.address}</div>}
                   </>
                 );

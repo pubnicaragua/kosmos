@@ -960,7 +960,9 @@ function ClientesPageContent() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="text-sm text-slate-700">{client.ruc || client.cedula || 'N/A'}</div>
+                      {client.ruc && <div className="text-sm text-slate-700">RUC: {client.ruc}</div>}
+                      {client.cedula && <div className="text-sm text-slate-700">Cédula: {client.cedula}</div>}
+                      {!client.ruc && !client.cedula && <div className="text-sm text-slate-400">N/A</div>}
                     </td>
                     <td className="py-3 px-4">
                       {client.phone ? (
@@ -1477,10 +1479,24 @@ function ClientesPageContent() {
                           )}
                         </dd>
                       </div>
-                      <div className="flex justify-between gap-4">
-                        <dt className="text-slate-600">RUC / Cédula</dt>
-                        <dd className="text-slate-900 text-right">{quickViewDetails?.ruc || quickViewDetails?.cedula || quickViewClient.ruc || quickViewClient.cedula || 'N/A'}</dd>
-                      </div>
+                      {(quickViewDetails?.ruc || quickViewClient.ruc) && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-600">RUC</dt>
+                          <dd className="text-slate-900 text-right">{quickViewDetails?.ruc || quickViewClient.ruc}</dd>
+                        </div>
+                      )}
+                      {(quickViewDetails?.cedula || quickViewClient.cedula) && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-600">Cédula</dt>
+                          <dd className="text-slate-900 text-right">{quickViewDetails?.cedula || quickViewClient.cedula}</dd>
+                        </div>
+                      )}
+                      {!quickViewDetails?.ruc && !quickViewClient.ruc && !quickViewDetails?.cedula && !quickViewClient.cedula && (
+                        <div className="flex justify-between gap-4">
+                          <dt className="text-slate-600">RUC / Cédula</dt>
+                          <dd className="text-slate-900 text-right">N/A</dd>
+                        </div>
+                      )}
                       <div className="flex justify-between gap-4">
                         <dt className="text-slate-600">WhatsApp</dt>
                         <dd className="text-green-600 text-right flex items-center justify-end gap-1">

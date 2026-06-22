@@ -111,29 +111,9 @@ const FALLBACK_PREDEFINED_ROLES: PredefinedRole[] = [
   { name: 'Soporte', description: 'Gestión de tickets de soporte', color: '#ef4444', modules: { 'tickets-soporte': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, clientes: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },
 ]
 
-const QUOTE_TEMPLATE_BASE = `
-<div style="font-family: sans-serif; line-height: 1.4;">
-  <p><strong>Nuestros Servicios Incluyen:</strong></p>
-  <ul style="margin: 5px 0; padding-left: 20px; color: #4b5563; font-size: 11px;">
-    <li>Asesoría técnica personalizada 24/7.</li>
-    <li>Garantía extendida por 12 meses en equipos.</li>
-    <li>Instalación profesional certificada.</li>
-    <li>Mantenimiento preventivo programado.</li>
-  </ul>
-  <p style="margin-top: 10px; font-size: 10px; border-top: 1px dotted #ccc; pt-2;">
-    <i>"Seguridad y confianza en cada paso tecnológico"</i>
-  </p>
-</div>
-`
+const QUOTE_TEMPLATE_BASE = `<b>Nuestros Servicios Incluyen:</b><br>- Asesoría técnica personalizada 24/7.<br>- Garantía extendida por 12 meses en equipos.<br>- Instalación profesional certificada.<br>- Mantenimiento preventivo programado.<br><br><i>"Seguridad y confianza en cada paso tecnológico"</i>`
 
-const INVOICE_TEMPLATE_BASE = `
-<div style="font-family: sans-serif; background: #f8fafc; padding: 10px; border-radius: 5px;">
-  <p style="font-weight: bold; margin-bottom: 5px;">Datos de Pago Bancario:</p>
-  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>BAC Credomatic:</strong> 123-45678-9 (Dólares)</p>
-  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>BANPRO:</strong> 987-65432-1 (Córdobas)</p>
-  <p style="font-size: 11px; color: #1e293b; margin: 2px 0;"><strong>A nombre de:</strong> Kosmos Solutions S.A.</p>
-</div>
-`
+const INVOICE_TEMPLATE_BASE = `<b>Datos de Pago Bancario:</b><br><b>BAC Credomatic:</b> 123-45678-9 (Dólares)<br><b>BANPRO:</b> 987-65432-1 (Córdobas)<br><b>A nombre de:</b> Kosmos Solutions S.A.`
 
 type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles' | 'plantillas' | 'departamentos'
 
@@ -1383,7 +1363,7 @@ export default function AjustesPage() {
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
-                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
+                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE, quoteTerms: ''})}
                         >
                           Cargar Diseño Base
                         </Button>

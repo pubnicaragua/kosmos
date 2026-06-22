@@ -371,23 +371,55 @@ export default function ClientDetailPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
-            <FileText className="w-5 h-5 text-slate-500 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">RUC / Cédula</p>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editData.ruc || ''}
-                  onChange={(e) => setEditData({ ...editData, ruc: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="J0310000000000"
-                />
-              ) : (
-                <p className="text-base font-medium text-slate-900">{client.ruc || client.cedula || 'No especificado'}</p>
-              )}
+          {!isEditing && !client.ruc && !client.cedula && (
+            <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
+              <FileText className="w-5 h-5 text-slate-500 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">RUC / Cédula</p>
+                <p className="text-base font-medium text-slate-900">No especificado</p>
+              </div>
             </div>
-          </div>
+          )}
+
+          {(isEditing || client.ruc) && (
+            <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
+              <FileText className="w-5 h-5 text-slate-500 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">RUC</p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData.ruc || ''}
+                    onChange={(e) => setEditData({ ...editData, ruc: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="J0310000000000"
+                  />
+                ) : (
+                  <p className="text-base font-medium text-slate-900">{client.ruc}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {(isEditing || client.cedula) && (
+            <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
+              <FileText className="w-5 h-5 text-slate-500 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Cédula</p>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editData.cedula || ''}
+                    onChange={(e) => setEditData({ ...editData, cedula: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="000-000000-0000A"
+                  />
+                ) : (
+                  <p className="text-base font-medium text-slate-900">{client.cedula}</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg">
             <MapPin className="w-5 h-5 text-slate-500 mt-0.5" />
