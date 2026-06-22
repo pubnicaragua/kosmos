@@ -1383,7 +1383,7 @@ export default function AjustesPage() {
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
-                          onClick={() => setCompanyForm({...companyForm, quoteTerms: QUOTE_TEMPLATE_BASE})}
+                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
                         >
                           Cargar Diseño Base
                         </Button>
@@ -1455,7 +1455,7 @@ export default function AjustesPage() {
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
-                          onClick={() => setCompanyForm({...companyForm, invoiceFooterHtml: INVOICE_TEMPLATE_BASE})}
+                          onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
                         >
                           Cargar Diseño Base
                         </Button>
@@ -1526,7 +1526,7 @@ export default function AjustesPage() {
                               )}
                               <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
                               <div 
-                                className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                                className="text-[10px] text-gray-600 max-w-xs"
                                 dangerouslySetInnerHTML={{ __html: companyForm.quoteHeaderHtml || '' }}
                               />
                             </div>
@@ -1604,7 +1604,7 @@ export default function AjustesPage() {
                               )}
                               <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
                               <div 
-                                className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                                className="text-[10px] text-gray-600 max-w-xs"
                                 dangerouslySetInnerHTML={{ __html: companyForm.invoiceHeaderHtml || '' }}
                               />
                             </div>
