@@ -610,6 +610,11 @@ function InventarioPageContent() {
             <Button variant="outline" onClick={handleFlowGuide} className="h-10 border-cyan-200/30 bg-cyan-400/10 text-cyan-50 hover:bg-cyan-400/20">
               Cómo funciona
             </Button>
+            {permissions.canEdit && (
+              <Button variant="outline" onClick={handleImportOrUpdate} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+                Importar
+              </Button>
+            )}
             <Button variant="outline" onClick={handleDownloadTemplate} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
               Plantilla
             </Button>
@@ -1383,7 +1388,7 @@ function InventarioPageContent() {
 
       {/* Modal de explicación de plantilla */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl">
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">Plantilla de Importación de Inventario</h2>

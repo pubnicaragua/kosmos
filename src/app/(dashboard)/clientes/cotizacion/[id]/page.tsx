@@ -530,10 +530,12 @@ export default function DetalleCotizacionPage() {
             </div>
           )}
           
-          {(companyDetails?.quoteTerms || quote.terms) && (
-            <div className="text-[10px] text-gray-700">
-              <div className="font-bold mb-1 uppercase">Términos y Condiciones:</div>
-              <div className="whitespace-pre-wrap">{companyDetails?.quoteTerms || quote.terms}</div>
+          {(companyDetails?.quoteTerms || quote.terms) && 
+           (companyDetails?.quoteTerms || quote.terms) !== '<br>' && 
+           (companyDetails?.quoteTerms || quote.terms) !== '<p><br></p>' && (
+            <div className="mb-4 text-[10px] text-gray-700 leading-tight">
+              <div className="font-bold mb-1 uppercase tracking-widest text-[9px] text-gray-500">Términos y Condiciones</div>
+              <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: companyDetails?.quoteTerms || quote.terms || '' }} />
             </div>
           )}
 

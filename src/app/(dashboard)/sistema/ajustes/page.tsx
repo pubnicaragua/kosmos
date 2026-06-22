@@ -1557,10 +1557,10 @@ export default function AjustesPage() {
                           </table>
 
                           <div className="mt-12 space-y-4">
-                            {companyForm.quoteTerms && (
+                            {companyForm.quoteTerms && companyForm.quoteTerms !== '<br>' && companyForm.quoteTerms !== '<p><br></p>' && (
                               <div>
                                 <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
-                                <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
+                                <div className="text-[10px] text-gray-600 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: companyForm.quoteTerms }} />
                               </div>
                             )}
                             
