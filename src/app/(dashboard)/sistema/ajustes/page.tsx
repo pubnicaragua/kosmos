@@ -1359,7 +1359,7 @@ export default function AjustesPage() {
                           variant="ghost" size="sm" 
                           onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: '', quoteTerms: '', quoteFooterHtml: ''})}
                         >
-                          Limpiar Inputs
+                          Limpiar
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
@@ -1431,7 +1431,7 @@ export default function AjustesPage() {
                           variant="ghost" size="sm" 
                           onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: '', invoiceFooterHtml: ''})}
                         >
-                          Limpiar Inputs
+                          Limpiar
                         </Button>
                         <Button 
                           variant="outline" size="sm" 
