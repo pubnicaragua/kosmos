@@ -1485,11 +1485,9 @@ export default function AjustesPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado de Factura</label>
-                        <textarea
+                        <SimpleRichTextEditor
                           value={companyForm.invoiceHeaderHtml || ''}
-                          onChange={(e) => setCompanyForm({...companyForm, invoiceHeaderHtml: e.target.value})}
-                          placeholder="Datos fiscales adicionales..."
-                          className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
+                          onChange={(value) => setCompanyForm({...companyForm, invoiceHeaderHtml: value})}
                           disabled={!canEditCompany}
                         />
                       </div>
