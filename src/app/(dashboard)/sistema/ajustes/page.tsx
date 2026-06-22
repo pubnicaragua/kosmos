@@ -1376,8 +1376,14 @@ export default function AjustesPage() {
                       </h3>
                       <div className="flex gap-2">
                         <Button 
+                          variant="ghost" size="sm" 
+                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: '', quoteTerms: '', quoteFooterHtml: ''})}
+                        >
+                          Limpiar Inputs
+                        </Button>
+                        <Button 
                           variant="outline" size="sm" 
-                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
+                          onClick={() => setCompanyForm({...companyForm, quoteTerms: QUOTE_TEMPLATE_BASE})}
                         >
                           Cargar Diseño Base
                         </Button>
@@ -1442,8 +1448,14 @@ export default function AjustesPage() {
                       </h3>
                       <div className="flex gap-2">
                         <Button 
+                          variant="ghost" size="sm" 
+                          onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: '', invoiceFooterHtml: ''})}
+                        >
+                          Limpiar Inputs
+                        </Button>
+                        <Button 
                           variant="outline" size="sm" 
-                          onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
+                          onClick={() => setCompanyForm({...companyForm, invoiceFooterHtml: INVOICE_TEMPLATE_BASE})}
                         >
                           Cargar Diseño Base
                         </Button>
