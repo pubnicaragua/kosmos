@@ -188,7 +188,6 @@ export default function AjustesPage() {
   const [newPassword, setNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
-  const [showPreview, setShowPreview] = useState<'quote' | 'invoice' | null>(null)
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
@@ -369,7 +368,7 @@ export default function AjustesPage() {
         setCompanies((prev) =>
           prev.map((c) =>
             c.id === selectedCompanyId
-              ? { ...c, name: data.data.name, industry: data.data.industry, logo: data.data.logo, isActive: data.data.isActive }
+              ? { ...c, ...data.data }
               : c
           )
         )
@@ -1364,13 +1363,6 @@ export default function AjustesPage() {
                     >
                       Cargar Diseño Base
                     </Button>
-                    <Button 
-                      variant="outline" size="sm" 
-                      onClick={() => setShowPreview('quote')}
-                      className="bg-blue-50 border-blue-200 text-blue-600"
-                    >
-                      Previsualizar
-                    </Button>
                   </div>
                 </div>
                 
@@ -1422,6 +1414,84 @@ export default function AjustesPage() {
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Proforma)</p>
+                  <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[450px]">
+                    <div style={{ transform: 'scale(0.55)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
+                      <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
+                        <div className="flex justify-between mb-8">
+                          <div>
+                            {companyForm.logo ? (
+                              <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
+                            ) : (
+                              <div className="text-2xl font-bold" style={{ color: companyForm.quotePrimaryColor || '#1d4ed8' }}>
+                                {companyForm.name || 'Mi Empresa'}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
+                            <div 
+                              className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                              dangerouslySetInnerHTML={{ __html: companyForm.quoteHeaderHtml }}
+                            />
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
+                              PROFORMA
+                            </div>
+                            <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
+                            <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
+                          </div>
+                        </div>
+
+                        <div 
+                          className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
+                          style={{ backgroundColor: companyForm.quotePrimaryColor || '#1d4ed8' }}
+                        >
+                          DETALLE DE CONCEPTOS
+                        </div>
+                        <table className="w-full text-xs mb-8">
+                          <thead className="border-b-2 border-gray-100">
+                            <tr className="text-gray-400 font-semibold">
+                              <th className="text-left py-2">PRODUCTO / SERVICIO</th>
+                              <th className="text-center py-2">CANT.</th>
+                              <th className="text-right py-2">TOTAL</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-gray-50">
+                              <td className="py-3">Ejemplo de concepto Premium</td>
+                              <td className="py-3 text-center">1</td>
+                              <td className="py-3 text-right">$ 1,000.00</td>
+                            </tr>
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
+                              <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+
+                        <div className="mt-12 space-y-4">
+                          {companyForm.quoteTerms && (
+                            <div>
+                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
+                              <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
+                            </div>
+                          )}
+                          
+                          <div className="border-t pt-4">
+                            <div 
+                              className="text-[10px] text-center text-gray-500"
+                              dangerouslySetInnerHTML={{ __html: companyForm.quoteFooterHtml }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Facturas */}
@@ -1437,13 +1507,6 @@ export default function AjustesPage() {
                       onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
                     >
                       Cargar Diseño Base
-                    </Button>
-                    <Button 
-                      variant="outline" size="sm" 
-                      onClick={() => setShowPreview('invoice')}
-                      className="bg-green-50 border-green-200 text-green-600"
-                    >
-                      Previsualizar
                     </Button>
                   </div>
                 </div>
@@ -1489,6 +1552,77 @@ export default function AjustesPage() {
                     />
                   </div>
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Factura)</p>
+                  <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[450px]">
+                    <div style={{ transform: 'scale(0.55)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
+                      <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
+                        <div className="flex justify-between mb-8">
+                          <div>
+                            {companyForm.logo ? (
+                              <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
+                            ) : (
+                              <div className="text-2xl font-bold" style={{ color: companyForm.invoicePrimaryColor || '#1d4ed8' }}>
+                                {companyForm.name || 'Mi Empresa'}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
+                            <div 
+                              className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                              dangerouslySetInnerHTML={{ __html: companyForm.invoiceHeaderHtml }}
+                            />
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
+                              FACTURA
+                            </div>
+                            <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
+                            <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
+                          </div>
+                        </div>
+
+                        <div 
+                          className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
+                          style={{ backgroundColor: companyForm.invoicePrimaryColor || '#1d4ed8' }}
+                        >
+                          DETALLE DE CONCEPTOS
+                        </div>
+                        <table className="w-full text-xs mb-8">
+                          <thead className="border-b-2 border-gray-100">
+                            <tr className="text-gray-400 font-semibold">
+                              <th className="text-left py-2">PRODUCTO / SERVICIO</th>
+                              <th className="text-center py-2">CANT.</th>
+                              <th className="text-right py-2">TOTAL</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-gray-50">
+                              <td className="py-3">Ejemplo de concepto Premium</td>
+                              <td className="py-3 text-center">1</td>
+                              <td className="py-3 text-right">$ 1,000.00</td>
+                            </tr>
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
+                              <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+
+                        <div className="mt-12 space-y-4">
+                          <div className="border-t pt-4">
+                            <div 
+                              className="text-[10px] text-center text-gray-500"
+                              dangerouslySetInnerHTML={{ __html: companyForm.invoiceFooterHtml }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1520,107 +1654,6 @@ export default function AjustesPage() {
         </Card>
       )}
 
-      {/* MODAL: Previsualización de Plantilla */}
-      {showPreview && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
-            <div className="sticky top-0 bg-gray-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
-              <div className="flex items-center gap-2">
-                <FileText className={`w-5 h-5 ${showPreview === 'quote' ? 'text-blue-600' : 'text-green-600'}`} />
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Previsualización de {showPreview === 'quote' ? 'Cotización' : 'Factura'}
-                </h2>
-              </div>
-              <button 
-                onClick={() => setShowPreview(null)} 
-                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                <span className="text-2xl leading-none">&times;</span>
-              </button>
-            </div>
-            
-            <div className="p-8 bg-gray-100 min-h-[600px] flex justify-center">
-              <div className="bg-white w-full max-w-[800px] shadow-lg p-8 pointer-events-none select-none">
-                {/* Header Simulado */}
-                <div className="flex justify-between mb-8">
-                  <div>
-                    {companyForm.logo ? (
-                      <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
-                    ) : (
-                      <div className="text-2xl font-bold" style={{ color: (showPreview === 'quote' ? companyForm.quotePrimaryColor : companyForm.invoicePrimaryColor) || '#1d4ed8' }}>
-                        {companyForm.name}
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
-                    <div 
-                      className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ __html: showPreview === 'quote' ? companyForm.quoteHeaderHtml : companyForm.invoiceHeaderHtml }}
-                    />
-                  </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
-                      {showPreview === 'quote' ? 'PROFORMA' : 'FACTURA'}
-                    </div>
-                    <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
-                    <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
-                  </div>
-                </div>
-
-                {/* Tabla Simulada */}
-                <div 
-                  className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
-                  style={{ backgroundColor: (showPreview === 'quote' ? companyForm.quotePrimaryColor : companyForm.invoicePrimaryColor) || '#1d4ed8' }}
-                >
-                  DETALLE DE CONCEPTOS
-                </div>
-                <table className="w-full text-xs mb-8">
-                  <thead className="border-b-2 border-gray-100">
-                    <tr className="text-gray-400 font-semibold">
-                      <th className="text-left py-2">PRODUCTO / SERVICIO</th>
-                      <th className="text-center py-2">CANT.</th>
-                      <th className="text-right py-2">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-gray-50">
-                      <td className="py-3">Ejemplo de concepto Premium</td>
-                      <td className="py-3 text-center">1</td>
-                      <td className="py-3 text-right">$ 1,000.00</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
-                      <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
-                    </tr>
-                  </tfoot>
-                </table>
-
-                {/* Footer Simulado */}
-                <div className="mt-12 space-y-4">
-                  {showPreview === 'quote' && companyForm.quoteTerms && (
-                    <div>
-                      <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
-                      <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
-                    </div>
-                  )}
-                  
-                  <div className="border-t pt-4">
-                    <div 
-                      className="text-[10px] text-center text-gray-500"
-                      dangerouslySetInnerHTML={{ __html: showPreview === 'quote' ? companyForm.quoteFooterHtml : companyForm.invoiceFooterHtml }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-end">
-              <Button onClick={() => setShowPreview(null)}>Cerrar Previsualización</Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

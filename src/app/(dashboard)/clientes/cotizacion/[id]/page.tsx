@@ -460,11 +460,11 @@ export default function DetalleCotizacionPage() {
                 const phone = (quote as any).contactPhone || quote.client.phone || '';
                 const email = (quote as any).contactEmail || quote.client.email || '';
                 
-                const validContact = contact && contact !== name && contact !== phone ? contact : name;
+                const validContact = contact && contact !== name && contact !== phone ? contact : null;
 
                 return (
                   <>
-                    <div><span className="font-semibold">Atención:</span> {validContact}</div>
+                    {validContact && <div><span className="font-semibold">Atención:</span> {validContact}</div>}
                     {email && <div><span className="font-semibold">Email:</span> {email}</div>}
                     {phone && <div><span className="font-semibold">Teléfono:</span> {phone}</div>}
                     {quote.client.ruc && <div><span className="font-semibold">Ruc / Cédula:</span> {quote.client.ruc}</div>}
