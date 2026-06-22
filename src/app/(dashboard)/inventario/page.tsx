@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -97,6 +97,7 @@ function InventarioPageContent() {
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -505,7 +506,7 @@ function InventarioPageContent() {
   }
 
   const handleImportOrUpdate = () => {
-    setShowImportModal(true)
+    importInputRef.current?.click()
   }
 
   const handleDownloadTemplate = () => {
@@ -636,6 +637,29 @@ function InventarioPageContent() {
             )}
           </div>
         </div>
+        {/* Input de archivo oculto para importar */}
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) {
+              const reader = new FileReader()
+              reader.onload = (evt) => {
+                sessionStorage.setItem('pendingImportFile', JSON.stringify({
+                  name: file.name,
+                  type: file.type,
+                  data: evt.target?.result
+                }))
+                router.push('/inventario/edicion?import=1')
+              }
+              reader.readAsDataURL(file)
+            }
+            e.target.value = ''
+          }}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
