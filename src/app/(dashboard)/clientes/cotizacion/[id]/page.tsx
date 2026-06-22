@@ -156,6 +156,13 @@ export default function DetalleCotizacionPage() {
     if (safeCompanyName) {
       doc.setFontSize(20)
       doc.text(safeCompanyName, 20, y)
+      y += 8
+      doc.setFontSize(10)
+      doc.text(`RUC: ${companyDetails?.ruc || 'J0310000368457'}  |  Tel: ${companyDetails?.phone || '22235600'}`, 20, y)
+      y += 10
+    } else {
+      doc.setFontSize(10)
+      doc.text(`RUC: ${companyDetails?.ruc || 'J0310000368457'}  |  Tel: ${companyDetails?.phone || '22235600'}`, 20, y)
       y += 10
     }
     doc.setFontSize(16)
@@ -445,9 +452,9 @@ export default function DetalleCotizacionPage() {
             <div className="p-2 space-y-0.5 text-xs">
               <div><span className="font-semibold">Asesor:</span> {(quote as any).createdByUser?.name || 'N/A'}</div>
               <div><span className="font-semibold">Email:</span> {(quote as any).createdByUser?.email || companyDetails?.email || ''}</div>
-              <div><span className="font-semibold">Teléfono:</span> {companyDetails?.phone || ''}</div>
+              <div><span className="font-semibold">Teléfono:</span> {companyDetails?.phone || '22235600'}</div>
               <div><span className="font-semibold">Empresa:</span> {companyDetails?.name || quote.company?.name || ''}</div>
-              <div><span className="font-semibold">Ruc:</span> {companyDetails?.ruc || ''}</div>
+              <div><span className="font-semibold">RUC:</span> {companyDetails?.ruc || 'J0310000368457'}</div>
             </div>
           </div>
           <div className="border border-gray-400">
