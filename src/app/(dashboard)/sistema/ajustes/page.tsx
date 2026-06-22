@@ -188,6 +188,7 @@ export default function AjustesPage() {
   const [newPassword, setNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
+  const [templateTab, setTemplateTab] = useState<'quote' | 'invoice'>('quote')
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
@@ -1348,281 +1349,304 @@ export default function AjustesPage() {
               </div>
             )}
 
+            <div className="flex border-b border-gray-200 mb-6">
+              <button 
+                onClick={() => setTemplateTab('quote')}
+                className={`px-4 py-2 font-medium text-sm border-b-2 ${templateTab === 'quote' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Cotizaciones (Proformas)
+              </button>
+              <button 
+                onClick={() => setTemplateTab('invoice')}
+                className={`px-4 py-2 font-medium text-sm border-b-2 ${templateTab === 'invoice' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+              >
+                Facturas (Ingresos)
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Proformas */}
+              {/* Columna Izquierda: Formulario de Configuración */}
               <div className="space-y-6">
-                <div className="border-b pb-2 flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    Plantilla de Cotizaciones (Proformas)
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" size="sm" 
-                      onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
-                    >
-                      Cargar Diseño Base
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario (Tablas y Títulos)</label>
-                    <div className="flex gap-3 items-center">
-                      <input 
-                        type="color" 
-                        value={companyForm.quotePrimaryColor}
-                        onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
-                        className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
-                        disabled={!canEditCompany}
-                      />
-                      <Input 
-                        value={companyForm.quotePrimaryColor}
-                        onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
-                        className="flex-1"
-                        placeholder="#000000"
-                        disabled={!canEditCompany}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado Personalizado</label>
-                    <SimpleRichTextEditor
-                      value={companyForm.quoteHeaderHtml}
-                      onChange={(value) => setCompanyForm({...companyForm, quoteHeaderHtml: value})}
-                      disabled={!canEditCompany}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Términos y Condiciones por Defecto</label>
-                    <SimpleRichTextEditor
-                      value={companyForm.quoteTerms}
-                      onChange={(value) => setCompanyForm({...companyForm, quoteTerms: value})}
-                      disabled={!canEditCompany}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página</label>
-                    <SimpleRichTextEditor
-                      value={companyForm.quoteFooterHtml}
-                      onChange={(value) => setCompanyForm({...companyForm, quoteFooterHtml: value})}
-                      disabled={!canEditCompany}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Proforma)</p>
-                  <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[450px]">
-                    <div style={{ transform: 'scale(0.55)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
-                      <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
-                        <div className="flex justify-between mb-8">
-                          <div>
-                            {companyForm.logo ? (
-                              <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
-                            ) : (
-                              <div className="text-2xl font-bold" style={{ color: companyForm.quotePrimaryColor || '#1d4ed8' }}>
-                                {companyForm.name || 'Mi Empresa'}
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
-                            <div 
-                              className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
-                              dangerouslySetInnerHTML={{ __html: companyForm.quoteHeaderHtml }}
-                            />
-                          </div>
-                          <div className="text-right">
-                            <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
-                              PROFORMA
-                            </div>
-                            <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
-                            <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
-                          </div>
-                        </div>
-
-                        <div 
-                          className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
-                          style={{ backgroundColor: companyForm.quotePrimaryColor || '#1d4ed8' }}
+                {templateTab === 'quote' ? (
+                  <div className="space-y-6">
+                    <div className="border-b pb-2 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        Plantilla de Cotizaciones
+                      </h3>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" size="sm" 
+                          onClick={() => setCompanyForm({...companyForm, quoteHeaderHtml: QUOTE_TEMPLATE_BASE})}
                         >
-                          DETALLE DE CONCEPTOS
+                          Cargar Diseño Base
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario (Tablas y Títulos)</label>
+                        <div className="flex gap-3 items-center">
+                          <input 
+                            type="color" 
+                            value={companyForm.quotePrimaryColor || '#1d4ed8'}
+                            onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
+                            className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
+                            disabled={!canEditCompany}
+                          />
+                          <Input 
+                            value={companyForm.quotePrimaryColor || '#1d4ed8'}
+                            onChange={(e) => setCompanyForm({...companyForm, quotePrimaryColor: e.target.value})}
+                            className="flex-1"
+                            placeholder="#000000"
+                            disabled={!canEditCompany}
+                          />
                         </div>
-                        <table className="w-full text-xs mb-8">
-                          <thead className="border-b-2 border-gray-100">
-                            <tr className="text-gray-400 font-semibold">
-                              <th className="text-left py-2">PRODUCTO / SERVICIO</th>
-                              <th className="text-center py-2">CANT.</th>
-                              <th className="text-right py-2">TOTAL</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="border-b border-gray-50">
-                              <td className="py-3">Ejemplo de concepto Premium</td>
-                              <td className="py-3 text-center">1</td>
-                              <td className="py-3 text-right">$ 1,000.00</td>
-                            </tr>
-                          </tbody>
-                          <tfoot>
-                            <tr>
-                              <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
-                              <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
-                            </tr>
-                          </tfoot>
-                        </table>
+                      </div>
 
-                        <div className="mt-12 space-y-4">
-                          {companyForm.quoteTerms && (
-                            <div>
-                              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
-                              <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
-                            </div>
-                          )}
-                          
-                          <div className="border-t pt-4">
-                            <div 
-                              className="text-[10px] text-center text-gray-500"
-                              dangerouslySetInnerHTML={{ __html: companyForm.quoteFooterHtml }}
-                            />
-                          </div>
-                        </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado Personalizado</label>
+                        <SimpleRichTextEditor
+                          value={companyForm.quoteHeaderHtml || ''}
+                          onChange={(value) => setCompanyForm({...companyForm, quoteHeaderHtml: value})}
+                          disabled={!canEditCompany}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Términos y Condiciones por Defecto</label>
+                        <SimpleRichTextEditor
+                          value={companyForm.quoteTerms || ''}
+                          onChange={(value) => setCompanyForm({...companyForm, quoteTerms: value})}
+                          disabled={!canEditCompany}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página</label>
+                        <SimpleRichTextEditor
+                          value={companyForm.quoteFooterHtml || ''}
+                          onChange={(value) => setCompanyForm({...companyForm, quoteFooterHtml: value})}
+                          disabled={!canEditCompany}
+                        />
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="border-b pb-2 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Receipt className="w-5 h-5 text-green-600" />
+                        Plantilla de Facturas
+                      </h3>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" size="sm" 
+                          onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
+                        >
+                          Cargar Diseño Base
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario</label>
+                        <div className="flex gap-3 items-center">
+                          <input 
+                            type="color" 
+                            value={companyForm.invoicePrimaryColor || '#1d4ed8'}
+                            onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
+                            className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
+                            disabled={!canEditCompany}
+                          />
+                          <Input 
+                            value={companyForm.invoicePrimaryColor || '#1d4ed8'}
+                            onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
+                            className="flex-1"
+                            placeholder="#000000"
+                            disabled={!canEditCompany}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado de Factura</label>
+                        <textarea
+                          value={companyForm.invoiceHeaderHtml || ''}
+                          onChange={(e) => setCompanyForm({...companyForm, invoiceHeaderHtml: e.target.value})}
+                          placeholder="Datos fiscales adicionales..."
+                          className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
+                          disabled={!canEditCompany}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página de Factura</label>
+                        <SimpleRichTextEditor
+                          value={companyForm.invoiceFooterHtml || ''}
+                          onChange={(value) => setCompanyForm({...companyForm, invoiceFooterHtml: value})}
+                          disabled={!canEditCompany}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Facturas */}
-              <div className="space-y-6">
-                <div className="border-b pb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-green-600" />
-                    Plantilla de Facturas (Ingresos)
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" size="sm" 
-                      onClick={() => setCompanyForm({...companyForm, invoiceHeaderHtml: INVOICE_TEMPLATE_BASE})}
-                    >
-                      Cargar Diseño Base
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
+              {/* Columna Derecha: Previsualización en Vivo */}
+              <div className="space-y-6 lg:border-l lg:pl-8">
+                {templateTab === 'quote' ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Color Primario</label>
-                    <div className="flex gap-3 items-center">
-                      <input 
-                        type="color" 
-                        value={companyForm.invoicePrimaryColor}
-                        onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
-                        className="w-10 h-10 rounded border border-gray-200 cursor-pointer"
-                        disabled={!canEditCompany}
-                      />
-                      <Input 
-                        value={companyForm.invoicePrimaryColor}
-                        onChange={(e) => setCompanyForm({...companyForm, invoicePrimaryColor: e.target.value})}
-                        className="flex-1"
-                        placeholder="#000000"
-                        disabled={!canEditCompany}
-                      />
-                    </div>
-                  </div>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Proforma)</p>
+                    <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[600px] border border-gray-200 shadow-inner">
+                      <div style={{ transform: 'scale(0.65)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
+                        <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
+                          <div className="flex justify-between mb-8">
+                            <div>
+                              {companyForm.logo ? (
+                                <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
+                              ) : (
+                                <div className="text-2xl font-bold" style={{ color: companyForm.quotePrimaryColor || '#1d4ed8' }}>
+                                  {companyForm.name || 'Mi Empresa'}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
+                              <div 
+                                className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{ __html: companyForm.quoteHeaderHtml || '' }}
+                              />
+                            </div>
+                            <div className="text-right">
+                              <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
+                                PROFORMA
+                              </div>
+                              <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
+                              <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
+                            </div>
+                          </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Encabezado de Factura</label>
-                    <textarea
-                      value={companyForm.invoiceHeaderHtml}
-                      onChange={(e) => setCompanyForm({...companyForm, invoiceHeaderHtml: e.target.value})}
-                      placeholder="Datos fiscales adicionales..."
-                      className="w-full h-32 px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary"
-                      disabled={!canEditCompany}
-                    />
-                  </div>
+                          <div 
+                            className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
+                            style={{ backgroundColor: companyForm.quotePrimaryColor || '#1d4ed8' }}
+                          >
+                            DETALLE DE CONCEPTOS
+                          </div>
+                          <table className="w-full text-xs mb-8">
+                            <thead className="border-b-2 border-gray-100">
+                              <tr className="text-gray-400 font-semibold">
+                                <th className="text-left py-2">PRODUCTO / SERVICIO</th>
+                                <th className="text-center py-2">CANT.</th>
+                                <th className="text-right py-2">TOTAL</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="border-b border-gray-50">
+                                <td className="py-3">Ejemplo de concepto Premium</td>
+                                <td className="py-3 text-center">1</td>
+                                <td className="py-3 text-right">$ 1,000.00</td>
+                              </tr>
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
+                                <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
+                              </tr>
+                            </tfoot>
+                          </table>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pie de Página de Factura</label>
-                    <SimpleRichTextEditor
-                      value={companyForm.invoiceFooterHtml}
-                      onChange={(value) => setCompanyForm({...companyForm, invoiceFooterHtml: value})}
-                      disabled={!canEditCompany}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Factura)</p>
-                  <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[450px]">
-                    <div style={{ transform: 'scale(0.55)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
-                      <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
-                        <div className="flex justify-between mb-8">
-                          <div>
-                            {companyForm.logo ? (
-                              <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
-                            ) : (
-                              <div className="text-2xl font-bold" style={{ color: companyForm.invoicePrimaryColor || '#1d4ed8' }}>
-                                {companyForm.name || 'Mi Empresa'}
+                          <div className="mt-12 space-y-4">
+                            {companyForm.quoteTerms && (
+                              <div>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TÉRMINOS Y CONDICIONES</div>
+                                <div className="text-[10px] text-gray-600 whitespace-pre-wrap">{companyForm.quoteTerms}</div>
                               </div>
                             )}
-                            <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
-                            <div 
-                              className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
-                              dangerouslySetInnerHTML={{ __html: companyForm.invoiceHeaderHtml }}
-                            />
-                          </div>
-                          <div className="text-right">
-                            <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
-                              FACTURA
+                            
+                            <div className="border-t pt-4">
+                              <div 
+                                className="text-[10px] text-center text-gray-500"
+                                dangerouslySetInnerHTML={{ __html: companyForm.quoteFooterHtml || '' }}
+                              />
                             </div>
-                            <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
-                            <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
-                          </div>
-                        </div>
-
-                        <div 
-                          className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
-                          style={{ backgroundColor: companyForm.invoicePrimaryColor || '#1d4ed8' }}
-                        >
-                          DETALLE DE CONCEPTOS
-                        </div>
-                        <table className="w-full text-xs mb-8">
-                          <thead className="border-b-2 border-gray-100">
-                            <tr className="text-gray-400 font-semibold">
-                              <th className="text-left py-2">PRODUCTO / SERVICIO</th>
-                              <th className="text-center py-2">CANT.</th>
-                              <th className="text-right py-2">TOTAL</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className="border-b border-gray-50">
-                              <td className="py-3">Ejemplo de concepto Premium</td>
-                              <td className="py-3 text-center">1</td>
-                              <td className="py-3 text-right">$ 1,000.00</td>
-                            </tr>
-                          </tbody>
-                          <tfoot>
-                            <tr>
-                              <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
-                              <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
-                            </tr>
-                          </tfoot>
-                        </table>
-
-                        <div className="mt-12 space-y-4">
-                          <div className="border-t pt-4">
-                            <div 
-                              className="text-[10px] text-center text-gray-500"
-                              dangerouslySetInnerHTML={{ __html: companyForm.invoiceFooterHtml }}
-                            />
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Previsualización en vivo (Factura)</p>
+                    <div className="bg-gray-100 p-4 rounded-xl flex justify-center overflow-hidden h-[600px] border border-gray-200 shadow-inner">
+                      <div style={{ transform: 'scale(0.65)', transformOrigin: 'top center', minWidth: '800px', pointerEvents: 'none' }}>
+                        <div className="bg-white w-full shadow-lg p-8 select-none h-[800px]">
+                          <div className="flex justify-between mb-8">
+                            <div>
+                              {companyForm.logo ? (
+                                <img src={companyForm.logo} alt="Logo" className="h-16 object-contain mb-2" />
+                              ) : (
+                                <div className="text-2xl font-bold" style={{ color: companyForm.invoicePrimaryColor || '#1d4ed8' }}>
+                                  {companyForm.name || 'Mi Empresa'}
+                                </div>
+                              )}
+                              <div className="text-xs text-gray-500 italic mb-4">{companyForm.industry || 'Industria'}</div>
+                              <div 
+                                className="text-[10px] text-gray-600 max-w-xs whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{ __html: companyForm.invoiceHeaderHtml || '' }}
+                              />
+                            </div>
+                            <div className="text-right">
+                              <div className="text-3xl font-extrabold text-gray-800 tracking-wider">
+                                FACTURA
+                              </div>
+                              <div className="text-sm font-bold text-gray-500 mt-1">N° 00000001</div>
+                              <div className="mt-4 text-[10px] text-gray-400">FECHA: {new Date().toLocaleDateString('es-NI')}</div>
+                            </div>
+                          </div>
+
+                          <div 
+                            className="w-full text-white text-[10px] font-bold px-4 py-2 mb-4"
+                            style={{ backgroundColor: companyForm.invoicePrimaryColor || '#1d4ed8' }}
+                          >
+                            DETALLE DE CONCEPTOS
+                          </div>
+                          <table className="w-full text-xs mb-8">
+                            <thead className="border-b-2 border-gray-100">
+                              <tr className="text-gray-400 font-semibold">
+                                <th className="text-left py-2">PRODUCTO / SERVICIO</th>
+                                <th className="text-center py-2">CANT.</th>
+                                <th className="text-right py-2">TOTAL</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="border-b border-gray-50">
+                                <td className="py-3">Ejemplo de concepto Premium</td>
+                                <td className="py-3 text-center">1</td>
+                                <td className="py-3 text-right">$ 1,000.00</td>
+                              </tr>
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <td colSpan={2} className="py-4 text-right font-bold text-gray-400 uppercase tracking-widest">TOTAL</td>
+                                <td className="py-4 text-right font-bold text-xl">$ 1,000.00</td>
+                              </tr>
+                            </tfoot>
+                          </table>
+
+                          <div className="mt-12 space-y-4">
+                            <div className="border-t pt-4">
+                              <div 
+                                className="text-[10px] text-center text-gray-500"
+                                dangerouslySetInnerHTML={{ __html: companyForm.invoiceFooterHtml || '' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
