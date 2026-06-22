@@ -225,6 +225,15 @@ export default function EditarCotizacionPage() {
           discount: totalDiscount,
           tax: totalTax,
           total,
+          items: items.map(i => ({
+            productId: i.productId || null,
+            description: i.description,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            discount: i.discount,
+            tax: i.tax,
+            total: i.total
+          }))
         }),
       })
 

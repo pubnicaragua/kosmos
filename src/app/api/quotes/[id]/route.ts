@@ -118,7 +118,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const updated = await prisma.quote.update({
       where: { id: params.id },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...(Array.isArray(body.items) ? {
+          items: {
+            deleteMany: {},
+            create: body.items.map((item: any) => ({
+              productId: item.productId || null,
+              description: item.description,
+              quantity: Number(item.quantity) || 1,
+              unitPrice: Number(item.unitPrice) || 0,
+              discount: Number(item.discount) || 0,
+              tax: Number(item.tax) || 0,
+              total: Number(item.total) || 0
+            }))
+          }
+        } : {})
+      },
       include: {
         client: { select: { name: true } },
         items: true,

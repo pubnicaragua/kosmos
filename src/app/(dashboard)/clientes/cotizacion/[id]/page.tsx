@@ -165,8 +165,24 @@ export default function DetalleCotizacionPage() {
     doc.setFontSize(12)
     doc.text(`Cliente: ${quote.client.name}`, 20, y)
     y += 7
-    doc.text(`Email: ${quote.client.email}`, 20, y)
-    y += 7
+    if (quote.client.ruc) {
+      doc.text(`Ruc / Cédula: ${quote.client.ruc}`, 20, y)
+      y += 7
+    }
+    if (quote.client.email) {
+      doc.text(`Email: ${quote.client.email}`, 20, y)
+      y += 7
+    }
+    if (quote.client.phone) {
+      doc.text(`Teléfono: ${quote.client.phone}`, 20, y)
+      y += 7
+    }
+    if (quote.client.address) {
+      doc.setFontSize(10)
+      doc.text(`Dirección: ${quote.client.address}`, 20, y)
+      doc.setFontSize(12)
+      y += 7
+    }
     doc.text(`Fecha: ${new Date(quote.createdAt).toLocaleDateString('es-NI')}`, 20, y)
     y += 7
     doc.text(`Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`, 20, y)
@@ -438,10 +454,24 @@ export default function DetalleCotizacionPage() {
               <span className="font-extrabold">{quote.client.name.toUpperCase()}</span>
             </div>
             <div className="p-2 space-y-0.5 text-xs">
-              <div><span className="font-semibold">Atención:</span> {quote.contactName || quote.client.contactName || quote.client.name}</div>
-              <div><span className="font-semibold">Email:</span> {quote.contactEmail || quote.client.email || ''}</div>
-              <div><span className="font-semibold">Teléfono:</span> {quote.contactPhone || quote.client.phone || ''}</div>
-              {quote.client.ruc && <div><span className="font-semibold">Ruc:</span> {quote.client.ruc}</div>}
+              {(() => {
+                const name = quote.client.name;
+                const contact = (quote as any).contactName || quote.client.contactName;
+                const phone = (quote as any).contactPhone || quote.client.phone || '';
+                const email = (quote as any).contactEmail || quote.client.email || '';
+                
+                const validContact = contact && contact !== name && contact !== phone ? contact : name;
+
+                return (
+                  <>
+                    <div><span className="font-semibold">Atención:</span> {validContact}</div>
+                    {email && <div><span className="font-semibold">Email:</span> {email}</div>}
+                    {phone && <div><span className="font-semibold">Teléfono:</span> {phone}</div>}
+                    {quote.client.ruc && <div><span className="font-semibold">Ruc / Cédula:</span> {quote.client.ruc}</div>}
+                    {quote.client.address && <div><span className="font-semibold">Dirección:</span> {quote.client.address}</div>}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
