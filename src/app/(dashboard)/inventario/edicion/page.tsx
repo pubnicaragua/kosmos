@@ -235,6 +235,36 @@ function InventarioEdicionPageContent() {
     fetchCategories()
   }, [fetchCategories])
 
+  // Auto-process file if coming from import modal via sessionStorage
+  useEffect(() => {
+    const isImportFlow = searchParams.get('import') === '1'
+    if (!isImportFlow) return
+
+    const pending = sessionStorage.getItem('pendingImportFile')
+    if (!pending) return
+
+    try {
+      const { name, data } = JSON.parse(pending)
+      sessionStorage.removeItem('pendingImportFile')
+
+      // Convert dataURL back to File and trigger import
+      fetch(data)
+        .then(res => res.blob())
+        .then(blob => {
+          const file = new File([blob], name, { type: blob.type })
+          const dt = new DataTransfer()
+          dt.items.add(file)
+          if (fileInputRef.current) {
+            Object.defineProperty(fileInputRef.current, 'files', { value: dt.files })
+            fileInputRef.current.dispatchEvent(new Event('change', { bubbles: true }))
+          }
+        })
+    } catch (e) {
+      console.error('Error loading pending import file:', e)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   const addRow = () => {
     const newRow: ProductRow = {
       id: '',

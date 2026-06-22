@@ -96,6 +96,7 @@ function InventarioPageContent() {
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({})
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([])
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -504,7 +505,7 @@ function InventarioPageContent() {
   }
 
   const handleImportOrUpdate = () => {
-    router.push('/inventario/edicion')
+    setShowImportModal(true)
   }
 
   const handleDownloadTemplate = () => {
@@ -1534,6 +1535,71 @@ function InventarioPageContent() {
                 className="flex-1"
               >
                 Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de importación directa */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">Importar Inventario desde Excel</h2>
+              <p className="text-sm text-gray-500 mt-1">Selecciona un archivo .xlsx, .xls o .csv con tus productos.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  El archivo debe tener columnas como: <strong>PRODUCTO, SKU, STOCK, COSTO, PRECIO, CATEGORÍA</strong>.
+                  Descarga la plantilla si no tienes el formato.
+                </p>
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary transition-colors">
+                <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p className="text-sm text-gray-600 mb-3">Selecciona tu archivo Excel</p>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  id="import-file-input-main"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      const reader = new FileReader()
+                      reader.onload = (evt) => {
+                        sessionStorage.setItem('pendingImportFile', JSON.stringify({
+                          name: file.name,
+                          type: file.type,
+                          data: evt.target?.result
+                        }))
+                        setShowImportModal(false)
+                        router.push('/inventario/edicion?import=1')
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                    e.target.value = ''
+                  }}
+                />
+                <label
+                  htmlFor="import-file-input-main"
+                  className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-semibold"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Seleccionar archivo
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 text-center">
+                Podrás revisar los productos antes de guardarlos definitivamente.
+              </p>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex gap-3">
+              <Button variant="outline" onClick={() => setShowImportModal(false)} className="flex-1">
+                Cancelar
               </Button>
             </div>
           </div>
