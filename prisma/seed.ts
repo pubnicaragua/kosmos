@@ -231,7 +231,7 @@ async function main() {
 
   // Crear 5 usuarios por cada empresa (25 usuarios totales)
   const usersByCompany = [
-    { company: extel, users: ['maria.rodriguez@extel.com', 'pedro.lopez@extel.com', 'ana.martinez@extel.com', 'luis.garcia@extel.com', 'sofia.hernandez@extel.com'] },
+    { company: extel, users: ['maria.rodriguez@extel.com', 'pedro.lopez@extel.com', 'ana.martinez@extel.com', 'luis.garcia@extel.com', 'sofia.hernandez@extel.com', 'soportetecnico@extel.com.ni'] },
     { company: rapidus, users: ['juan.perez@rapidus.com', 'laura.sanchez@rapidus.com', 'carlos.diaz@rapidus.com', 'elena.torres@rapidus.com', 'miguel.ruiz@rapidus.com'] },
     { company: unitec, users: ['roberto.gomez@unitec.edu', 'patricia.morales@unitec.edu', 'diego.castro@unitec.edu', 'valeria.ortiz@unitec.edu', 'fernando.silva@unitec.edu'] },
     { company: itsi, users: ['andrea.ramirez@itsi.com', 'javier.mendez@itsi.com', 'monica.vargas@itsi.com', 'daniel.cruz@itsi.com', 'isabel.flores@itsi.com'] },
@@ -271,7 +271,7 @@ async function main() {
     }
   }
 
-  console.log('âœ… 25 usuarios adicionales creados (5 por empresa)')
+  console.log('âœ… 26 usuarios adicionales creados (5 por empresa, 6 Extel)')
 
   const incomes = [
     { client: 'Cliente A', concept: 'Desarrollo Web', amount: 15000, margin: 35, method: 'Transferencia', status: 'PAID' as const },

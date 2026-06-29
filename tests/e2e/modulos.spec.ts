@@ -8,16 +8,16 @@ test.describe('Login', () => {
   test('debe iniciar sesión', async ({ page }) => {
     await page.goto('/login')
     await page.fill('input[type="email"], input[name="email"]', 'admin@kosmoscrm.com')
-    await page.fill('input[type="password"], input[name="password"]', 'password123')
+    await page.fill('input[type="password"], input[name="password"]', 'Kosmos!Admin2026#')
     await page.click('button[type="submit"], button:has-text("Ingresar")')
     await page.waitForURL('**/dashboard', { timeout: 15000 })
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page).toHaveURL(/\/dashboards/)
   })
 })
 
 test.describe('01 Dashboard', () => {
   test('debe cargar resumen ejecutivo', async ({ page }) => {
-    await page.goto('/dashboard')
+    await page.goto('/dashboards')
     await page.waitForLoadState('networkidle')
     const errors: string[] = []
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
@@ -40,7 +40,7 @@ test.describe('02 Clientes', () => {
 
 test.describe('03 Pipeline', () => {
   test('debe mostrar pipeline', async ({ page }) => {
-    await page.goto('/pipeline')
+    await page.goto('/pipeline-ventas')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     await expect(page.locator('body')).toBeVisible()
@@ -83,9 +83,9 @@ test.describe('07 Ingresos', () => {
   })
 })
 
-test.describe('08 Productos', () => {
-  test('debe listar productos', async ({ page }) => {
-    await page.goto('/productos')
+test.describe('08 Inventario', () => {
+  test('debe listar inventario', async ({ page }) => {
+    await page.goto('/inventario')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     await expect(page.locator('body')).toBeVisible()
@@ -94,7 +94,7 @@ test.describe('08 Productos', () => {
 
 test.describe('09 Cotizaciones', () => {
   test('debe listar cotizaciones', async ({ page }) => {
-    await page.goto('/clientes/cotizaciones/nueva')
+    await page.goto('/clientes/cotizacion/nueva')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     await expect(page.locator('body')).toBeVisible()
@@ -128,18 +128,18 @@ test.describe('12 Contratos', () => {
   })
 })
 
-test.describe('13 Nomina', () => {
-  test('debe listar nómina', async ({ page }) => {
-    await page.goto('/nomina')
+test.describe('13 RRHH', () => {
+  test('debe listar recursos humanos', async ({ page }) => {
+    await page.goto('/recursos-humanos')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     await expect(page.locator('body')).toBeVisible()
   })
 })
 
-test.describe('14 Purchasing', () => {
+test.describe('14 Compras', () => {
   test('debe listar solicitudes', async ({ page }) => {
-    await page.goto('/purchasing')
+    await page.goto('/solicitudes-compra')
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
     await expect(page.locator('body')).toBeVisible()

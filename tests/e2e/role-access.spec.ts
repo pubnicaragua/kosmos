@@ -176,6 +176,8 @@ test.describe('RBAC + multi-company API QA', () => {
       '/api/products',
       '/api/tickets',
       '/api/marketing',
+      '/api/employees',
+      '/api/payrolls',
     ]
 
     for (const creds of credentialMatrix) {

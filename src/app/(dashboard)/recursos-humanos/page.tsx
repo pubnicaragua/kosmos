@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
-import { Download, Upload, FileText, Plus, User, Edit2, Trash2, X, Camera, Users, Briefcase, Calendar, DollarSign, Building2, Phone, Mail, MapPin, Heart, GraduationCap, Shield } from 'lucide-react'
+import { Download, Upload, FileText, Plus, User, Edit2, Trash2, X, Camera, Users, Briefcase, Calendar, DollarSign, Building2, Phone, Mail, MapPin, Heart, GraduationCap, Shield, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card, Button, Input, Badge, Modal } from '@/components/ui-kit'
 import * as XLSX from 'xlsx'
 
@@ -70,6 +70,10 @@ export default function RecursosHumanosPage() {
   const [employeeImportFile, setEmployeeImportFile] = useState<File | null>(null)
   const [createExpenseFromImport, setCreateExpenseFromImport] = useState(true)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [showBankSection, setShowBankSection] = useState(false)
+  const [showPersonalSection, setShowPersonalSection] = useState(false)
+  const [showExtraSection, setShowExtraSection] = useState(false)
+  const [showBenefitsSection, setShowBenefitsSection] = useState(false)
   const [employeeForm, setEmployeeForm] = useState({
     employeeCode: '',
     fullName: '',
@@ -1381,7 +1385,13 @@ const handleDownloadTemplate = () => {
                 </div>
               </div>
 
-              {/* Información bancaria */}
+              {/* Información bancaria (colapsable) */}
+              <button type="button" onClick={() => setShowBankSection(!showBankSection)} className="w-full flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100">
+                {showBankSection ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <Building2 className="w-4 h-4 text-gray-500" />
+                Información Bancaria <span className="text-gray-400 font-normal">(opcional)</span>
+              </button>
+              {showBankSection && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Banco"
@@ -1396,8 +1406,15 @@ const handleDownloadTemplate = () => {
                   placeholder="1234567890"
                 />
               </div>
+              )}
 
-              {/* Información personal */}
+              {/* Información personal (colapsable) */}
+              <button type="button" onClick={() => setShowPersonalSection(!showPersonalSection)} className="w-full flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100">
+                {showPersonalSection ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <User className="w-4 h-4 text-gray-500" />
+                Información Personal <span className="text-gray-400 font-normal">(opcional)</span>
+              </button>
+              {showPersonalSection && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Dirección"
@@ -1424,8 +1441,15 @@ const handleDownloadTemplate = () => {
                   placeholder="8888-5678"
                 />
               </div>
+              )}
 
-              {/* Información adicional */}
+              {/* Información adicional (colapsable) */}
+              <button type="button" onClick={() => setShowExtraSection(!showExtraSection)} className="w-full flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100">
+                {showExtraSection ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <Shield className="w-4 h-4 text-gray-500" />
+                Información Adicional <span className="text-gray-400 font-normal">(opcional)</span>
+              </button>
+              {showExtraSection && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
                   label="Número de Seguro Social"
@@ -1455,8 +1479,15 @@ const handleDownloadTemplate = () => {
                   </select>
                 </div>
               </div>
+              )}
 
-              {/* Beneficios y notas */}
+              {/* Beneficios y notas (colapsable) */}
+              <button type="button" onClick={() => setShowBenefitsSection(!showBenefitsSection)} className="w-full flex items-center gap-2 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-2 rounded-lg hover:bg-gray-100">
+                {showBenefitsSection ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                <Heart className="w-4 h-4 text-gray-500" />
+                Beneficios y Notas <span className="text-gray-400 font-normal">(opcional)</span>
+              </button>
+              {showBenefitsSection && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Beneficios</label>
@@ -1479,6 +1510,7 @@ const handleDownloadTemplate = () => {
                   />
                 </div>
               </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white rounded-b-2xl">
