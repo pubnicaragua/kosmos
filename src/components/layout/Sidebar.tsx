@@ -211,7 +211,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-40
-        bg-white border-r border-gray-200 min-h-screen flex flex-col
+        bg-white border-r border-gray-200 h-screen flex flex-col shrink-0
         transform transition-all duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         ${isCollapsed ? 'lg:w-[72px] overflow-hidden' : 'lg:w-64 overflow-x-hidden'}

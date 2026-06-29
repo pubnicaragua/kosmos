@@ -263,8 +263,9 @@ export default function SolicitudesCompraPage() {
           </div>
         ) : (
           <Card className="rounded-2xl border-slate-100 overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 border-b border-slate-100">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Código</th>
                   <th className="px-6 py-4 font-black text-slate-400 text-[10px] uppercase tracking-widest">Área</th>
@@ -309,7 +310,8 @@ export default function SolicitudesCompraPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </Card>
         )}
       </div>
