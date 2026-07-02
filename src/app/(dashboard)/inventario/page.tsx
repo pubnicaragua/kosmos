@@ -505,10 +505,10 @@ function InventarioPageContent() {
   }
 
   const handleImportOrUpdate = () => {
-    importInputRef.current?.click()
+    setShowImportModal(true)
   }
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const templateData = [
       {
         'PRODUCTO': 'Ejemplo Producto',
@@ -522,13 +522,11 @@ function InventarioPageContent() {
         'PROMO': ''
       }
     ]
-    exportWithCompanyHeader(
-      templateData,
-      'plantilla_inventario.xlsx',
-      'Plantilla de Importación de Inventario',
-      companies,
-      selectedCompany
-    )
+    const XLSX = await import('xlsx')
+    const ws = XLSX.utils.json_to_sheet(templateData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla')
+    XLSX.writeFile(wb, 'plantilla_inventario.xlsx')
   }
 
   
@@ -607,13 +605,10 @@ function InventarioPageContent() {
               Cómo funciona
             </Button>
             {permissions.canEdit && (
-              <Button variant="outline" onClick={handleImportOrUpdate} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
+              <Button variant="outline" onClick={() => setShowImportModal(true)} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
                 Importar
               </Button>
             )}
-            <Button variant="outline" onClick={handleDownloadTemplate} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
-              Plantilla
-            </Button>
             {permissions.canExport && (
               <Button variant="outline" onClick={handleExport} className="h-10 border-white/20 bg-white/5 text-white hover:bg-white/10">
                 Exportar
@@ -1008,6 +1003,53 @@ function InventarioPageContent() {
             <div className="flex justify-end gap-3 border-t border-slate-100 p-6">
               <Button variant="outline" onClick={() => setShowFlowGuide(false)}>
                 Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-900">Importar Inventario</h2>
+              <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600">
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+                <h4 className="font-bold mb-2">📋 Instrucciones de Importación</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Descarga la plantilla de ejemplo.</li>
+                  <li>La plantilla contiene solo las columnas necesarias. <strong>No agregues filas ni columnas extra arriba de los encabezados.</strong></li>
+                  <li>Llena los datos respetando los nombres de las columnas.</li>
+                  <li>Sube el archivo finalizado aquí.</li>
+                </ul>
+              </div>
+
+              <Button variant="outline" onClick={handleDownloadTemplate} className="w-full border-slate-200">
+                Descargar Plantilla
+              </Button>
+
+              <div className="mt-4 border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-cyan-500 transition-colors">
+                <div onClick={() => importInputRef.current?.click()} className="cursor-pointer">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 mb-3">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">Haz clic para subir tu archivo</p>
+                  <p className="text-xs text-slate-500 mt-1">Solo archivos .xlsx, .xls o .csv</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowImportModal(false)}>
+                Cancelar
               </Button>
             </div>
           </div>
