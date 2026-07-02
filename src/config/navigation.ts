@@ -68,7 +68,7 @@ export const navigationSections: NavSection[] = [
       {
         id: 'quotes',
         label: 'Cotizaciones',
-        href: '/clientes/cotizacion/nueva',
+        href: '/clientes/cotizacion',
         icon: 'FileText',
       },
       {

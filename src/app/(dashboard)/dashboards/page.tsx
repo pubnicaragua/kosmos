@@ -112,24 +112,21 @@ export default function DashboardsPage() {
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
       const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
-      const isSuperAdmin =
-        storedUser?.role === 'SUPER_ADMIN' || activeCompany?.role === 'SUPER_ADMIN'
+      // Only trust storedUser.role for SUPER_ADMIN detection — activeCompany.role
+      // can be stale from a previous session and must NOT be used here.
+      const isSuperAdmin = storedUser?.role === 'SUPER_ADMIN'
 
       if (!isSuperAdmin) {
-        if (selectedCompany === 'all') {
-          setError('Selecciona una empresa para ver el dashboard')
-          setIsLoading(false)
-          return
-        }
+        // Resolve the company to check: prefer selectedCompany, fallback to activeCompany.id
+        const companyIdToCheck = selectedCompany !== 'all' ? selectedCompany : activeCompany?.id
 
-        const companyIdToCheck = selectedCompany
         if (!companyIdToCheck) {
           setError('Selecciona una empresa para ver el dashboard')
           setIsLoading(false)
           return
         }
 
-        const permissionRes = await fetch(`/api/permissions/check?module=dashboards&companyId=${companyIdToCheck}`, {
+        const permissionRes = await fetch(`/api/permissions/check?module=dashboard&companyId=${companyIdToCheck}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         })
