@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   creator: 'KOSMOS CRM',
   publisher: 'KOSMOS CRM',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: '/assets/logos/icon.png',
+    apple: '/assets/logos/icon.png',
   },
   manifest: '/manifest.json',
   openGraph: {

@@ -275,13 +275,16 @@ export function Sidebar() {
         {/* Logo + Toggle */}
         <div className={`p-4 border-b border-gray-100 flex items-center transition-all ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
           {!isCollapsed ? (
-            <div className="flex items-center gap-0">
-              <span className="text-xl font-bold text-blue-600">KOSMOS</span>
-              <span className="text-xl font-bold text-gray-800">CRM</span>
+            <div className="flex items-center gap-2">
+              <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-8 h-8 object-contain" />
+              <div className="flex items-center gap-0">
+                <span className="text-xl font-bold text-blue-600">KOSMOS</span>
+                <span className="text-xl font-bold text-gray-800">CRM</span>
+              </div>
             </div>
           ) : (
-            <div className="hidden lg:flex w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white items-center justify-center text-sm font-bold shadow-sm">
-              K
+            <div className="hidden lg:flex w-10 h-10 items-center justify-center">
+              <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-8 h-8 object-contain" />
             </div>
           )}
           <button
