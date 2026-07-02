@@ -138,11 +138,11 @@ useEffect(() => {
       return
     }
 
-    // Solo cargar clientes si el usuario tiene permisos de clientes
+    // Solo cargar clientes si el usuario tiene permisos de cotizaciones (canCreate o canView)
     if (permissions.loading) {
       return
     }
-    if (!permissions.canView) {
+    if (!permissions.canView && !permissions.canCreate) {
       setClients([])
       setSelectedClient('')
       setIsLoadingClients(false)
