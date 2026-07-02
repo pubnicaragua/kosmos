@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('No tienes acceso a esta empresa', 403)
     }
 
+    const { getModuleAccess } = await import('@/lib/company-access')
+    const moduleAccess = await getModuleAccess(payload.userId, companyId, 'ingresos')
+    if (!moduleAccess.canCreate) {
+      return errorResponse('No tienes permisos para crear/importar ingresos', 403)
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const parsed = parseExcelFileAllSheets(buffer)
 

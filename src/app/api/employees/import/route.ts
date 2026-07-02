@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const { getModuleAccess } = await import('@/lib/company-access')
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'recursos-humanos')
+    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear/importar empleados', 403)
+
     const results = {
       success: 0,
       errors: 0,

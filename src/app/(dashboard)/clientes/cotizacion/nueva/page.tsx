@@ -40,7 +40,7 @@ interface InventoryProduct {
 function NuevaCotizacionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const permissions = useModulePermissions('clientes', { requireAction: 'create' })
+  const permissions = useModulePermissions('cotizaciones', { requireAction: 'create' })
   const prefillClientId = searchParams.get('clientId') || ''
   const prefillCompanyId = searchParams.get('companyId') || ''
   const [companies, setCompanies] = useState<Company[]>([])

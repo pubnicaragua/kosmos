@@ -105,7 +105,7 @@ export async function getModuleAccess(
     // If module found in permissions, use those specific permissions
     if (perm) {
       return {
-        canAccess: true,
+        canAccess: Boolean(perm.canView || perm.canCreate || perm.canEdit || perm.canDelete || perm.canExport),
         canView: Boolean(perm.canView),
         canCreate: Boolean(perm.canCreate),
         canEdit: Boolean(perm.canEdit),
@@ -115,8 +115,16 @@ export async function getModuleAccess(
       }
     }
     
-    // Module not in customRole permissions - fallback to role-based permissions
-    // This allows customRole to only restrict specific modules, not all modules
+    // Module not in customRole permissions - strict mode: deny access
+    return {
+      canAccess: false,
+      canView: false,
+      canCreate: false,
+      canEdit: false,
+      canDelete: false,
+      canExport: false,
+      restrictedByCustomRole: true,
+    }
   }
 
   // No customRole - use default permissions based on role
@@ -135,7 +143,7 @@ export async function getModuleAccess(
     }
   }
 
-  // MANAGER has view/create/edit, no delete
+  // MANAGER has view/create/edit/export, no delete
   if (role === 'MANAGER') {
     return {
       canAccess: true,
@@ -148,10 +156,10 @@ export async function getModuleAccess(
     }
   }
 
-  // USER (default) has view only
+  // USER (default) has NO access by default. Must be assigned a custom role.
   return {
-    canAccess: true,
-    canView: true,
+    canAccess: false,
+    canView: false,
     canCreate: false,
     canEdit: false,
     canDelete: false,

@@ -135,8 +135,8 @@ export function Sidebar() {
         if (['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(me.role)) {
           setAllowedModules(null)
         } else {
-          // USER without custom role gets default full access for backwards compatibility
-          setAllowedModules(null)
+          // USER without custom role gets NO access by default (must be assigned a role)
+          setAllowedModules(new Set())
         }
         setCustomRoleName(null)
       }

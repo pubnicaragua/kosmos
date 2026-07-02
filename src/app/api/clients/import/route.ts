@@ -45,6 +45,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
     }
 
+    const { getModuleAccess } = await import('@/lib/company-access')
+    const moduleAccess = await getModuleAccess(payload.userId, companyId, 'clientes')
+    if (!moduleAccess.canCreate) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para crear/importar clientes' }, { status: 403 })
+    }
+
     // Leer archivo
     const buffer = Buffer.from(await file.arrayBuffer())
     

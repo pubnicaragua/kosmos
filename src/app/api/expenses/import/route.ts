@@ -90,6 +90,12 @@ export async function POST(request: NextRequest) {
         return apiError('No tienes acceso a esta empresa', 403)
       }
 
+      const { getModuleAccess } = await import('@/lib/company-access')
+      const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'gastos')
+      if (!moduleAccess.canCreate) {
+        return apiError('No tienes permisos para crear/importar gastos', 403)
+      }
+
       const created = await prisma.expense.createMany({
         data: expenses.map((exp: any) => ({
           ...exp,
@@ -121,6 +127,12 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) {
       return apiError('No tienes acceso a esta empresa', 403)
+    }
+
+    const { getModuleAccess } = await import('@/lib/company-access')
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'gastos')
+    if (!moduleAccess.canCreate) {
+      return apiError('No tienes permisos para crear/importar gastos', 403)
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
