@@ -48,7 +48,7 @@ function InventarioEdicionPageContent() {
   const [categories, setCategories] = useState<Category[]>([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
-  const [updateExistingProducts, setUpdateExistingProducts] = useState(true)
+  const [updateExistingProducts, setUpdateExistingProducts] = useState(false)
   const [rows, setRows] = useState<ProductRow[]>([
     { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, stock: 0, isNew: true },
   ])
