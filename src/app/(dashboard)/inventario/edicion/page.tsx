@@ -520,33 +520,36 @@ function InventarioEdicionPageContent() {
     setIsSaving(true)
 
     // Validate all SKUs against backend to ensure no duplicates sneak through
-    const skusToCheck = validRows
-      .filter(row => row.sku.trim() !== '')
-      .map(row => row.sku.trim())
+    // ONLY if we are NOT updating existing products
+    if (!updateExistingProducts) {
+      const skusToCheck = validRows
+        .filter(row => row.sku.trim() !== '')
+        .map(row => row.sku.trim())
 
-    if (skusToCheck.length > 0) {
-      try {
-        const skuChecks = await Promise.all(
-          skusToCheck.map(sku =>
-            fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(sku)}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(res => res.json())
+      if (skusToCheck.length > 0) {
+        try {
+          const skuChecks = await Promise.all(
+            skusToCheck.map(sku =>
+              fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(sku)}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              }).then(res => res.json())
+            )
           )
-        )
-        
-        const existingProduct = skuChecks
-          .flatMap(data => data.success && Array.isArray(data.data?.data) ? data.data.data : [])
-          .find(product => !editProductId || product.id !== editProductId)
+          
+          const existingProduct = skuChecks
+            .flatMap(data => data.success && Array.isArray(data.data?.data) ? data.data.data : [])
+            .find(product => !editProductId || product.id !== editProductId)
 
-        if (existingProduct) {
-          const rowIndex = rows.findIndex(r => r.sku.trim() === existingProduct.sku)
-          setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
-          setIsSaving(false)
-          alert('Se encontró un SKU que ya existe. Por favor, resuelva la advertencia antes de guardar.')
-          return
+          if (existingProduct) {
+            const rowIndex = rows.findIndex(r => r.sku.trim() === existingProduct.sku)
+            setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
+            setIsSaving(false)
+            alert('Se encontró un SKU que ya existe. Por favor, resuelva la advertencia antes de guardar o marque la casilla de actualizar existentes.')
+            return
+          }
+        } catch (error) {
+          console.error('Error checking SKUs:', error)
         }
-      } catch (error) {
-        console.error('Error checking SKUs:', error)
       }
     }
 
