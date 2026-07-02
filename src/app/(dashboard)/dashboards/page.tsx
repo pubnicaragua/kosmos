@@ -133,7 +133,51 @@ export default function DashboardsPage() {
         const permissionData = await permissionRes.json()
         const permissionPayload = permissionData.data || permissionData
         if (!permissionRes.ok || !permissionData.success || !permissionPayload?.canView) {
-          router.replace('/clientes') // Redirect if no permission to dashboard
+          // If no dashboard access, find first accessible module
+          try {
+            const usersRes = await fetch(`/api/companies/${companyIdToCheck}/users`, {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            const usersData = await usersRes.json()
+            if (usersData.success) {
+              const me = usersData.data.find((m: any) => m.userId === storedUser.id)
+              if (me && me.customRole) {
+                const firstAllowed = me.customRole.permissions.find((p: any) => p.canView)
+                if (firstAllowed) {
+                  const moduleRoutes: Record<string, string> = {
+                    'dashboard': '/dashboards',
+                    'notificaciones': '/notificaciones',
+                    'ingresos': '/ingresos',
+                    'gastos': '/gastos',
+                    'actividades': '/actividades',
+                    'clientes': '/clientes',
+                    'cotizaciones': '/clientes/cotizacion',
+                    'pipeline-ventas': '/pipeline-ventas',
+                    'marketing': '/marketing',
+                    'inventario': '/inventario',
+                    'solicitudes-compra': '/solicitudes-compra',
+                    'tareas': '/tareas',
+                    'tickets-soporte': '/tickets-soporte',
+                    'recursos-humanos': '/recursos-humanos',
+                    'documentos': '/documentos',
+                    'contratos': '/contratos',
+                    'sistema': '/sistema/ajustes',
+                    'entregables': '/entregables'
+                  }
+                  const redirectUrl = moduleRoutes[firstAllowed.module] || '/clientes'
+                  router.replace(redirectUrl)
+                  return
+                }
+              } else if (me && ['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(me.role)) {
+                // Should not happen since they'd have dashboard access, but fallback
+                router.replace('/clientes')
+                return
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching fallback route:', e)
+          }
+          router.replace('/clientes') // Redirect if no permission to dashboard and fallback fails
           return
         }
         setModulePermissions(permissionPayload)
