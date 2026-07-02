@@ -54,6 +54,44 @@ const NAV_TO_MODULE: Record<string, string> = {
   entregables: 'entregables',
 }
 
+// Mapea el pathname actual al módulo real.
+// Las rutas más específicas van PRIMERO (orden importa - se usa startsWith).
+// Esto resuelve que /clientes/cotizacion/* no se confunda con /clientes.
+const PATHNAME_TO_MODULE: Array<{ match: string; module: string }> = [
+  { match: '/clientes/cotizacion', module: 'cotizaciones' },
+  { match: '/clientes/multiagregado', module: 'clientes' },
+  { match: '/clientes/nuevo', module: 'clientes' },
+  { match: '/clientes', module: 'clientes' },
+  { match: '/dashboards', module: 'dashboard' },
+  { match: '/notificaciones', module: 'notificaciones' },
+  { match: '/ingresos', module: 'ingresos' },
+  { match: '/gastos', module: 'gastos' },
+  { match: '/actividades', module: 'actividades' },
+  { match: '/pipeline-ventas', module: 'pipeline-ventas' },
+  { match: '/marketing', module: 'marketing' },
+  { match: '/inventario', module: 'inventario' },
+  { match: '/solicitudes-compra', module: 'solicitudes-compra' },
+  { match: '/tareas', module: 'tareas' },
+  { match: '/tickets-soporte', module: 'tickets-soporte' },
+  { match: '/recursos-humanos', module: 'recursos-humanos' },
+  { match: '/documentos', module: 'documentos' },
+  { match: '/contratos', module: 'contratos' },
+  { match: '/sistema/ajustes', module: 'sistema' },
+  { match: '/sistema/plantillas', module: 'sistema' },
+  { match: '/sistema/monitor', module: 'sistema' },
+  { match: '/entregables', module: 'entregables' },
+]
+
+function getCurrentModule(pathname: string | null): string | null {
+  if (!pathname) return null
+  for (const { match, module } of PATHNAME_TO_MODULE) {
+    if (pathname === match || pathname.startsWith(match + '/')) {
+      return module
+    }
+  }
+  return null
+}
+
 interface RolePermission {
   module: string
   canView: boolean
@@ -182,6 +220,22 @@ export function Sidebar() {
     return allowedModules.has(moduleKey)
   }
 
+  // Determina si un item del sidebar está activo según el MÓDULO actual, no el path.
+  // Esto evita que /clientes/cotizacion/* marque "Clientes" como activo.
+  const currentModule = getCurrentModule(pathname)
+
+  const isItemActive = (itemId: string): boolean => {
+    if (itemId === 'dashboards') {
+      return currentModule === 'dashboard'
+    }
+    const moduleKey = NAV_TO_MODULE[itemId]
+    if (!moduleKey) {
+      // Items sin módulo conocido: fallback al path (compatibilidad)
+      return pathname?.startsWith(navigationSections.flatMap(s => s.items).find(i => i.id === itemId)?.href || '') ?? false
+    }
+    return currentModule === moduleKey
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
@@ -256,7 +310,7 @@ export function Sidebar() {
                 )}
                 <ul className={`space-y-1 ${isCollapsed ? 'px-2' : 'px-2'}`}>
                   {visibleItems.map((item) => {
-                    const isActive = pathname?.startsWith(item.href)
+                    const isActive = isItemActive(item.id)
                     const Icon = iconMap[item.icon]
                     return (
                       <li key={item.id}>
