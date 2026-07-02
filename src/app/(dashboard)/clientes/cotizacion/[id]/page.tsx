@@ -61,7 +61,14 @@ interface Quote {
 export default function DetalleCotizacionPage() {
   const router = useRouter()
   const params = useParams()
-  const permissions = useModulePermissions('cotizaciones', { requireAction: 'view' })
+  const permissions = useModulePermissions('cotizaciones')
+
+  // Bypass: si tiene canCreate para cotizaciones, accede sin necesidad de canView
+  useEffect(() => {
+    if (!permissions.loading && !permissions.canView && !permissions.canCreate) {
+      router.push('/sistema/unauthorized')
+    }
+  }, [permissions.loading, permissions.canView, permissions.canCreate, router])
   const [quote, setQuote] = useState<Quote | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)

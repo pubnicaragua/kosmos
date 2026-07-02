@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     for (const cid of companyIds) {
       const moduleAccess = await getModuleAccess(decoded.userId, cid, 'cotizaciones')
-      if (moduleAccess.canView) {
+      if (moduleAccess.canView || moduleAccess.canCreate) {
         allowedCompanyIds.push(cid)
       }
     }

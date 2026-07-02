@@ -27,12 +27,19 @@ interface Company {
 
 export default function CotizacionesList() {
   const router = useRouter()
-  const permissions = useModulePermissions('cotizaciones', { requireAction: 'view' })
+  const permissions = useModulePermissions('cotizaciones')
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<string>('')
+
+  // Bypass: si tiene canCreate para cotizaciones, accede sin necesidad de canView ni clientes
+  useEffect(() => {
+    if (!permissions.loading && !permissions.canView && !permissions.canCreate) {
+      router.push('/sistema/unauthorized')
+    }
+  }, [permissions.loading, permissions.canView, permissions.canCreate, router])
 
   useEffect(() => {
     const loadData = async () => {
