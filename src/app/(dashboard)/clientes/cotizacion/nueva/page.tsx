@@ -41,6 +41,7 @@ function NuevaCotizacionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const permissions = useModulePermissions('cotizaciones')
+  const inventarioPermissions = useModulePermissions('inventario')
   const prefillClientId = searchParams.get('clientId') || ''
   const prefillCompanyId = searchParams.get('companyId') || ''
   const [companies, setCompanies] = useState<Company[]>([])
@@ -137,6 +138,17 @@ useEffect(() => {
       return
     }
 
+    // Solo cargar clientes si el usuario tiene permisos de clientes
+    if (permissions.loading) {
+      return
+    }
+    if (!permissions.canView) {
+      setClients([])
+      setSelectedClient('')
+      setIsLoadingClients(false)
+      return
+    }
+
     setIsLoadingClients(true)
     const doFetch = async () => {
       const token = localStorage.getItem('accessToken')
@@ -164,7 +176,7 @@ useEffect(() => {
       }
     }
     doFetch()
-  }, [selectedCompany])
+  }, [selectedCompany, permissions.loading, permissions.canView])
 
   useEffect(() => {
     if (!prefillClientId) return
@@ -178,6 +190,16 @@ useEffect(() => {
   useEffect(() => {
     if (selectedCompany === 'all') {
       setProducts([])
+      return
+    }
+
+    // Solo cargar productos si el usuario tiene permisos de inventario
+    if (inventarioPermissions.loading) {
+      return
+    }
+    if (!inventarioPermissions.canView) {
+      setProducts([])
+      setIsLoadingProducts(false)
       return
     }
 
@@ -210,7 +232,7 @@ useEffect(() => {
     }
 
     fetchProducts()
-  }, [selectedCompany])
+  }, [selectedCompany, inventarioPermissions.loading, inventarioPermissions.canView])
 
   useEffect(() => {
     setItems((prev) => {
