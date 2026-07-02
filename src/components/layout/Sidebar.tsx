@@ -275,7 +275,7 @@ export function Sidebar() {
         {/* Logo + Toggle */}
         <div className={`p-4 border-b border-gray-100 flex items-center transition-all ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
           {!isCollapsed ? (
-            <div className="flex items-center w-full max-w-[180px]">
+            <div className="flex items-center w-full max-w-[130px]">
               <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-full h-auto object-contain" />
             </div>
           ) : (
