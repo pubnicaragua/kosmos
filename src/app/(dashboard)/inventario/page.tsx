@@ -632,19 +632,7 @@ function InventarioPageContent() {
           accept=".xlsx,.xls,.csv"
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) {
-              const reader = new FileReader()
-              reader.onload = (evt) => {
-                sessionStorage.setItem('pendingImportFile', JSON.stringify({
-                  name: file.name,
-                  type: file.type,
-                  data: evt.target?.result
-                }))
-                router.push('/inventario/edicion?import=1')
-              }
-              reader.readAsDataURL(file)
-            }
+            // Ya no se usa aquí, se hace en inventario/edicion
             e.target.value = ''
           }}
         />
@@ -1032,23 +1020,14 @@ function InventarioPageContent() {
               <Button variant="outline" onClick={handleDownloadTemplate} className="w-full border-slate-200">
                 Descargar Plantilla
               </Button>
-
-              <div className="mt-4 border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-cyan-500 transition-colors">
-                <div onClick={() => importInputRef.current?.click()} className="cursor-pointer">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 mb-3">
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-bold text-slate-700">Haz clic para subir tu archivo</p>
-                  <p className="text-xs text-slate-500 mt-1">Solo archivos .xlsx, .xls o .csv</p>
-                </div>
-              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowImportModal(false)}>
                 Cancelar
+              </Button>
+              <Button onClick={() => router.push('/inventario/edicion?type=PRODUCTO')} className="bg-cyan-500 text-slate-950 hover:bg-cyan-400">
+                Siguiente
               </Button>
             </div>
           </div>

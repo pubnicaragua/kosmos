@@ -484,6 +484,40 @@ function InventarioEdicionPageContent() {
       }
 
       setRows(importedRows)
+
+      // Verificar SKUs de inmediato
+      const token = localStorage.getItem('accessToken')
+      if (token && !updateExistingProducts) {
+        const skusToCheck = importedRows
+          .filter(row => row.sku.trim() !== '')
+          .map(row => row.sku.trim())
+
+        if (skusToCheck.length > 0) {
+          try {
+            const skuChecks = await Promise.all(
+              skusToCheck.map(sku =>
+                fetch(`/api/products?companyId=${selectedCompany}&sku=${encodeURIComponent(sku)}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                }).then(res => res.json())
+              )
+            )
+            
+            const existingProduct = skuChecks
+              .flatMap(data => data.success && Array.isArray(data.data?.data) ? data.data.data : [])
+              .find(product => !editProductId || product.id !== editProductId)
+
+            if (existingProduct) {
+              const rowIndex = importedRows.findIndex(r => r.sku.trim() === existingProduct.sku)
+              setSkuWarning({ index: rowIndex >= 0 ? rowIndex : 0, product: existingProduct })
+              alert(`Se cargaron ${importedRows.length} productos, pero hay SKUs que ya existen (como ${existingProduct.sku}). Márcalos para actualizar o cámbialos.`)
+              return // Termina aquí para no mostrar la segunda alerta
+            }
+          } catch (error) {
+            console.error('Error verificando SKUs:', error)
+          }
+        }
+      }
+
       alert(`${importedRows.length} productos cargados. Revisa y presiona FINALIZAR para guardar.`)
     } catch (error) {
       console.error('Error importing inventory file:', error)
