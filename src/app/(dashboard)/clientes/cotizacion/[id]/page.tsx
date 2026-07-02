@@ -66,7 +66,11 @@ export default function DetalleCotizacionPage() {
   // Bypass: si tiene canCreate para cotizaciones, accede sin necesidad de canView
   useEffect(() => {
     if (!permissions.loading && !permissions.canView && !permissions.canCreate) {
-      router.push('/sistema/unauthorized')
+      // Solo redirigir si hay una empresa activa válida — evita falsos negativos durante carga
+      const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
+      if (activeCompany?.id && activeCompany.id !== 'all') {
+        router.push('/sistema/unauthorized')
+      }
     }
   }, [permissions.loading, permissions.canView, permissions.canCreate, router])
   const [quote, setQuote] = useState<Quote | null>(null)
