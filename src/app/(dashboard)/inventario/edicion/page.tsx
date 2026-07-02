@@ -462,7 +462,7 @@ function InventarioEdicionPageContent() {
             unit: String(pickValue('unidad', 'unit', 'unikg') || 'UNI').trim().toUpperCase() || 'UNI',
             categoryId: matchedCategoryId || (familia ? categoriesByName.get(normalizeHeader(familia)) : '') || '',
             categoryName: categoryInput || familia || '',
-            description: String(pickValue('descripcion', 'description', 'detalle') || descripcionParts).trim(),
+            description: String(pickValue('descripcion', 'description', 'detalle', 'desc') || descripcionParts).trim(),
             sku,
             cost: toNumber(pickValue('costo', 'cost', 'preciocosto', 'costopromedio', 'costoenbodega')),
             price: toNumber(pickValue('precio', 'price', 'pvp')),

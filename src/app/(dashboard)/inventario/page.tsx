@@ -518,8 +518,7 @@ function InventarioPageContent() {
         'SKU': 'SKU-001',
         'COSTO': 50.00,
         'PRECIO': 100.00,
-        'MARGEN %': 50,
-        'PROMO': ''
+        'MARGEN %': 50
       }
     ]
     const XLSX = await import('xlsx')
