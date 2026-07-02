@@ -30,20 +30,28 @@ export async function GET(request: NextRequest) {
     const skip = (safePage - 1) * safeLimit
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
+    const allowedCompanyIds = []
 
-    if (companyId && !companyIds.includes(companyId)) {
-      return apiError('No tienes acceso a esta empresa', 403)
-    }
-
-    if (companyId) {
-      const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'inventario')
-      if (!moduleAccess.canAccess || !moduleAccess.canView) {
-        return apiError('No tienes permisos para ver inventario en esta empresa', 403)
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(decoded.userId, cid, 'inventario')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
       }
     }
 
     const where: any = {}
-    where.companyId = companyId || { in: companyIds }
+
+    if (companyId) {
+      if (!allowedCompanyIds.includes(companyId)) {
+        return apiError('No tienes permisos para ver inventario en esta empresa', 403)
+      }
+      where.companyId = companyId
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return apiError('No tienes permisos para ver inventario en ninguna empresa', 403)
+      }
+      where.companyId = { in: allowedCompanyIds }
+    }
     if (categoryId) where.categoryId = categoryId
     if (!categoryId && categoryType === 'service') {
       where.category = {

@@ -41,13 +41,27 @@ export async function GET(request: NextRequest) {
     })
 
     const companyIds = userCompanies.map((uc: any) => uc.companyId)
+    const allowedCompanyIds = []
 
-    if (filters.companyId && !companyIds.includes(filters.companyId)) {
-      return apiError('No tienes acceso a esta empresa', 403)
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(decoded.userId, cid, 'gastos')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
+      }
     }
 
-    const where: any = {
-      companyId: filters.companyId || { in: companyIds },
+    const where: any = {}
+
+    if (filters.companyId) {
+      if (!allowedCompanyIds.includes(filters.companyId)) {
+        return apiError('No tienes permisos para ver gastos en esta empresa', 403)
+      }
+      where.companyId = filters.companyId
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return apiError('No tienes permisos para ver gastos en ninguna empresa', 403)
+      }
+      where.companyId = { in: allowedCompanyIds }
     }
 
     if (filters.status) {

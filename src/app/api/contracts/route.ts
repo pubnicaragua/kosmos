@@ -34,11 +34,28 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
-    if (companyId && !companyIds.includes(companyId)) {
-      return apiError('No tienes acceso a esta empresa', 403)
+    const allowedCompanyIds = []
+
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(decoded.userId, cid, 'contratos')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
+      }
     }
 
-    const where: any = { companyId: companyId || { in: companyIds } }
+    const where: any = {}
+
+    if (companyId) {
+      if (!allowedCompanyIds.includes(companyId)) {
+        return apiError('No tienes permisos para ver contratos en esta empresa', 403)
+      }
+      where.companyId = companyId
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return apiError('No tienes permisos para ver contratos en ninguna empresa', 403)
+      }
+      where.companyId = { in: allowedCompanyIds }
+    }
     if (status) where.status = status
     
     // Búsqueda general por nombre, parte o concepto

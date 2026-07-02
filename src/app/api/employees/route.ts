@@ -50,6 +50,11 @@ export async function GET(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'recursos-humanos')
+    if (!moduleAccess.canView) {
+      return apiError('No tienes permisos para ver empleados en esta empresa', 403)
+    }
+
     const employees = await prisma.employee.findMany({
       where: { companyId },
       orderBy: { createdAt: 'desc' }

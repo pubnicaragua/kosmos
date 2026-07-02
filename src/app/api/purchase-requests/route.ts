@@ -19,6 +19,15 @@ export async function GET(req: Request) {
 
     if (!companyId) return NextResponse.json({ success: false, error: 'companyId es requerido' }, { status: 400 })
 
+    const access = await getCompanyAccess(decoded.userId, companyId)
+    if (!access.canAccess) {
+      return NextResponse.json({ success: false, error: 'No tienes acceso a esta empresa' }, { status: 403 })
+    }
+
+    const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'solicitudes-compra')
+    if (!moduleAccess.canView) {
+      return NextResponse.json({ success: false, error: 'No tienes permisos para ver solicitudes-compra en esta empresa' }, { status: 403 })
+    }
     const departments = await prisma.department.findMany({
       where: { companyId },
       select: { id: true, name: true },

@@ -31,13 +31,27 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '25')
 
     const { companyIds } = await getAccessibleCompanies(payload.userId)
+    const allowedCompanyIds = []
 
-    if (companyId && !companyIds.includes(companyId)) {
-      return errorResponse('No tienes acceso a esta empresa', 403)
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(payload.userId, cid, 'ingresos')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
+      }
     }
 
-    const whereClause: any = {
-      companyId: companyId ? companyId : { in: companyIds },
+    const whereClause: any = {}
+
+    if (companyId) {
+      if (!allowedCompanyIds.includes(companyId)) {
+        return errorResponse('No tienes permisos para ver ingresos en esta empresa', 403)
+      }
+      whereClause.companyId = companyId
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return errorResponse('No tienes permisos para ver ingresos en ninguna empresa', 403)
+      }
+      whereClause.companyId = { in: allowedCompanyIds }
     }
 
     if (status) {

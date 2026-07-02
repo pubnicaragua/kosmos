@@ -21,13 +21,28 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
+    const allowedCompanyIds = []
 
-    if (companyId && !companyIds.includes(companyId)) {
-      return apiError('No tienes acceso a esta empresa', 403)
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(decoded.userId, cid, 'cotizaciones')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
+      }
     }
 
     const where: any = {}
-    where.companyId = companyId ? companyId : { in: companyIds }
+
+    if (companyId) {
+      if (!allowedCompanyIds.includes(companyId)) {
+        return apiError('No tienes permisos para ver cotizaciones en esta empresa', 403)
+      }
+      where.companyId = companyId
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return apiError('No tienes permisos para ver cotizaciones en ninguna empresa', 403)
+      }
+      where.companyId = { in: allowedCompanyIds }
+    }
     if (clientId) where.clientId = clientId
     if (status) where.status = status
 

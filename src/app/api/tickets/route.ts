@@ -49,12 +49,24 @@ export async function GET(request: NextRequest) {
     }
 
     let isAdmin = isSuperAdmin
+    const allowedCompanyIds = []
+
+    for (const cid of companyIds) {
+      const moduleAccess = await getModuleAccess(decoded.userId, cid, 'tickets-soporte')
+      if (moduleAccess.canView) {
+        allowedCompanyIds.push(cid)
+      }
+    }
+
     if (companyId) {
       const access = await getCompanyAccess(decoded.userId, companyId)
       isAdmin = isAdminRole(access.effectiveRole)
-      const moduleAccess = await getModuleAccess(decoded.userId, companyId, 'tickets-soporte')
-      if (!moduleAccess.canAccess || !moduleAccess.canView) {
-        return apiError('No tienes permisos para ver tickets', 403)
+      if (!allowedCompanyIds.includes(companyId)) {
+        return apiError('No tienes permisos para ver tickets en esta empresa', 403)
+      }
+    } else {
+      if (allowedCompanyIds.length === 0) {
+        return apiError('No tienes permisos para ver tickets en ninguna empresa', 403)
       }
     }
 
@@ -66,7 +78,7 @@ export async function GET(request: NextRequest) {
       : null
 
     const where: any = {}
-    where.companyId = companyId || { in: companyIds }
+    where.companyId = companyId || { in: allowedCompanyIds }
     if (status) where.status = status
     
     const andFilters: any[] = []
