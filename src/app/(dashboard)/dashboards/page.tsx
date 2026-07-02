@@ -58,6 +58,7 @@ export default function DashboardsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [isCompaniesReady, setIsCompaniesReady] = useState(false)
+  const [modulePermissions, setModulePermissions] = useState<any>(null)
   const [visibleKpis, setVisibleKpis] = useState<string[]>([
     'totalSales', 'operationalExpenses', 'pipelineValue', 'activeClients'
   ])
@@ -128,7 +129,7 @@ export default function DashboardsPage() {
           return
         }
 
-        const permissionRes = await fetch(`/api/permissions/check?module=dashboard&companyId=${companyIdToCheck}`, {
+        const permissionRes = await fetch(`/api/permissions/check?module=dashboards&companyId=${companyIdToCheck}`, {
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         })
@@ -138,6 +139,9 @@ export default function DashboardsPage() {
           router.replace('/clientes') // Redirect if no permission to dashboard
           return
         }
+        setModulePermissions(permissionPayload)
+      } else {
+        setModulePermissions({ canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true })
       }
 
       const params = new URLSearchParams()
@@ -411,16 +415,20 @@ const chartRows = useMemo(() => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setIsConfigModalOpen(true)}>
-            <Settings className="w-5 h-5 mr-2" />
-            CONFIGURAR
-          </Button>
-          <Button onClick={handleExportReport} className="bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-200">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            EXPORTAR INFORME
-          </Button>
+          {modulePermissions?.canEdit && (
+            <Button variant="outline" onClick={() => setIsConfigModalOpen(true)}>
+              <Settings className="w-5 h-5 mr-2" />
+              CONFIGURAR
+            </Button>
+          )}
+          {modulePermissions?.canExport && (
+            <Button onClick={handleExportReport} className="bg-slate-900 hover:bg-slate-800 shadow-lg shadow-slate-200">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              EXPORTAR INFORME
+            </Button>
+          )}
         </div>
       </div>
 

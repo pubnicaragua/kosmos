@@ -6,6 +6,7 @@ import { ArrowLeft, MessageSquare, Paperclip, Clock, User, Send, Upload, FileTex
 import { Card } from '@/components/ui-kit/Card'
 import { Badge } from '@/components/ui-kit/Badge'
 import { Button } from '@/components/ui-kit/Button'
+import { useModulePermissions } from '@/hooks/useModulePermissions'
 
 interface Ticket {
   id: string
@@ -111,13 +112,12 @@ const parseAssignedUserIds = (value?: string | null) => {
   }
 }
 
-const isAdminRole = (role?: string | null) => role === 'SUPER_ADMIN' || role === 'ADMIN'
-
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const evidenceInputRef = useRef<HTMLInputElement>(null)
+  const permissions = useModulePermissions('tickets-soporte', { requireAction: 'view' })
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [comments, setComments] = useState<TicketComment[]>([])
   const [members, setMembers] = useState<TicketMember[]>([])
@@ -174,7 +174,7 @@ export default function TicketDetailPage() {
   }, [])
 
   const canDeleteTicket = (target: Ticket) => {
-    if (isAdminRole(currentUserRole)) return true
+    if (permissions.canDelete) return true
     if (!currentUserId) return false
     const assignedUserIds = parseAssignedUserIds(target.assignedUsers)
     if (assignedUserIds.includes(currentUserId)) return true

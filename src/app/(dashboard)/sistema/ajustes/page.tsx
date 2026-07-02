@@ -1259,23 +1259,16 @@ export default function AjustesPage() {
                                 {moduleInfo?.label || mod}
                               </div>
                             </td>
-                            {(['canView', 'canCreate', 'canEdit', 'canDelete', 'canExport'] as const).map(field => {
-                              const isDashboard = mod === 'dashboard'
-                              const hideCheckbox = isDashboard && field !== 'canView'
-                              
-                              return (
-                                <td key={field} className="text-center px-2 py-2.5">
-                                  {!hideCheckbox && (
-                                    <input
-                                      type="checkbox"
-                                      checked={!!p[field]}
-                                      onChange={() => togglePerm(mod, field)}
-                                      className="w-4 h-4 rounded text-primary border-gray-300 cursor-pointer"
-                                    />
-                                  )}
-                                </td>
-                              )
-                            })}
+                            {(['canView', 'canCreate', 'canEdit', 'canDelete', 'canExport'] as const).map(field => (
+                              <td key={field} className="text-center px-2 py-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={!!p[field]}
+                                  onChange={() => togglePerm(mod, field)}
+                                  className="w-4 h-4 rounded text-primary border-gray-300 cursor-pointer"
+                                />
+                              </td>
+                            ))}
                           </tr>
                         )
                       })}
