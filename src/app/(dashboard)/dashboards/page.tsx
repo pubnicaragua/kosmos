@@ -135,8 +135,7 @@ export default function DashboardsPage() {
         const permissionData = await permissionRes.json()
         const permissionPayload = permissionData.data || permissionData
         if (!permissionRes.ok || !permissionData.success || !permissionPayload?.canView) {
-          setError('No tienes permisos para ver el dashboard')
-          setIsLoading(false)
+          router.replace('/clientes') // Redirect if no permission to dashboard
           return
         }
       }
