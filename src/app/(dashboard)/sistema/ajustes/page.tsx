@@ -152,6 +152,7 @@ export default function AjustesPage() {
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null)
   const [roleForm, setRoleForm] = useState({ name: '', description: '', color: '#6366f1' })
   const [rolePermissions, setRolePermissions] = useState<Record<string, RolePermission>>({})
+  const [roleModulesInDb, setRoleModulesInDb] = useState<Set<string>>(new Set())
   const [savingRole, setSavingRole] = useState(false)
   const [roleMsg, setRoleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [addUserEmail, setAddUserEmail] = useState('')
@@ -428,6 +429,7 @@ export default function AjustesPage() {
     const emptyPerms: Record<string, RolePermission> = {}
     modules.forEach((m) => { emptyPerms[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } })
     setRolePermissions(emptyPerms)
+    setRoleModulesInDb(new Set())
     setRoleMsg(null)
     setShowRoleModal(true)
   }
@@ -437,11 +439,14 @@ export default function AjustesPage() {
     setRoleForm({ name: role.name, description: role.description || '', color: role.color || '#6366f1' })
     setFromPredefined('')
     const perms: Record<string, RolePermission> = {}
+    const inDb = new Set<string>()
     modules.forEach((m) => {
       const existing = role.permissions.find((p) => p.module === m)
+      if (existing) inDb.add(m)
       perms[m] = existing || { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false }
     })
     setRolePermissions(perms)
+    setRoleModulesInDb(inDb)
     setRoleMsg(null)
     setShowRoleModal(true)
   }
@@ -452,22 +457,25 @@ export default function AjustesPage() {
     if (!found) return
     setRoleForm((prev) => ({ ...prev, name: prev.name || found.name, description: prev.description || found.description, color: found.color }))
     const newPerms: Record<string, RolePermission> = {}
+    const inTemplate = new Set<string>()
     modules.forEach((m) => {
       const pre = found.modules[m]
+      if (pre) inTemplate.add(m)
       newPerms[m] = { module: m, canView: pre?.canView ?? false, canCreate: pre?.canCreate ?? false, canEdit: pre?.canEdit ?? false, canDelete: pre?.canDelete ?? false, canExport: pre?.canExport ?? false }
     })
     setRolePermissions(newPerms)
+    setRoleModulesInDb(new Set(inTemplate))
   }
 
   const togglePerm = (module: string, field: keyof Omit<RolePermission, 'module'>) => {
     setRolePermissions((prev) => {
       const currentValue = prev[module][field]
       const newValue = !currentValue
-      
+
       // Lógica de permisos dependientes:
       // Si se activa canCreate, canEdit, canDelete o canExport → activar canView automáticamente
       const needsView = ['canCreate', 'canEdit', 'canDelete', 'canExport'].includes(field)
-      
+
       return {
         ...prev,
         [module]: {
@@ -478,6 +486,15 @@ export default function AjustesPage() {
         },
       }
     })
+
+    // Si se activa cualquier permiso en un módulo que no estaba en la BD, agregarlo al set
+    if (field === 'canView' || field === 'canCreate' || field === 'canEdit' || field === 'canDelete' || field === 'canExport') {
+      // Solo agregar si el módulo actualmente no tiene permisos en la BD
+      setRoleModulesInDb(prev => {
+        if (prev.has(module)) return prev
+        return new Set(prev).add(module)
+      })
+    }
   }
 
   const handleSaveRole = async () => {
@@ -1167,6 +1184,39 @@ export default function AjustesPage() {
             </div>
 
             <div className="p-6 space-y-5">
+              {/* Banner informativo de módulos faltantes */}
+              {editingRole && modules.length > 0 && (() => {
+                const missingModules = modules.filter(m => !roleModulesInDb.has(m))
+                if (missingModules.length === 0) return null
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-amber-900">
+                          {missingModules.length} módulo{missingModules.length !== 1 ? 's' : ''} sin permisos asignados
+                        </p>
+                        <p className="text-xs text-amber-800 mt-1">
+                          Los usuarios con este rol NO tendrán acceso a estos módulos. Si quieres darles acceso, marca los permisos correspondientes abajo y guarda.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {missingModules.map(m => {
+                            const label = MODULE_LABELS[m]?.label || m
+                            return (
+                              <span key={m} className="text-[10px] font-medium text-amber-800 bg-white border border-amber-200 px-2 py-0.5 rounded">
+                                {label}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Plantillas predefinidas */}
               {!editingRole && (
                 <div>
@@ -1183,7 +1233,7 @@ export default function AjustesPage() {
                       </button>
                     ))}
                     <button
-                      onClick={() => { setFromPredefined(''); const empty: Record<string, RolePermission> = {}; modules.forEach(m => { empty[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } }); setRolePermissions(empty) }}
+                      onClick={() => { setFromPredefined(''); const empty: Record<string, RolePermission> = {}; modules.forEach(m => { empty[m] = { module: m, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false } }); setRolePermissions(empty); setRoleModulesInDb(new Set()) }}
                       className="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-500 hover:border-gray-400"
                     >
                       Personalizado
@@ -1251,12 +1301,20 @@ export default function AjustesPage() {
                         const p = rolePermissions[mod] || { module: mod, canView: false, canCreate: false, canEdit: false, canDelete: false, canExport: false }
                         const moduleInfo = MODULE_LABELS[mod]
                         const Icon = moduleInfo?.icon
+                        const isInDb = roleModulesInDb.has(mod)
+                        const hasAnyPerm = p.canView || p.canCreate || p.canEdit || p.canDelete || p.canExport
+                        const isNew = !isInDb && hasAnyPerm
                         return (
                           <tr key={mod} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                             <td className="px-4 py-2.5 font-medium text-gray-700">
                               <div className="flex items-center gap-2">
                                 {Icon && <Icon className="w-4 h-4 text-gray-400" />}
                                 {moduleInfo?.label || mod}
+                                {isNew && (
+                                  <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                                    Nuevo
+                                  </span>
+                                )}
                               </div>
                             </td>
                             {(['canView', 'canCreate', 'canEdit', 'canDelete', 'canExport'] as const).map(field => (
