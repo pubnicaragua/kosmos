@@ -100,7 +100,7 @@ const ROLE_BADGE_COLORS: Record<string, string> = {
   USER: 'bg-gray-100 text-gray-600',
 }
 
-const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','pipeline-ventas','documentos','contratos','inventario','solicitudes-compra','cotizaciones','notificaciones','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
+const FALLBACK_MODULES = ['dashboard','clientes','ingresos','gastos','actividades','tareas','pipeline-ventas','documentos','contratos','inventario','solicitudes-compra','cotizaciones','notificaciones','tickets-soporte','marketing','entregables','recursos-humanos','sistema']
 
 const FALLBACK_PREDEFINED_ROLES: PredefinedRole[] = [
   { name: 'Vendedor', description: 'Acceso a clientes, pipeline y cotizaciones', color: '#10b981', modules: { clientes: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, 'pipeline-ventas': { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: false }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } } },

@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
     const access = await getCompanyAccess(decoded.userId, validatedData.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'empleados')
-    if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear empleados', 403)
-
-    // Check if employee code already exists
+    const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'recursos-humanos')
+    if (!moduleAccess.canCreate) {
+      return apiError('No tienes permisos para crear empleados', 403)
+    }  // Check if employee code already exists
     const existing = await prisma.employee.findUnique({
       where: { employeeCode: validatedData.employeeCode }
     })

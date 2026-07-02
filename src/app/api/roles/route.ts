@@ -7,7 +7,7 @@ import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 export const dynamic = 'force-dynamic'
 
 const MODULES = [
-  'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades',
+  'dashboard', 'clientes', 'ingresos', 'gastos', 'actividades', 'tareas',
   'pipeline-ventas', 'documentos', 'contratos', 'inventario',
   'solicitudes-compra', 'cotizaciones', 'notificaciones',
   'tickets-soporte', 'marketing', 'entregables', 'recursos-humanos', 'sistema',

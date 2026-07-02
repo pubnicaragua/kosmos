@@ -58,7 +58,7 @@ export async function PUT(
     const access = await getCompanyAccess(decoded.userId, employee.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'empleados')
+    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'recursos-humanos')
     if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar empleados', 403)
 
     const body = await request.json()
@@ -107,7 +107,7 @@ export async function DELETE(
     const access = await getCompanyAccess(decoded.userId, employee.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'empleados')
+    const moduleAccess = await getModuleAccess(decoded.userId, employee.companyId, 'recursos-humanos')
     if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar empleados', 403)
 
     await prisma.employee.delete({
