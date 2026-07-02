@@ -300,6 +300,19 @@ useEffect(() => {
   const deleteItem = (index: number) => {
     if (itemsArray.length > 1) {
       setItems(itemsArray.filter((_, i) => i !== index))
+    } else {
+      setItems([{
+        tempId: itemsArray[0].tempId,
+        productId: '',
+        description: '',
+        sku: '',
+        stock: null,
+        quantity: 1,
+        unitPrice: '',
+        discount: '',
+        tax: 15,
+        total: 0
+      }])
     }
   }
 

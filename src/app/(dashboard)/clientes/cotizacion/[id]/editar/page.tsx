@@ -179,7 +179,20 @@ export default function EditarCotizacionPage() {
   }
 
   const deleteItem = (index: number) => {
-    if (items.length > 1) setItems(items.filter((_, i) => i !== index))
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index))
+    } else {
+      setItems([{
+        tempId: items[0].tempId,
+        productId: '',
+        description: '',
+        quantity: 1,
+        unitPrice: 0,
+        discount: 0,
+        tax: 15,
+        total: 0
+      }])
+    }
   }
 
   const subtotal = items.reduce((sum, item) => {
