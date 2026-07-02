@@ -352,13 +352,11 @@ useEffect(() => {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <button onClick={() => router.push('/clientes')} className="hover:text-primary">CLIENTES</button>
-            <span>&gt;</span>
-            <button onClick={() => router.push('/clientes/multiagregado')} className="hover:text-primary">MULTIAGREGADO</button>
+            <button onClick={() => router.push('/clientes/cotizacion')} className="hover:text-primary">COTIZACIONES</button>
             <span>&gt;</span>
             <span className="text-primary font-medium">NUEVA COTIZACIÓN</span>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900">Clientes</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Nueva Cotización</h1>
           <p className="text-sm text-gray-500 mt-1">Completa los detalles para generar una propuesta comercial.</p>
         </div>
         <div className="flex items-center gap-3">

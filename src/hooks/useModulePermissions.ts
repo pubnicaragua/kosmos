@@ -48,7 +48,7 @@ export function useModulePermissions(
     const userData = JSON.parse(user)
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
     const companyId = activeCompany?.id
-    
+
     if (!companyId || companyId === 'all') {
       setPermissions({
         canView: false,
@@ -61,9 +61,15 @@ export function useModulePermissions(
       return
     }
 
+    // Cache key con timestamp para invalidar por edad
     const cacheKey = `${userData.id}-${companyId}-${moduleName}`
-    
-    if (permissionsCache.has(cacheKey)) {
+    const cacheTimestampKey = `${cacheKey}-ts`
+    const CACHE_TTL_MS = 30 * 1000 // 30 segundos - evita cache obsoleto tras editar roles
+
+    // Verificar cache solo si es reciente
+    const cachedTs = sessionStorage.getItem(cacheTimestampKey)
+    const now = Date.now()
+    if (cachedTs && (now - parseInt(cachedTs, 10)) < CACHE_TTL_MS && permissionsCache.has(cacheKey)) {
       setPermissions({ ...permissionsCache.get(cacheKey)!, loading: false })
       return
     }
@@ -88,6 +94,7 @@ export function useModulePermissions(
           loading: false,
         }
         permissionsCache.set(cacheKey, perms)
+        sessionStorage.setItem(cacheTimestampKey, now.toString())
         setPermissions(perms)
       } else {
         setPermissions({
@@ -116,7 +123,11 @@ export function useModulePermissions(
     fetchPermissions()
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'activeCompany' || e.key === 'user') {
+      if (e.key === 'activeCompany' || e.key === 'user' || e.key === 'permissions-cache-cleared') {
+        if (e.key === 'permissions-cache-cleared') {
+          // Cache cleared from another tab - clear our local cache and re-fetch
+          permissionsCache.clear()
+        }
         fetchPermissions()
       }
     }
@@ -156,6 +167,21 @@ export function useModulePermissions(
 export function clearPermissionsCache() {
   permissionsCache.clear()
   if (typeof window !== 'undefined') {
+    // Limpiar también los timestamps de sessionStorage
+    try {
+      const keysToRemove: string[] = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.endsWith('-ts')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(k => sessionStorage.removeItem(k))
+    } catch {}
+    // Sincronizar entre pestañas via localStorage
+    try {
+      localStorage.setItem('permissions-cache-cleared', Date.now().toString())
+    } catch {}
     window.dispatchEvent(new Event('permissionsCacheCleared'))
   }
 }
