@@ -58,6 +58,7 @@ export default function ClientDetailPage() {
   const router = useRouter()
   const params = useParams()
   const permissions = useModulePermissions('clientes', { requireAction: 'view' })
+  const cotizacionesPermissions = useModulePermissions('cotizaciones')
   const [client, setClient] = useState<Client | null>(null)
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -507,7 +508,7 @@ export default function ClientDetailPage() {
       <Card className="mt-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Cotizaciones</h2>
-          {permissions.canCreate && (
+          {cotizacionesPermissions.canCreate && (
             <Button
               onClick={() => router.push(`/clientes/cotizacion/nueva?clientId=${client.id}&companyId=${client.company?.id || ''}`)}
             >
