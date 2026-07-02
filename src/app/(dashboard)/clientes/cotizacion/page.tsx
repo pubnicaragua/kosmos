@@ -122,7 +122,7 @@ export default function CotizacionesList() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <button onClick={() => router.push('/clientes')} className="hover:text-primary">CLIENTES</button>
+            <button onClick={() => router.push('/clientes/cotizacion')} className="hover:text-primary">COTIZACIONES</button>
             <span>&gt;</span>
             <span className="text-primary font-medium">COTIZACIONES</span>
           </div>
