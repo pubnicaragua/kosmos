@@ -1,6 +1,6 @@
 export function Logo({ className = '' }: { className?: string }) {
   return (
-    <div className={`flex items-center mx-auto w-full max-w-[150px] ${className}`}>
+    <div className={`flex items-center justify-start w-full max-w-[90px] ${className}`}>
       <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-full h-auto object-contain" />
     </div>
   )
