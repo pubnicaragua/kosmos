@@ -50,6 +50,7 @@ const NAV_TO_MODULE: Record<string, string> = {
   documents: 'documentos',
   contracts: 'contratos',
   system: 'sistema',
+  templates: 'sistema',
   entregables: 'entregables',
 }
 

@@ -36,6 +36,11 @@ export async function GET(request: NextRequest) {
       const moduleAccess = await getModuleAccess(decoded.userId, cid, 'inventario')
       if (moduleAccess.canView) {
         allowedCompanyIds.push(cid)
+      } else {
+        const quoteAccess = await getModuleAccess(decoded.userId, cid, 'cotizaciones')
+        if (quoteAccess.canView || quoteAccess.canCreate) {
+          allowedCompanyIds.push(cid)
+        }
       }
     }
 
