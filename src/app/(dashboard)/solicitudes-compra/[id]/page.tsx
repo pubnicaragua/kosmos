@@ -45,6 +45,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [activeCompanyName, setActiveCompanyName] = useState<string>('')
   const [activeCompanyLogo, setActiveCompanyLogo] = useState<string>('')
+  const [exchangeRate, setExchangeRate] = useState<number>(36.62)
 
   const fetchRequest = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -97,6 +98,28 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
       if (parsedCompany?.logoUrl || parsedCompany?.logo) setActiveCompanyLogo(parsedCompany.logoUrl || parsedCompany.logo)
     }
   }, [fetchRequest])
+
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      if (!selectedCompany) return
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch(`/api/companies/${selectedCompany}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (data.success && data.data?.exchangeRate) {
+          setExchangeRate(data.data.exchangeRate)
+        }
+      } catch (error) {
+        console.error('Error fetching company:', error)
+      }
+    }
+
+    fetchCompanyData()
+  }, [selectedCompany])
 
   const updateStatus = async (newStatus: string, extraPayload: Record<string, unknown> = {}) => {
     const token = localStorage.getItem('accessToken')
@@ -176,6 +199,8 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
   const displayAmount = approvedAmount > 0
     ? approvedAmount
     : request?.items.reduce((sum: number, i: any) => sum + (i.totalCost || 0), 0) || 0
+  
+  const displayExchangeMultiplier = request?.currency === 'NIO' ? exchangeRate : 1
   const totalRequestedQuantity = request?.items.reduce((sum: number, i: any) => sum + (i.requestedQuantity || 0), 0) || 0
 
   const handlePrint = () => {
@@ -320,7 +345,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">{approvedAmount > 0 ? 'Monto Aprobado' : 'Monto Pendiente'}</p>
                   <p className="text-4xl font-black text-blue-400">
                     {approvedAmount > 0
-                      ? `${request.currency === 'NIO' ? 'C$' : '$'}${displayAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                      ? `${request.currency === 'NIO' ? 'C$' : '$'}${(displayAmount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                       : 'Pendiente'}
                   </p>
                 </div>
@@ -373,7 +398,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                   <div>
                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Precio final</p>
                     <p className="font-black text-blue-900">
-                      {request.currency === 'NIO' ? 'C$' : '$'}{approvedAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {request.currency === 'NIO' ? 'C$' : '$'}{(approvedAmount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                   <div>
@@ -438,7 +463,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
                           <td className="px-6 py-4 text-right font-medium text-slate-600">
                             {item.monthlyAverage?.toFixed(1) || '0.0'}
                           </td>
-                          <td className="px-6 py-4 text-right font-black text-slate-900">{request.currency === 'NIO' ? 'C$' : '$'}{(approvedAmount > 0 && totalRequestedQuantity > 0 ? (displayAmount * (item.requestedQuantity || 0)) / totalRequestedQuantity : item.totalCost || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                          <td className="px-6 py-4 text-right font-black text-slate-900">{request.currency === 'NIO' ? 'C$' : '$'}{((approvedAmount > 0 && totalRequestedQuantity > 0 ? (displayAmount * (item.requestedQuantity || 0)) / totalRequestedQuantity : item.totalCost || 0) * displayExchangeMultiplier).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -593,7 +618,7 @@ export default function DetalleSolicitudPage({ params }: { params: { id: string 
             />
           </div>
           <div>
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Precio Total Aprobado *</label>
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 block">Precio Total Aprobado * (En USD$)</label>
             <input
               type="number"
               min="0"

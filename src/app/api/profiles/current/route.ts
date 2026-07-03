@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
           invoicePrimaryColor: company.invoicePrimaryColor,
           invoiceHeaderHtml: company.invoiceHeaderHtml,
           invoiceFooterHtml: company.invoiceFooterHtml,
+          exchangeRate: company.exchangeRate,
         }
       })
     } else {
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
         invoicePrimaryColor: uc.company.invoicePrimaryColor,
         invoiceHeaderHtml: uc.company.invoiceHeaderHtml,
         invoiceFooterHtml: uc.company.invoiceFooterHtml,
+        exchangeRate: uc.company.exchangeRate,
       }))
     }
 

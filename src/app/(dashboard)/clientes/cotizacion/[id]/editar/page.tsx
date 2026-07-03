@@ -19,6 +19,7 @@ interface QuoteItem {
 interface Company {
   id: string
   name: string
+  exchangeRate?: number
 }
 
 interface ClientOption {
@@ -56,6 +57,16 @@ export default function EditarCotizacionPage() {
     const taxableValue = subtotalValue - discountAmount
     const taxAmount = applyTax ? taxableValue * (item.tax / 100) : 0
     return taxableValue + taxAmount
+  }
+
+  const activeCompany = companies.find(c => c.id === selectedCompany)
+  const exchangeRate = activeCompany?.exchangeRate || 36.62
+
+  const formatCurrency = (val: number) => {
+    if (currency === 'NIO') {
+      return (val * exchangeRate).toLocaleString('en-US', { minimumFractionDigits: 2 })
+    }
+    return val.toLocaleString('en-US', { minimumFractionDigits: 2 })
   }
 
   useEffect(() => {
@@ -395,8 +406,15 @@ export default function EditarCotizacionPage() {
                       <td className="py-2 px-2">
                         <Input
                           type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          value={item.unitPrice === '' ? '' : currency === 'NIO' ? (Number(item.unitPrice) * exchangeRate).toFixed(2) : item.unitPrice}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value)
+                            if (isNaN(val)) {
+                              updateItem(index, 'unitPrice', '')
+                            } else {
+                              updateItem(index, 'unitPrice', currency === 'NIO' ? val / exchangeRate : val)
+                            }
+                          }}
                           fullWidth
                           readOnly={!!item.productId}
                           className={item.productId ? "bg-gray-50 cursor-not-allowed text-gray-600" : ""}
@@ -416,7 +434,7 @@ export default function EditarCotizacionPage() {
                       </td>
                       <td className="py-2 px-2 text-right">
                         <span className="text-sm font-medium text-gray-900">
-                          {item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          {formatCurrency(item.total)}
                         </span>
                       </td>
                       <td className="py-2 px-2">
@@ -443,19 +461,19 @@ export default function EditarCotizacionPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-lg">
                 <span className="font-medium text-gray-700">SUBTOTAL</span>
-                <span className="font-semibold text-gray-900">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-lg text-green-600">
                 <span className="font-medium">DESCUENTO TOTAL</span>
-                <span className="font-semibold">-{totalDiscount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold">-{formatCurrency(totalDiscount)}</span>
               </div>
               <div className="flex items-center justify-between text-lg">
                 <span className="font-medium text-gray-700">{taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</span>
-                <span className="font-semibold text-gray-900">{totalTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(totalTax)}</span>
               </div>
               <div className="flex items-center justify-between text-2xl pt-3 border-t border-gray-200">
                 <span className="font-bold text-gray-900">TOTAL</span>
-                <span className="font-bold text-gray-900">{total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-gray-900">{formatCurrency(total)}</span>
               </div>
             </div>
           </div>

@@ -43,6 +43,7 @@ model Company {
   invoiceHeaderHtml      String?                 @map("invoice_header_html")
   invoiceFooterHtml      String?                 @map("invoice_footer_html")
   ticketStages           Json?                   @map("ticket_stages")
+  exchangeRate           Float?                  @default(36.62) @map("exchange_rate")
   activities             Activity[]
   clients                Client[]
   contracts              Contract[]

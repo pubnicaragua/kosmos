@@ -54,6 +54,7 @@ export default function NuevaSolicitudPage() {
   const permissions = useModulePermissions('solicitudes-compra', { requireAction: 'create' })
   const [isSaving, setIsSaving] = useState(false)
   const [departments, setDepartments] = useState<Department[]>([])
+  const [exchangeRate, setExchangeRate] = useState<number>(36.62)
   
   const [formData, setFormData] = useState({
     requestingArea: '',
@@ -192,6 +193,28 @@ export default function NuevaSolicitudPage() {
   }
 
   const totalQuantity = itemsArray.reduce((sum: number, i: any) => sum + i.requestedQuantity, 0)
+
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      if (!selectedCompany) return
+      const token = localStorage.getItem('accessToken')
+      if (!token) return
+
+      try {
+        const response = await fetch(`/api/companies/${selectedCompany}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (data.success && data.data?.exchangeRate) {
+          setExchangeRate(data.data.exchangeRate)
+        }
+      } catch (error) {
+        console.error('Error fetching company:', error)
+      }
+    }
+
+    fetchCompanyData()
+  }, [selectedCompany])
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -566,11 +589,15 @@ export default function NuevaSolicitudPage() {
                         <Input 
                           type="text"
                           placeholder={formData.currency === 'NIO' ? 'C$0.00' : '$0.00'}
-                          value={item.unitCost || ''}
+                          value={item.unitCost === 0 ? '' : formData.currency === 'NIO' ? (item.unitCost * exchangeRate).toFixed(2) : item.unitCost}
                           onChange={(e) => {
                             const val = e.target.value.replace(/[^0-9.]/g, '')
-                            const num = parseFloat(val) || 0
-                            updateItem(item.tempId, 'unitCost', num)
+                            const num = parseFloat(val)
+                            if (isNaN(num)) {
+                              updateItem(item.tempId, 'unitCost', 0)
+                            } else {
+                              updateItem(item.tempId, 'unitCost', formData.currency === 'NIO' ? num / exchangeRate : num)
+                            }
                           }}
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
@@ -580,11 +607,11 @@ export default function NuevaSolicitudPage() {
                     <div className="hidden">
                       <div className="space-y-1">
                         <p className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">Subtotal Estimado</p>
-                        <p className="text-2xl font-black text-blue-600">{formData.currency === 'NIO' ? 'C$' : '$'}{(item.unitCost * item.requestedQuantity).toFixed(2)}</p>
+                        <p className="text-2xl font-black text-blue-600">{formData.currency === 'NIO' ? 'C$' : '$'}{(item.unitCost * item.requestedQuantity * (formData.currency === 'NIO' ? exchangeRate : 1)).toFixed(2)}</p>
                       </div>
                       <div className="text-right text-xs text-blue-600 space-y-1">
                         <div><span className="font-bold">{item.requestedQuantity}</span> unidades</div>
-                        <div>@ <span className="font-bold">{formData.currency === 'NIO' ? 'C$' : '$'}{item.unitCost.toFixed(2)}</span> c/u</div>
+                        <div>@ <span className="font-bold">{formData.currency === 'NIO' ? 'C$' : '$'}{(item.unitCost * (formData.currency === 'NIO' ? exchangeRate : 1)).toFixed(2)}</span> c/u</div>
                       </div>
                     </div>
                   </div>

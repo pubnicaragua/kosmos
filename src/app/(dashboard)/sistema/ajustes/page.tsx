@@ -37,6 +37,7 @@ interface CompanyProfile {
   invoicePrimaryColor: string | null
   invoiceHeaderHtml: string | null
   invoiceFooterHtml: string | null
+  exchangeRate: number | null
 }
 
 interface RolePermission {
@@ -138,7 +139,8 @@ export default function AjustesPage() {
     quoteTerms: '',
     invoicePrimaryColor: '#3b82f6',
     invoiceHeaderHtml: '',
-    invoiceFooterHtml: ''
+    invoiceFooterHtml: '',
+    exchangeRate: 36.62
   })
 
   // Roles state
@@ -285,7 +287,8 @@ export default function AjustesPage() {
         quoteTerms: company.quoteTerms || '',
         invoicePrimaryColor: company.invoicePrimaryColor || '#3b82f6',
         invoiceHeaderHtml: company.invoiceHeaderHtml || '',
-        invoiceFooterHtml: company.invoiceFooterHtml || ''
+        invoiceFooterHtml: company.invoiceFooterHtml || '',
+        exchangeRate: company.exchangeRate || 36.62
       })
     }
   }, [selectedCompanyId, companies])
@@ -342,7 +345,8 @@ export default function AjustesPage() {
           quoteTerms: companyForm.quoteTerms,
           invoicePrimaryColor: companyForm.invoicePrimaryColor,
           invoiceHeaderHtml: companyForm.invoiceHeaderHtml,
-          invoiceFooterHtml: companyForm.invoiceFooterHtml
+          invoiceFooterHtml: companyForm.invoiceFooterHtml,
+          exchangeRate: Number(companyForm.exchangeRate)
         }),
       })
       const data = await res.json()
@@ -811,6 +815,16 @@ export default function AjustesPage() {
                 value={companyForm.industry}
                 onChange={(e) => setCompanyForm({ ...companyForm, industry: e.target.value })}
                 placeholder="Ej: Tecnología, Retail, Servicios..."
+                fullWidth
+                disabled={!canEditCompany}
+              />
+              <Input
+                label="Tasa de Cambio Global (NIO x 1 USD)"
+                type="number"
+                step="0.01"
+                value={companyForm.exchangeRate.toString()}
+                onChange={(e) => setCompanyForm({ ...companyForm, exchangeRate: parseFloat(e.target.value) || 0 })}
+                placeholder="Ej: 36.62"
                 fullWidth
                 disabled={!canEditCompany}
               />

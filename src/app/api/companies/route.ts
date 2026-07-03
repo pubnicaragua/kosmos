@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
             invoicePrimaryColor: company.invoicePrimaryColor as string,
             invoiceHeaderHtml: company.invoiceHeaderHtml as string,
             invoiceFooterHtml: company.invoiceFooterHtml as string,
+            exchangeRate: company.exchangeRate,
           }
         })
       )
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
       invoicePrimaryColor: uc.company.invoicePrimaryColor as string,
       invoiceHeaderHtml: uc.company.invoiceHeaderHtml as string,
       invoiceFooterHtml: uc.company.invoiceFooterHtml as string,
+      exchangeRate: uc.company.exchangeRate,
     }))
 
     return successResponse(companies)

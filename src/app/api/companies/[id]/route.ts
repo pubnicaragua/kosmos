@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { 
       name, industry, logo, isActive,
       quotePrimaryColor, quoteHeaderHtml, quoteFooterHtml, quoteTerms,
-      invoicePrimaryColor, invoiceHeaderHtml, invoiceFooterHtml 
+      invoicePrimaryColor, invoiceHeaderHtml, invoiceFooterHtml, exchangeRate
     } = body
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -72,6 +72,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(invoicePrimaryColor !== undefined ? { invoicePrimaryColor } : {}),
         ...(invoiceHeaderHtml !== undefined ? { invoiceHeaderHtml } : {}),
         ...(invoiceFooterHtml !== undefined ? { invoiceFooterHtml } : {}),
+        ...(exchangeRate !== undefined ? { exchangeRate } : {}),
       },
     })
 
