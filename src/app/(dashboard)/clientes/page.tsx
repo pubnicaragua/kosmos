@@ -1209,11 +1209,9 @@ function ClientesPageContent() {
                         onClick={async () => {
                           const XLSX = await import('xlsx')
                           const template = [
-                            { Nombre: 'Juan Pérez García', Email: 'juan.perez@empresa.com', Telefono: '8888-1234', Empresa: 'Constructora El Sol', RUC: 'J0310000012345', Direccion: 'Managua, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
-                            { Nombre: 'María López Hernández', Email: 'maria.lopez@comercial.com', Telefono: '8777-5678', Empresa: 'Comercial López', RUC: 'J0310000023456', Direccion: 'León, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
-                            { Nombre: 'Carlos Martínez Ruiz', Email: 'carlos@tech.ni', Telefono: '8666-9012', Empresa: 'Tech Solutions NI', RUC: 'J0310000034567', Direccion: 'Granada, Nicaragua', Tipo: 'Corporativo', Estado: 'Activo' },
-                            { Nombre: 'Ana Rodríguez Castro', Email: 'ana.rodriguez@gmail.com', Telefono: '8555-3456', Empresa: '', RUC: '', Direccion: 'Masaya, Nicaragua', Tipo: 'Individual', Estado: 'Activo' },
-                            { Nombre: 'Roberto Sánchez Morales', Email: 'roberto.sanchez@hotmail.com', Telefono: '8444-7890', Empresa: 'Distribuidora Central', RUC: 'J0310000045678', Direccion: 'Estelí, Nicaragua', Tipo: 'Corporativo', Estado: 'Prospecto' }
+                            { Nombre: 'Juan Pérez García', Email: 'juan.perez@empresa.com', Telefono: '8888-1234', Direccion: 'Residencial Las Colinas', Ciudad: 'Managua', Pais: 'Nicaragua', RUC: 'J0310000012345', Cedula: '', Contacto: 'Juan Pérez', Estado: 'ACTIVO' },
+                            { Nombre: 'María López Hernández', Email: 'maria.lopez@comercial.com', Telefono: '8777-5678', Direccion: 'Mercado Central', Ciudad: 'León', Pais: 'Nicaragua', RUC: '', Cedula: '281-120590-0001A', Contacto: 'María López', Estado: 'PROSPECTO' },
+                            { Nombre: 'Tech Solutions NI', Email: 'carlos@tech.ni', Telefono: '8666-9012', Direccion: 'Plaza España', Ciudad: 'Managua', Pais: 'Nicaragua', RUC: 'J0310000034567', Cedula: '', Contacto: 'Carlos Martínez', Estado: 'NEGOCIACION' },
                           ]
                           const wb = XLSX.utils.book_new()
                           const ws = XLSX.utils.json_to_sheet(template)

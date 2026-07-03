@@ -112,6 +112,11 @@ export async function POST(request: NextRequest) {
               contribuyente: clientData.contribuyente || existing.contribuyente,
               telefonoTutor: clientData.telefonoTutor || existing.telefonoTutor,
               notes: clientData.notes || existing.notes,
+              address: clientData.address || existing.address,
+              city: clientData.city || existing.city,
+              country: clientData.country || existing.country,
+              contactName: clientData.contactName || existing.contactName,
+              status: clientData.status || existing.status,
               ...(clientData.customFields ? { customFields: clientData.customFields } : {}),
             }
           })
@@ -136,8 +141,12 @@ export async function POST(request: NextRequest) {
             contribuyente: clientData.contribuyente,
             telefonoTutor: clientData.telefonoTutor,
             notes: clientData.notes,
+            address: clientData.address,
+            city: clientData.city,
+            country: clientData.country,
+            contactName: clientData.contactName,
             customFields: clientData.customFields,
-            status: 'ACTIVO'
+            status: clientData.status || 'ACTIVO'
           }
         })
 

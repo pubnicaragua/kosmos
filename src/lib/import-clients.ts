@@ -15,6 +15,11 @@ const COLUMN_MAPPINGS = {
   sucursal: ['sucursal', 'branch', 'sede', 'oficina'],
   interes: ['interes', 'interés', 'interest'],
   observacion: ['observacion', 'observación', 'notas', 'comentarios', 'notes', 'comments'],
+  address: ['direccion', 'dirección', 'address'],
+  city: ['ciudad', 'city'],
+  country: ['pais', 'país', 'country'],
+  contactName: ['contacto', 'nombre de contacto', 'contact', 'contact name'],
+  status: ['estado', 'status', 'estatus'],
   
   // Para ingresos - columnas en español e inglés
   folio: ['nro. folio', 'folio', 'nro folio', 'numero', 'número', 'no.', 'num', 'referencia', 'ref', 'reference', 'invoice number', 'numero factura', 'número factura'],
@@ -41,6 +46,11 @@ interface ImportedClient {
   contribuyente?: string
   telefonoTutor?: string
   notes?: string
+  address?: string
+  city?: string
+  country?: string
+  contactName?: string
+  status?: any
   customFields?: Record<string, any>
 }
 
@@ -169,6 +179,11 @@ export function parseExcelFile(buffer: Buffer, sheetIndex: number = 0): ImportRe
   const sucursalIdx = findColumnIndex(headers, COLUMN_MAPPINGS.sucursal)
   const interesIdx = findColumnIndex(headers, COLUMN_MAPPINGS.interes)
   const observacionIdx = findColumnIndex(headers, COLUMN_MAPPINGS.observacion)
+  const addressIdx = findColumnIndex(headers, COLUMN_MAPPINGS.address)
+  const cityIdx = findColumnIndex(headers, COLUMN_MAPPINGS.city)
+  const countryIdx = findColumnIndex(headers, COLUMN_MAPPINGS.country)
+  const contactNameIdx = findColumnIndex(headers, COLUMN_MAPPINGS.contactName)
+  const statusIdx = findColumnIndex(headers, COLUMN_MAPPINGS.status)
   
   // Detectar columnas de ingresos
   const folioIdx = findColumnIndex(headers, COLUMN_MAPPINGS.folio)
@@ -253,6 +268,19 @@ export function parseExcelFile(buffer: Buffer, sheetIndex: number = 0): ImportRe
       if (observacion) noteParts.push(`Observación: ${observacion}`)
       client.notes = noteParts.join(' | ')
     }
+
+    if (addressIdx !== -1) client.address = cleanValue(row[addressIdx])
+    if (cityIdx !== -1) client.city = cleanValue(row[cityIdx])
+    if (countryIdx !== -1) client.country = cleanValue(row[countryIdx])
+    if (contactNameIdx !== -1) client.contactName = cleanValue(row[contactNameIdx])
+    if (statusIdx !== -1) {
+      const s = cleanValue(row[statusIdx])?.toUpperCase()
+      if (s && ['PROSPECTO', 'PROPUESTA', 'NEGOCIACION', 'CALIFICADO', 'ACTIVO', 'INACTIVO'].includes(s)) {
+        client.status = s
+      } else if (s === 'NEGOCIACIÓN') {
+        client.status = 'NEGOCIACION'
+      }
+    }
     
     // Campos personalizados (todo lo que no mapeamos)
     const customFields: Record<string, any> = {}
@@ -261,6 +289,8 @@ export function parseExcelFile(buffer: Buffer, sheetIndex: number = 0): ImportRe
           idx !== phone2Idx && idx !== cedulaIdx && idx !== rucIdx &&
           idx !== aliasIdx && idx !== codigoIdx && idx !== cursoIdx &&
           idx !== sucursalIdx && idx !== interesIdx && idx !== observacionIdx && 
+          idx !== addressIdx && idx !== cityIdx && idx !== countryIdx &&
+          idx !== contactNameIdx && idx !== statusIdx &&
           row[idx]) {
         const value = cleanValue(row[idx])
         if (value) customFields[header] = value
