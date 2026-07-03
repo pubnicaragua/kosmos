@@ -71,6 +71,8 @@ export default function IngresosPage() {
   const [incomes, setIncomes] = useState<Income[]>([])
   const [summary, setSummary] = useState<IncomeSummary | null>(null)
   const [companies, setCompanies] = useState<CompanyOption[]>([])
+  const [displayCurrency, setDisplayCurrency] = useState<'USD' | 'NIO'>('USD')
+  const [exchangeRate, setExchangeRate] = useState<number>(36.62)
   const [isLoading, setIsLoading] = useState(true)
   const [isImporting, setIsImporting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -159,6 +161,15 @@ export default function IngresosPage() {
 
     fetchCompanies()
   }, [])
+
+  useEffect(() => {
+    if (selectedCompany !== 'all' && companies.length > 0) {
+      const comp = companies.find(c => c.id === selectedCompany) as any
+      if (comp && comp.exchangeRate) {
+        setExchangeRate(comp.exchangeRate)
+      }
+    }
+  }, [selectedCompany, companies])
 
   useEffect(() => {
     if (!filtersLoaded) return
@@ -262,8 +273,9 @@ export default function IngresosPage() {
         Cliente: i.client,
         Concepto: i.concept,
         Metodo: i.method,
-        Monto: i.amount,
-        Margen: i.margin,
+        Monto: i.amount * (displayCurrency === 'NIO' ? exchangeRate : 1),
+        Margen: i.margin * (displayCurrency === 'NIO' ? exchangeRate : 1),
+        Moneda: displayCurrency,
         Estado: i.status === 'PAID' ? 'Pagado' : i.status === 'PENDING' ? 'Pendiente' : i.status === 'CANCELLED' ? 'Anulado' : 'Error'
       }))
 
@@ -412,8 +424,9 @@ export default function IngresosPage() {
       return
     }
 
-    const amount = Number(row.amount)
-    const margin = Number(row.margin || 0)
+    const rate = row.currency === 'NIO' ? exchangeRate : 1
+    const amount = Number(row.amount) / rate
+    const margin = Number(row.margin || 0) / rate
     if (!Number.isFinite(amount)) {
       alert('El monto no es válido')
       return
@@ -549,12 +562,13 @@ export default function IngresosPage() {
   }
 
   const formatCurrency = (value: number) => {
+    const finalValue = displayCurrency === 'NIO' ? value * exchangeRate : value
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'USD',
+      currency: displayCurrency === 'NIO' ? 'NIO' : 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value)
+    }).format(finalValue).replace('NIO', 'C$')
   }
 
   const getStatusBadge = (status: string) => {
@@ -612,6 +626,28 @@ export default function IngresosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestión de facturación y entradas de dinero</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setDisplayCurrency('USD')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                displayCurrency === 'USD' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              $ USD
+            </button>
+            <button
+              onClick={() => setDisplayCurrency('NIO')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                displayCurrency === 'NIO' 
+                  ? 'bg-white text-green-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              C$ NIO
+            </button>
+          </div>
           {permissions.canCreate && (
             <>
               <Button variant="outline" onClick={addInlineRow}>

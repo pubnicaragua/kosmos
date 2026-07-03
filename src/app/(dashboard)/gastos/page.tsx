@@ -62,6 +62,8 @@ export default function GastosPage() {
   const [pageSize, setPageSize] = useState(25)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [displayCurrency, setDisplayCurrency] = useState<'USD' | 'NIO'>('USD')
+  const [exchangeRate, setExchangeRate] = useState<number>(36.62)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -122,11 +124,19 @@ export default function GastosPage() {
       const data = await response.json()
       if (data.success) {
         setCompanies(data.data)
+        
+        // Find exchange rate for selected company or use default
+        if (selectedCompany !== 'all') {
+          const comp = data.data.find((c: any) => c.id === selectedCompany)
+          if (comp && comp.exchangeRate) {
+            setExchangeRate(comp.exchangeRate)
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching companies:', error)
     }
-  }, [])
+  }, [selectedCompany])
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('accessToken')
@@ -242,13 +252,13 @@ export default function GastosPage() {
                   <td>${e.concept}</td>
                   <td>${e.category}</td>
                   <td>${e.method}</td>
-                  <td class="amount">$${e.amount.toFixed(2)}</td>
+                  <td class="amount">${displayCurrency === 'NIO' ? 'C$' : '$'}${(e.amount * (displayCurrency === 'NIO' ? exchangeRate : 1)).toFixed(2)}</td>
                   <td class="status-${e.status.toLowerCase()}">${e.status === 'PAID' ? 'Pagado' : e.status === 'PENDING' ? 'Pendiente' : 'Anulado'}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          <div class="footer">Generated: ${new Date().toLocaleString('es-ES')}</div>
+          <div class="footer">Generated: ${new Date().toLocaleString('es-ES')} | Moneda: ${displayCurrency === 'NIO' ? 'Córdobas (NIO)' : 'Dólares (USD)'} | Tasa: ${exchangeRate}</div>
         </body>
       </html>
     `
@@ -280,7 +290,8 @@ export default function GastosPage() {
       Concepto: e.concept,
       Categoría: e.category,
       Método: e.method,
-      Monto: e.amount,
+      Monto: e.amount * (displayCurrency === 'NIO' ? exchangeRate : 1),
+      Moneda: displayCurrency,
       Estado: e.status === 'PAID' ? 'Pagado' : e.status === 'PENDING' ? 'Pendiente' : 'Anulado',
     }))
 
@@ -312,7 +323,7 @@ export default function GastosPage() {
         },
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount),
+          amount: parseFloat(formData.amount) / (formData.currency === 'NIO' ? exchangeRate : 1),
           companyId: activeCompany.id || companyId,
         }),
       })
@@ -429,12 +440,13 @@ export default function GastosPage() {
   }
 
   const formatCurrency = (value: number) => {
+    const finalValue = displayCurrency === 'NIO' ? value * exchangeRate : value
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'USD',
+      currency: displayCurrency === 'NIO' ? 'NIO' : 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value)
+    }).format(finalValue).replace('NIO', 'C$')
   }
 
   const getStatusBadge = (status: string) => {
@@ -498,6 +510,28 @@ export default function GastosPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona y visualiza el historial de gastos operativos de la empresa.</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setDisplayCurrency('USD')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                displayCurrency === 'USD' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              $ USD
+            </button>
+            <button
+              onClick={() => setDisplayCurrency('NIO')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                displayCurrency === 'NIO' 
+                  ? 'bg-white text-green-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              C$ NIO
+            </button>
+          </div>
           {selectedExpenses.size > 0 && (
             <>
               {permissions.canEdit && (
