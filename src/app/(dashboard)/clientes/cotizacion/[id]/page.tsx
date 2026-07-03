@@ -79,6 +79,8 @@ export default function DetalleCotizacionPage() {
   const [whatsAppNumber, setWhatsAppNumber] = useState('')
   const [approvalComment, setApprovalComment] = useState('')
   const [companyDetails, setCompanyDetails] = useState<any>(null)
+  const [exchangeRate, setExchangeRate] = useState<number>(36.62)
+  const [displayCurrency, setDisplayCurrency] = useState<'USD' | 'NIO'>('USD')
 
   const stripKosmosBranding = (value?: string | null) =>
     (value || '').replace(/kosmos\s*crm/gi, '').replace(/kosmoscrm/gi, '').trim()
@@ -100,13 +102,15 @@ export default function DetalleCotizacionPage() {
           // Fetch company details for print layout
           if (data.data.companyId) {
             try {
-              const compRes = await fetch('/api/companies', {
+              const compRes = await fetch(`/api/companies/${data.data.companyId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
               })
               const compData = await compRes.json()
               if (compData.success) {
-                const found = compData.data.find((c: any) => c.id === data.data.companyId)
-                if (found) setCompanyDetails(found)
+                setCompanyDetails(compData.data)
+                if (compData.data.exchangeRate) {
+                  setExchangeRate(compData.data.exchangeRate)
+                }
               }
             } catch { /* ignore */ }
           }
@@ -157,7 +161,8 @@ export default function DetalleCotizacionPage() {
 
     // Generate PDF with jsPDF
     const doc = new jsPDF()
-    const sym = quote.currency === 'NIO' ? 'C$' : '$'
+    const sym = displayCurrency === 'NIO' ? 'C$' : '$'
+    const displayExchangeMultiplier = displayCurrency === 'NIO' ? exchangeRate : 1
     const companyName = companyDetails?.name || quote.company?.name || ''
     const safeCompanyName = stripKosmosBranding(companyName)
     
@@ -225,8 +230,8 @@ export default function DetalleCotizacionPage() {
       const desc = item.description.substring(0, 40)
       doc.text(desc, 20, y)
       doc.text(String(item.quantity), 100, y)
-      doc.text(`${sym}${item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-      doc.text(`${sym}${item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 170, y)
+      doc.text(`${sym}${(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      doc.text(`${sym}${(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 170, y)
       y += 7
     })
     
@@ -235,19 +240,19 @@ export default function DetalleCotizacionPage() {
     y += 10
     
     // Totals
-    doc.text(`Subtotal: ${sym}${quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+    doc.text(`Subtotal: ${sym}${(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
     y += 7
     if (quote.discount > 0) {
-      doc.text(`Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      doc.text(`Descuento: -${sym}${(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
       y += 7
     }
     if (quote.taxApplies) {
-      doc.text(`IVA (15%): ${sym}${quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+      doc.text(`IVA (15%): ${sym}${(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
       y += 7
     }
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.text(`TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
+    doc.text(`TOTAL: ${sym}${(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
     y += 15
     
     // Notes
@@ -270,7 +275,7 @@ export default function DetalleCotizacionPage() {
       '',
       `El archivo PDF ha sido descargado automáticamente. Por favor adjúntelo a este correo.`,
       '',
-      `TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+      `TOTAL: ${sym}${(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
       '',
       `Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`,
       '',
@@ -296,9 +301,10 @@ export default function DetalleCotizacionPage() {
       return
     }
 
-    const sym = quote.currency === 'NIO' ? 'C$' : '$'
+    const sym = displayCurrency === 'NIO' ? 'C$' : '$'
+    const displayExchangeMultiplier = displayCurrency === 'NIO' ? exchangeRate : 1
     const itemsText = quote.items.map((it, i) =>
-      `  ${i + 1}. ${it.description} (x${it.quantity}) = ${sym}${it.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+      `  ${i + 1}. ${it.description} (x${it.quantity}) = ${sym}${(it.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
     ).join('\n')
 
     const message = [
@@ -308,8 +314,8 @@ export default function DetalleCotizacionPage() {
       '',
       itemsText,
       '',
-      quote.discount > 0 ? `Descuento: -${sym}${quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
-      `*TOTAL: ${sym}${quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}*`,
+      quote.discount > 0 ? `Descuento: -${sym}${(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '',
+      `*TOTAL: ${sym}${(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}*`,
       '',
       `📅 Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`,
       `💳 Pago: ${quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado'}`,
@@ -369,7 +375,8 @@ export default function DetalleCotizacionPage() {
     )
   }
 
-  const currencySymbol = quote.currency === 'NIO' ? 'C$' : '$'
+  const currencySymbol = displayCurrency === 'NIO' ? 'C$' : '$'
+  const displayExchangeMultiplier = displayCurrency === 'NIO' ? exchangeRate : 1
 
   return (
     <div className="space-y-6">
@@ -517,8 +524,8 @@ export default function DetalleCotizacionPage() {
                 <td className="border border-gray-300 px-2 py-1">{`Item ${String(i + 1).padStart(2, '0')}`}</td>
                 <td className="border border-gray-300 px-2 py-1">{item.description}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
@@ -530,18 +537,18 @@ export default function DetalleCotizacionPage() {
             {quote.discount > 0 && (
               <tr>
                 <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO</td>
-                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             )}
             {quote.taxApplies && (
               <tr>
                 <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">IVA (15%)</td>
-                <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             )}
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
               <td className="border px-3 py-1.5 font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>TOTAL</td>
-              <td className="border px-3 py-1.5 text-right font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>{currencySymbol} {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td className="border px-3 py-1.5 text-right font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>{currencySymbol} {(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
           </table>
         </div>
@@ -624,7 +631,31 @@ export default function DetalleCotizacionPage() {
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-6">
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">DETALLE DE CONCEPTOS</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">DETALLE DE CONCEPTOS</h3>
+              <div className="flex bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setDisplayCurrency('USD')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors ${
+                    displayCurrency === 'USD' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  $ USD
+                </button>
+                <button
+                  onClick={() => setDisplayCurrency('NIO')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors ${
+                    displayCurrency === 'NIO' 
+                      ? 'bg-white text-gray-900 shadow-sm' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  C$ NIO
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -643,14 +674,14 @@ export default function DetalleCotizacionPage() {
                       <td className="py-3 px-2 text-sm text-gray-900">{item.description}</td>
                       <td className="py-3 px-2 text-center text-sm text-gray-900">{item.quantity}</td>
                       <td className="py-3 px-2 text-right text-sm text-gray-900">
-                        {item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {currencySymbol}{(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-2 text-right text-sm text-gray-900">{item.discount}%</td>
                       <td className="py-3 px-2 text-center">
                         <span className="text-sm text-primary font-medium">{quote.taxApplies ? 'IVA 15%' : 'NO APLICA IVA'}</span>
                       </td>
                       <td className="py-3 px-2 text-right text-sm font-medium text-gray-900">
-                        {item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {currencySymbol}{(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
@@ -662,25 +693,25 @@ export default function DetalleCotizacionPage() {
               <div className="flex items-center justify-between text-lg">
                 <span className="font-medium text-gray-700">SUBTOTAL</span>
                 <span className="font-semibold text-gray-900">
-                  {quote.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {currencySymbol}{(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between text-lg text-green-600">
                 <span className="font-medium">DESCUENTO TOTAL</span>
                 <span className="font-semibold">
-                  -{quote.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  -{currencySymbol}{(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between text-lg">
                 <span className="font-medium text-gray-700">{quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</span>
                 <span className="font-semibold text-gray-900">
-                  {quote.tax.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {currencySymbol}{(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between text-2xl pt-3 border-t border-gray-200">
                 <span className="font-bold text-gray-900">TOTAL</span>
                 <span className="font-bold text-gray-900">
-                  {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  {currencySymbol}{(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

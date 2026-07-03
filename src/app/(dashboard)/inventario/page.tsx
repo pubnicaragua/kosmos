@@ -32,6 +32,7 @@ interface Company {
   id: string
   name: string
   logo: string | null
+  exchangeRate?: number
 }
 
 interface InventorySummary {
@@ -100,6 +101,7 @@ function InventarioPageContent() {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [displayCurrency, setDisplayCurrency] = useState<'USD' | 'NIO'>('USD')
 
   const normalizeCategoryName = (value: string) =>
     value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -579,6 +581,12 @@ function InventarioPageContent() {
     )
   }
 
+  const currentExchangeRate = companies.find(c => c.id === selectedCompany)?.exchangeRate 
+    || companies.find(c => c.exchangeRate)?.exchangeRate 
+    || 36.62
+  const displayExchangeMultiplier = displayCurrency === 'NIO' ? currentExchangeRate : 1
+  const currencySymbol = displayCurrency === 'NIO' ? 'C$' : '$'
+
   return (
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-2xl shadow-slate-200/50">
@@ -663,7 +671,7 @@ function InventarioPageContent() {
           <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-600">Valor inventario</p>
           <div className="mt-3 flex items-end justify-between gap-3">
             <div>
-              <p className="text-3xl font-black text-emerald-800">$ {formatCurrency(summary.inventoryValue)}</p>
+              <p className="text-3xl font-black text-emerald-800">{currencySymbol} {formatCurrency(summary.inventoryValue * displayExchangeMultiplier)}</p>
               <p className="text-sm text-emerald-800/80">Stock x costo</p>
             </div>
             <div className="rounded-2xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Valor</div>
@@ -709,6 +717,28 @@ function InventarioPageContent() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+              <button
+                onClick={() => setDisplayCurrency('USD')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
+                  displayCurrency === 'USD' 
+                    ? 'bg-white text-slate-900 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                $ USD
+              </button>
+              <button
+                onClick={() => setDisplayCurrency('NIO')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
+                  displayCurrency === 'NIO' 
+                    ? 'bg-white text-slate-900 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                C$ NIO
+              </button>
+            </div>
             <div className="rounded-2xl bg-slate-100 p-1">
               <button
                 type="button"
@@ -793,11 +823,11 @@ function InventarioPageContent() {
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <div className="rounded-2xl bg-white/80 p-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</p>
-                      <p className="mt-1 text-sm font-black text-slate-900">$ {formatCurrency(product.cost)}</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.cost * displayExchangeMultiplier)}</p>
                     </div>
                     <div className="rounded-2xl bg-white/80 p-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</p>
-                      <p className="mt-1 text-sm font-black text-slate-900">$ {formatCurrency(product.price)}</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.price * displayExchangeMultiplier)}</p>
                     </div>
                     <div className="rounded-2xl bg-white/80 p-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Margen</p>
@@ -861,8 +891,8 @@ function InventarioPageContent() {
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600">{product.category?.name || 'Sin categoría'}</td>
                         <td className="px-4 py-4 text-sm font-mono text-slate-500">{product.sku}</td>
-                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-700">$ {formatCurrency(product.cost)}</td>
-                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">$ {formatCurrency(product.price)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-700">{currencySymbol} {formatCurrency(product.cost * displayExchangeMultiplier)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">{currencySymbol} {formatCurrency(product.price * displayExchangeMultiplier)}</td>
                         <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">
                           {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
                         </td>
