@@ -323,8 +323,9 @@ model Product {
   stock                Int                   @default(0)
   minStock             Int                   @default(0) @map("min_stock")
   cost                 Float                 @default(0)
-  price                Float
-  netMargin            Float?                @map("net_margin")
+  publicPrice          Float                 @default(0) @map("public_price")
+  minPrice             Float                 @default(0) @map("min_price")
+  distributorPrice     Float                 @default(0) @map("distributor_price")
   promotion            String?
   isActive             Boolean               @default(true) @map("is_active")
   createdAt            DateTime              @default(now()) @map("created_at")

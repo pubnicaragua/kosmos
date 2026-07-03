@@ -6,7 +6,11 @@ interface ProductOption {
   id: string
   name: string
   sku: string
-  price: number
+  price?: number
+  publicPrice: number
+  minPrice: number
+  distributorPrice: number
+  cost: number
   stock: number
   category?: { name: string }
 }
@@ -131,7 +135,7 @@ export function ProductAutocomplete({
         >
           <div className="flex justify-between items-start">
             <span className="text-sm font-bold text-slate-800 leading-tight pr-2">{p.name}</span>
-            <span className="text-xs font-black text-primary whitespace-nowrap">${p.price.toLocaleString()}</span>
+            <span className="text-xs font-black text-primary whitespace-nowrap">${(p.publicPrice ?? p.price ?? 0).toLocaleString()}</span>
           </div>
           <div className="flex justify-between items-center mt-2">
             <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-tight">SKU: {p.sku}</span>

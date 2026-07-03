@@ -8,7 +8,9 @@ export interface EditProductTarget {
   name: string
   sku: string
   stock: number
-  price: number
+  publicPrice: number
+  minPrice: number
+  distributorPrice: number
 }
 
 interface Category {
@@ -23,8 +25,9 @@ interface ProductDetail {
   description: string | null
   stock: number
   cost: number
-  price: number
-  netMargin: number | null
+  publicPrice: number
+  minPrice: number
+  distributorPrice: number
   unit: string
   categoryId: string | null
 }
@@ -37,8 +40,9 @@ interface EditForm {
   sku: string
   stock: string
   cost: string
-  price: string
-  netMargin: string
+  publicPrice: string
+  minPrice: string
+  distributorPrice: string
 }
 
 interface EditProductModalProps {
@@ -82,8 +86,9 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
             sku: p.sku || '',
             stock: String(p.stock ?? 0),
             cost: String(p.cost ?? 0),
-            price: String(p.price ?? 0),
-            netMargin: p.netMargin != null ? String(p.netMargin) : '',
+            publicPrice: String(p.publicPrice ?? 0),
+            minPrice: String(p.minPrice ?? 0),
+            distributorPrice: String(p.distributorPrice ?? 0),
           })
         } else {
           setError(productData?.error || 'No se pudo cargar el producto')
@@ -101,25 +106,15 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
   const updateField = (field: keyof EditForm, value: string) => {
     setForm((prev) => {
       if (!prev) return prev
-      const updated = { ...prev, [field]: value }
-      if (field === 'cost' || field === 'price') {
-        const cost = field === 'cost' ? parseFloat(value) || 0 : parseFloat(updated.cost) || 0
-        const price = field === 'price' ? parseFloat(value) || 0 : parseFloat(updated.price) || 0
-        if (cost > 0) {
-          const margin = ((price - cost) / cost) * 100
-          updated.netMargin = (Math.round(margin * 100) / 100).toString()
-        }
-      }
-      return updated
+      return { ...prev, [field]: value }
     })
   }
 
   const handleSave = async () => {
     if (!form) return
     const parsedCost = parseFloat(form.cost) || 0
-    const parsedPrice = parseFloat(form.price) || 0
-    if (parsedPrice < parsedCost) {
-      setError('El precio de venta no puede ser menor al costo')
+    if ((parseFloat(form.publicPrice) || 0) < parsedCost || (parseFloat(form.minPrice) || 0) < parsedCost || (parseFloat(form.distributorPrice) || 0) < parsedCost) {
+      setError('Ninguno de los precios puede ser menor al costo')
       return
     }
 
@@ -140,8 +135,9 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
           sku: form.sku,
           stock: Number(form.stock) || 0,
           cost: Number(form.cost) || 0,
-          price: Number(form.price) || 0,
-          netMargin: form.netMargin !== '' ? Number(form.netMargin) : null,
+          publicPrice: Number(form.publicPrice) || 0,
+          minPrice: Number(form.minPrice) || 0,
+          distributorPrice: Number(form.distributorPrice) || 0,
         }),
       })
       if (res.ok) {
@@ -267,28 +263,35 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
               </div>
 
               <div className="space-y-1">
-                <label className={labelBase}>Precio</label>
+                <label className={labelBase}>Precio Público</label>
                 <input
                   type="number"
-                  value={form.price}
-                  onChange={(e) => updateField('price', e.target.value)}
-                  className={`${inputBase} text-right ${Number(form.price) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
+                  value={form.publicPrice}
+                  onChange={(e) => updateField('publicPrice', e.target.value)}
+                  className={`${inputBase} text-right ${Number(form.publicPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
                   placeholder="0"
                 />
-                {Number(form.price) < Number(form.cost) && (
-                  <p className="text-xs text-red-500">El precio debe ser ≥ al costo</p>
-                )}
               </div>
 
               <div className="space-y-1">
-                <label className={labelBase}>Margen %</label>
+                <label className={labelBase}>Precio Mínimo</label>
                 <input
                   type="number"
-                  step="0.01"
-                  value={form.netMargin}
-                  onChange={(e) => updateField('netMargin', e.target.value)}
-                  className={`${inputBase} text-right`}
-                  placeholder="0.00"
+                  value={form.minPrice}
+                  onChange={(e) => updateField('minPrice', e.target.value)}
+                  className={`${inputBase} text-right ${Number(form.minPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelBase}>Precio Distribuidor</label>
+                <input
+                  type="number"
+                  value={form.distributorPrice}
+                  onChange={(e) => updateField('distributorPrice', e.target.value)}
+                  className={`${inputBase} text-right ${Number(form.distributorPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
+                  placeholder="0"
                 />
               </div>
             </div>

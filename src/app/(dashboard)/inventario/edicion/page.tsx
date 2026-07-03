@@ -18,8 +18,9 @@ interface ProductRow {
   description: string
   sku: string
   cost: number
-  price: number
-  netMargin: number
+  publicPrice: number
+  minPrice: number
+  distributorPrice: number
   stock?: number
   isNew?: boolean
 }
@@ -50,7 +51,7 @@ function InventarioEdicionPageContent() {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [updateExistingProducts, setUpdateExistingProducts] = useState(false)
   const [rows, setRows] = useState<ProductRow[]>([
-    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, price: 0, netMargin: 0, stock: 0, isNew: true },
+    { id: '', tempId: 1, name: '', unit: 'UNI', categoryId: '', categoryName: '', description: '', sku: '', cost: 0, publicPrice: 0, minPrice: 0, distributorPrice: 0, stock: 0, isNew: true },
   ])
   const [isSaving, setIsSaving] = useState(false)
   const [skuWarning, setSkuWarning] = useState<{ index: number; product: any } | null>(null)
@@ -134,8 +135,9 @@ function InventarioEdicionPageContent() {
           description: product.description || '',
           sku: product.sku || '',
           cost: Number(product.cost || 0),
-          price: Number(product.price || 0),
-          netMargin: Number(product.netMargin || 0),
+          publicPrice: Number(product.publicPrice || 0),
+          minPrice: Number(product.minPrice || 0),
+          distributorPrice: Number(product.distributorPrice || 0),
           stock: Number(product.stock || 0),
           isNew: false,
         },
@@ -276,8 +278,9 @@ function InventarioEdicionPageContent() {
       description: '',
       sku: '',
       cost: 0,
-      price: 0,
-      netMargin: 0,
+      publicPrice: 0,
+      minPrice: 0,
+      distributorPrice: 0,
       stock: 0,
       isNew: true,
     }
@@ -354,15 +357,7 @@ function InventarioEdicionPageContent() {
     const updated = [...rows]
     updated[index] = { ...updated[index], [field]: value }
     
-    // Auto-calculate margin when cost or price changes
-    if (field === 'cost' || field === 'price') {
-      const cost = field === 'cost' ? Number(value) : updated[index].cost
-      const price = field === 'price' ? Number(value) : updated[index].price
-      if (cost > 0) {
-        const margin = ((price - cost) / cost) * 100
-        updated[index].netMargin = Math.round(margin * 100) / 100
-      }
-    }
+    // Se elimina el cálculo de margen ya que se usan 3 precios.
     
     setRows(updated)
   }
@@ -465,8 +460,9 @@ function InventarioEdicionPageContent() {
             description: String(pickValue('descripcion', 'description', 'detalle', 'desc') || descripcionParts).trim(),
             sku,
             cost: toNumber(pickValue('costo', 'cost', 'preciocosto', 'costopromedio', 'costoenbodega')),
-            price: toNumber(pickValue('precio', 'price', 'pvp')),
-            netMargin: toNumber(pickValue('margenneto', 'netmargin', 'margen', 'margin')),
+            publicPrice: toNumber(pickValue('preciopublico', 'pub', 'publicprice', 'precio')),
+            minPrice: toNumber(pickValue('preciominimo', 'min', 'minprice')),
+            distributorPrice: toNumber(pickValue('preciodistribuidor', 'dis', 'distributorprice')),
             stock: toNumber(pickValue('stock', 'cantidad', 'cantidadenbodega', 'existencia')),
             isNew: true,
           }
@@ -540,9 +536,9 @@ function InventarioEdicionPageContent() {
       return
     }
 
-    const invalidPriceRows = validRows.filter(row => row.price < row.cost)
+    const invalidPriceRows = validRows.filter(row => row.publicPrice < row.cost || row.minPrice < row.cost || row.distributorPrice < row.cost)
     if (invalidPriceRows.length > 0) {
-      alert('Hay productos donde el precio de venta es menor al costo. Por favor corrija los valores antes de guardar.')
+      alert('Hay productos donde alguno de los precios de venta es menor al costo. Por favor corrija los valores antes de guardar.')
       return
     }
 
@@ -656,8 +652,9 @@ function InventarioEdicionPageContent() {
             sku: row.sku,
             stock: isService ? 0 : row.stock ?? 0,
             cost: row.cost,
-            price: row.price,
-            netMargin: row.netMargin,
+            publicPrice: row.publicPrice,
+            minPrice: row.minPrice,
+            distributorPrice: row.distributorPrice,
           }),
         })
 
@@ -699,8 +696,9 @@ function InventarioEdicionPageContent() {
             sku: row.sku,
             stock: row.stock ?? 0,
             cost: row.cost,
-            price: row.price,
-            netMargin: row.netMargin,
+            publicPrice: row.publicPrice,
+            minPrice: row.minPrice,
+            distributorPrice: row.distributorPrice,
           })),
         }),
       })
@@ -837,8 +835,9 @@ function InventarioEdicionPageContent() {
                 </th>
                 {!isService && <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-24">STOCK</th>}
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">COSTO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32">MARGEN %</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO PUB</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO MIN</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO DIS</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-20"></th>
               </tr>
             </thead>
@@ -947,26 +946,34 @@ function InventarioEdicionPageContent() {
                   <td className="py-3 px-4">
                     <Input
                       type="number"
-                      value={row.price}
-                      onChange={(e) => updateRow(index, 'price', parseFloat(e.target.value) || 0)}
+                      value={row.publicPrice}
+                      onChange={(e) => updateRow(index, 'publicPrice', parseFloat(e.target.value) || 0)}
                       onKeyDown={(e) => handleKeyDown(e, index)}
-                      placeholder={index === rows.length - 1 ? 'Precio...' : '34 $'}
+                      placeholder={index === rows.length - 1 ? 'PUB...' : '34 $'}
                       fullWidth
-                      className={row.price < row.cost ? '!border-red-500 bg-red-50' : ''}
+                      className={row.publicPrice < row.cost ? '!border-red-500 bg-red-50' : ''}
                     />
-                    {row.price < row.cost && (
-                      <span className="text-xs text-red-500 mt-1 block">El precio debe ser ≥ al costo</span>
-                    )}
                   </td>
                   <td className="py-3 px-4">
                     <Input
                       type="number"
-                      step="0.01"
-                      value={row.netMargin}
-                      onChange={(e) => updateRow(index, 'netMargin', parseFloat(e.target.value) || 0)}
+                      value={row.minPrice}
+                      onChange={(e) => updateRow(index, 'minPrice', parseFloat(e.target.value) || 0)}
                       onKeyDown={(e) => handleKeyDown(e, index)}
-                      placeholder={index === rows.length - 1 ? 'Margen %...' : '0.00'}
+                      placeholder={index === rows.length - 1 ? 'MIN...' : '30 $'}
                       fullWidth
+                      className={row.minPrice < row.cost ? '!border-red-500 bg-red-50' : ''}
+                    />
+                  </td>
+                  <td className="py-3 px-4">
+                    <Input
+                      type="number"
+                      value={row.distributorPrice}
+                      onChange={(e) => updateRow(index, 'distributorPrice', parseFloat(e.target.value) || 0)}
+                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      placeholder={index === rows.length - 1 ? 'DIS...' : '28 $'}
+                      fullWidth
+                      className={row.distributorPrice < row.cost ? '!border-red-500 bg-red-50' : ''}
                     />
                   </td>
                   <td className="py-3 px-4 text-center">

@@ -176,14 +176,18 @@ export async function POST(request: NextRequest) {
           name: existingProduct.name,
           sku: existingProduct.sku,
           stock: existingProduct.stock,
-          price: existingProduct.price,
+          publicPrice: existingProduct.publicPrice,
+          minPrice: existingProduct.minPrice,
+          distributorPrice: existingProduct.distributorPrice,
           cost: existingProduct.cost,
           categoryName: existingProduct.category?.name || null,
         },
         newData: {
           name: validatedData.name,
           stock: validatedData.stock || 0,
-          price: validatedData.price,
+          publicPrice: validatedData.publicPrice,
+          minPrice: validatedData.minPrice || 0,
+          distributorPrice: validatedData.distributorPrice || 0,
           cost: validatedData.cost || 0,
         }
       }, { status: 409 })

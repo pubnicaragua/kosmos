@@ -16,6 +16,10 @@ interface QuoteItem {
   discount: number | string
   tax: number
   total: number
+  baseCost?: number
+  basePublic?: number
+  baseMin?: number
+  baseDist?: number
 }
 
 interface Company {
@@ -33,7 +37,11 @@ interface InventoryProduct {
   id: string
   name: string
   sku: string
-  price: number
+  price?: number
+  publicPrice?: number
+  minPrice?: number
+  distributorPrice?: number
+  cost?: number
   stock: number
   category?: { name: string }
 }
@@ -62,6 +70,8 @@ function NuevaCotizacionContent() {
   const [isAdminRole, setIsAdminRole] = useState(false)
   const [clientNotes, setClientNotes] = useState('')
   const [internalNotes, setInternalNotes] = useState('')
+  const [priceMode, setPriceMode] = useState<'PUB' | 'MIN' | 'DIS' | 'MARGIN'>('PUB')
+  const [customMargin, setCustomMargin] = useState<number>(0)
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<QuoteItem[]>([
     { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }
@@ -248,12 +258,25 @@ useEffect(() => {
   useEffect(() => {
     setItems((prev) => {
       const arr = Array.isArray(prev) ? prev : []
-      return arr.map((item: any) => ({
-        ...item,
-        total: recalculateItemTotal(item, taxApplies),
-      }))
+      return arr.map((item: any) => {
+        let newUnitPrice = item.unitPrice
+        if (item.productId) {
+          if (priceMode === 'PUB') newUnitPrice = item.basePublic ?? item.unitPrice
+          else if (priceMode === 'MIN') newUnitPrice = item.baseMin ?? item.unitPrice
+          else if (priceMode === 'DIS') newUnitPrice = item.baseDist ?? item.unitPrice
+          else if (priceMode === 'MARGIN') {
+            const cost = item.baseCost ?? 0
+            newUnitPrice = cost + (cost * (customMargin / 100))
+          }
+        }
+        return {
+          ...item,
+          unitPrice: newUnitPrice,
+          total: recalculateItemTotal({ ...item, unitPrice: newUnitPrice }, taxApplies),
+        }
+      })
     })
-  }, [taxApplies])
+  }, [taxApplies, priceMode, customMargin])
 
   const addItem = () => {
     const newTempId = itemsArray.length > 0 ? Math.max(...itemsArray.map(i => i.tempId)) + 1 : 1
@@ -296,13 +319,27 @@ useEffect(() => {
   const selectProduct = (index: number, product: any) => {
     if (!product) return
     const updated = [...itemsArray]
+    const baseCost = product.cost || 0
+    const basePublic = product.publicPrice || product.price || 0
+    const baseMin = product.minPrice || product.price || 0
+    const baseDist = product.distributorPrice || product.price || 0
+    
+    let initialUnitPrice = basePublic
+    if (priceMode === 'MIN') initialUnitPrice = baseMin
+    if (priceMode === 'DIS') initialUnitPrice = baseDist
+    if (priceMode === 'MARGIN') initialUnitPrice = baseCost + (baseCost * (customMargin / 100))
+
     updated[index] = {
       ...updated[index],
       productId: product.id,
       description: product.name,
       sku: product.sku || '',
       stock: typeof product.stock === 'number' ? product.stock : null,
-      unitPrice: product.price || 0,
+      unitPrice: initialUnitPrice,
+      baseCost,
+      basePublic,
+      baseMin,
+      baseDist,
     }
     updated[index].total = recalculateItemTotal(updated[index], taxApplies)
     setItems(updated)
@@ -702,6 +739,32 @@ useEffect(() => {
                   </button>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modo de Precio</label>
+                <Select
+                  options={[
+                    { value: 'PUB', label: 'Precio Público (PUB)' },
+                    { value: 'MIN', label: 'Precio Mínimo (MIN)' },
+                    { value: 'DIS', label: 'Precio Distribuidor (DIS)' },
+                    { value: 'MARGIN', label: 'Margen Personalizado (%)' },
+                  ]}
+                  value={priceMode}
+                  onChange={(e) => setPriceMode(e.target.value as any)}
+                  fullWidth
+                />
+              </div>
+              {priceMode === 'MARGIN' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Porcentaje de Margen (%)</label>
+                  <Input
+                    type="number"
+                    value={customMargin}
+                    onChange={(e) => setCustomMargin(parseFloat(e.target.value) || 0)}
+                    fullWidth
+                    placeholder="Ej: 20"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Aplicar IVA</label>
                 <button

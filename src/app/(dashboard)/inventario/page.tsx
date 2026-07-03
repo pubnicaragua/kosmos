@@ -19,8 +19,9 @@ interface Product {
   description: string | null
   stock: number
   cost: number
-  price: number
-  netMargin: number | null
+  publicPrice: number
+  minPrice: number
+  distributorPrice: number
   promotion: string | null
   promotionCost: number | null
   promotionDiscount: number | null
@@ -60,8 +61,9 @@ interface EditingProduct {
   description: string
   stock: string
   cost: string
-  price: string
-  netMargin: string
+  publicPrice: string
+  minPrice: string
+  distributorPrice: string
   promotion: string
   promotionCost: string
   promotionDiscount: string
@@ -166,8 +168,9 @@ function InventarioPageContent() {
         description: product.description || '',
         stock: String(product.stock),
         cost: String(product.cost),
-        price: String(product.price),
-        netMargin: product.netMargin != null ? String(product.netMargin) : '',
+        publicPrice: String(product.publicPrice),
+        minPrice: String(product.minPrice),
+        distributorPrice: String(product.distributorPrice),
         promotion: product.promotion || '',
         promotionCost: product.promotionCost != null ? String(product.promotionCost) : '',
         promotionDiscount: product.promotionDiscount != null ? String(product.promotionDiscount) : '',
@@ -186,9 +189,8 @@ function InventarioPageContent() {
     if (!row) return
     
     const parsedCost = parseFloat(row.cost) || 0;
-    const parsedPrice = parseFloat(row.price) || 0;
-    if (parsedPrice < parsedCost) {
-      alert('El precio de venta no puede ser menor al costo');
+    if ((parseFloat(row.publicPrice) || 0) < parsedCost || (parseFloat(row.minPrice) || 0) < parsedCost || (parseFloat(row.distributorPrice) || 0) < parsedCost) {
+      alert('Ninguno de los precios puede ser menor al costo');
       return;
     }
 
@@ -249,8 +251,9 @@ function InventarioPageContent() {
           description: row.description || null,
           stock: Number(row.stock) || 0,
           cost: Number(row.cost) || 0,
-          price: Number(row.price) || 0,
-          netMargin: row.netMargin !== '' ? Number(row.netMargin) : null,
+          publicPrice: Number(row.publicPrice) || 0,
+          minPrice: Number(row.minPrice) || 0,
+          distributorPrice: Number(row.distributorPrice) || 0,
           promotion: row.promotion || null,
           promotionCost: row.promotionCost !== '' ? Number(row.promotionCost) : null,
           promotionDiscount: row.promotionDiscount !== '' ? Number(row.promotionDiscount) : null,
@@ -283,15 +286,7 @@ function InventarioPageContent() {
         updated.categoryId = matchedCategory?.id || ''
       }
       
-      // Auto-calculate margin when cost or price changes
-      if (field === 'cost' || field === 'price') {
-        const cost = field === 'cost' ? parseFloat(value) || 0 : parseFloat(updated.cost) || 0
-        const price = field === 'price' ? parseFloat(value) || 0 : parseFloat(updated.price) || 0
-        if (cost > 0) {
-          const margin = ((price - cost) / cost) * 100
-          updated.netMargin = (Math.round(margin * 100) / 100).toString()
-        }
-      }
+      // Eliminar el cálculo de margen ya que ahora hay 3 precios.
       
       return { ...prev, [productId]: updated }
     })
@@ -519,8 +514,9 @@ function InventarioPageContent() {
         'DESC.': 'Descripción del producto',
         'SKU': 'SKU-001',
         'COSTO': 50.00,
-        'PRECIO': 100.00,
-        'MARGEN %': 50
+        'PRECIO PUB': 100.00,
+        'PRECIO MIN': 90.00,
+        'PRECIO DIS': 80.00
       }
     ]
     const XLSX = await import('xlsx')
@@ -544,8 +540,9 @@ function InventarioPageContent() {
       'DESC.': p.description || '',
       'SKU': p.sku,
       'COSTO': p.cost,
-      'PRECIO': p.price,
-      'MARGEN %': p.netMargin != null ? `${p.netMargin.toFixed(2)}%` : '-',
+      'PRECIO PUB': p.publicPrice,
+      'PRECIO MIN': p.minPrice,
+      'PRECIO DIS': p.distributorPrice,
       'PROMO': p.promotion || ''
     }))
 
@@ -820,20 +817,22 @@ function InventarioPageContent() {
                     </span>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
+                  <div className="mt-4 grid grid-cols-4 gap-2">
                     <div className="rounded-2xl bg-white/80 p-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</p>
                       <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.cost * displayExchangeMultiplier)}</p>
                     </div>
                     <div className="rounded-2xl bg-white/80 p-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</p>
-                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.price * displayExchangeMultiplier)}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">PUB</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.publicPrice * displayExchangeMultiplier)}</p>
                     </div>
                     <div className="rounded-2xl bg-white/80 p-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Margen</p>
-                      <p className="mt-1 text-sm font-black text-slate-900">
-                        {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
-                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">MIN</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.minPrice * displayExchangeMultiplier)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/80 p-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">DIS</p>
+                      <p className="mt-1 text-sm font-black text-slate-900">{currencySymbol} {formatCurrency(product.distributorPrice * displayExchangeMultiplier)}</p>
                     </div>
                   </div>
 
@@ -867,9 +866,9 @@ function InventarioPageContent() {
                     <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Stock</th>
                     <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Categoría</th>
                     <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">SKU</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Costo</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Precio</th>
-                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Margen</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">PUB</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">MIN</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">DIS</th>
                     <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Acciones</th>
                   </tr>
                 </thead>
@@ -891,11 +890,9 @@ function InventarioPageContent() {
                         </td>
                         <td className="px-4 py-4 text-sm text-slate-600">{product.category?.name || 'Sin categoría'}</td>
                         <td className="px-4 py-4 text-sm font-mono text-slate-500">{product.sku}</td>
-                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-700">{currencySymbol} {formatCurrency(product.cost * displayExchangeMultiplier)}</td>
-                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">{currencySymbol} {formatCurrency(product.price * displayExchangeMultiplier)}</td>
-                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">
-                          {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
-                        </td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">{currencySymbol} {formatCurrency(product.publicPrice * displayExchangeMultiplier)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">{currencySymbol} {formatCurrency(product.minPrice * displayExchangeMultiplier)}</td>
+                        <td className="px-4 py-4 text-right text-sm font-medium text-slate-900">{currencySymbol} {formatCurrency(product.distributorPrice * displayExchangeMultiplier)}</td>
                         <td className="px-4 py-4 text-center">
                           {permissions.canEdit ? (
                             <Button variant="outline" className="h-9" onClick={() => openEditModal(product)}>
@@ -1266,8 +1263,9 @@ function InventarioPageContent() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">DESC.</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">SKU</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">COSTO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">PRECIO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MARGEN %</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">PUB</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">MIN</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase">DIS</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase">PROMO</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase">ACCIONES</th>
               </tr>
@@ -1312,12 +1310,16 @@ function InventarioPageContent() {
                           className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" value={editing.price} onChange={e => updateEditField(product.id, 'price', e.target.value)}
+                        <input type="number" value={editing.publicPrice} onChange={e => updateEditField(product.id, 'publicPrice', e.target.value)}
                           className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
-                        <input type="number" value={editing.netMargin} onChange={e => updateEditField(product.id, 'netMargin', e.target.value)}
-                          className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
+                        <input type="number" value={editing.minPrice} onChange={e => updateEditField(product.id, 'minPrice', e.target.value)}
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
+                      </td>
+                      <td className="py-2 px-2">
+                        <input type="number" value={editing.distributorPrice} onChange={e => updateEditField(product.id, 'distributorPrice', e.target.value)}
+                          className="w-24 px-2 py-1.5 border border-gray-300 rounded text-sm text-right" placeholder="0" />
                       </td>
                       <td className="py-2 px-2">
                         <input value={editing.promotion} onChange={e => updateEditField(product.id, 'promotion', e.target.value)}
@@ -1365,12 +1367,13 @@ function InventarioPageContent() {
                       <div className="text-sm text-gray-900">{product.cost} $</div>
                     </td>
                     <td className="py-4 px-4 text-right">
-                      <div className="text-sm font-medium text-gray-900">{product.price} $</div>
+                      <div className="text-sm font-medium text-gray-900">{product.publicPrice} $</div>
                     </td>
                     <td className="py-4 px-4 text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        {product.netMargin != null ? `${product.netMargin.toFixed(2)}%` : '-'}
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{product.minPrice} $</div>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="text-sm font-medium text-gray-900">{product.distributorPrice} $</div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="text-sm text-gray-600">{product.promotion || '-'}</div>
