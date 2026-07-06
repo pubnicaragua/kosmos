@@ -199,6 +199,8 @@ export default function CotizacionesList() {
                       {quote.status === 'APPROVED' ? 'Aprobada' :
                        quote.status === 'PENDING' ? 'Pendiente' :
                        quote.status === 'REJECTED' ? 'Rechazada' :
+                       quote.status === 'DRAFT' ? 'Borrador' :
+                       quote.status === 'SENT' ? 'Enviada' :
                        quote.status}
                     </span>
                   </td>

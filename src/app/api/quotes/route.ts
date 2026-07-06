@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       include: {
         client: { select: { id: true, name: true, email: true, phone: true } },
         company: { select: { id: true, name: true } },
-        // createdByUser: { select: { name: true } }, // TODO: Add after migration
+        createdByUser: { select: { name: true } },
         items: { include: { product: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },

@@ -540,7 +540,7 @@ export default function ClientDetailPage() {
                 <div className="flex items-center gap-4">
                   <p className="text-lg font-semibold text-gray-900">${quote.total.toLocaleString()}</p>
                   <Badge variant={quote.status === 'APPROVED' ? 'success' : quote.status === 'REJECTED' ? 'default' : 'warning'}>
-                    {quote.status === 'APPROVED' ? 'Aprobada' : quote.status === 'REJECTED' ? 'Rechazada' : quote.status === 'PENDING' ? 'Pendiente' : quote.status}
+                    {quote.status === 'APPROVED' ? 'Aprobada' : quote.status === 'REJECTED' ? 'Rechazada' : quote.status === 'PENDING' ? 'Pendiente' : quote.status === 'DRAFT' ? 'Borrador' : quote.status === 'SENT' ? 'Enviada' : quote.status}
                   </Badge>
                 </div>
               </div>
