@@ -34,12 +34,12 @@ export function validateCedula(value: string): { valid: boolean; message?: strin
     if (cleaned.length < 14) {
       return { 
         valid: false, 
-        message: `Faltan ${14 - cleaned.length} caracteres. Formato: 001-010190-0001A` 
+        message: `Faltan ${14 - cleaned.length} caracteres. Formato: 001-******-****L` 
       }
     }
     return { 
       valid: false, 
-      message: 'Formato inválido. Debe ser: 001-010190-0001A' 
+      message: 'Formato inválido. Debe ser: 001-******-****L' 
     }
   }
   
@@ -60,12 +60,12 @@ export function validateRuc(value: string): { valid: boolean; message?: string }
     if (cleaned.length < 13) {
       return { 
         valid: false, 
-        message: `Faltan ${13 - cleaned.length} dígitos. Formato: J0310000000000` 
+        message: `Faltan ${13 - cleaned.length} dígitos. Formato: J*************` 
       }
     }
     return { 
       valid: false, 
-      message: 'Formato inválido. Debe ser: J0310000000000 (J + 13 dígitos)' 
+      message: 'Formato inválido. Debe ser: J************* (J + 13 dígitos)' 
     }
   }
   

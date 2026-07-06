@@ -1514,7 +1514,7 @@ function ClientesPageContent() {
                         {previewData.errorSummary.map((item, idx) => (
                           <li key={idx} className="text-sm text-red-700 flex items-start gap-2">
                             <span className="mt-0.5">•</span>
-                            <span>{item.error} <strong className="text-red-800">(x{item.count})</strong></span>
+                            <span>{item.error}{item.count > 1 && <strong className="text-red-800"> (x{item.count})</strong>}</span>
                           </li>
                         ))}
                       </ul>
