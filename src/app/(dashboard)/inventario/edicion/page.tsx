@@ -755,7 +755,7 @@ function InventarioEdicionPageContent() {
               : 'Completa los detalles del producto físico incluyendo stock disponible.'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto flex-wrap justify-end">
           <input
             ref={fileInputRef}
             type="file"
@@ -764,7 +764,7 @@ function InventarioEdicionPageContent() {
             onChange={handleImportFile}
           />
           <Button
-            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-md"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-md w-full sm:w-auto"
             disabled={isSaving}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -773,19 +773,19 @@ function InventarioEdicionPageContent() {
             </svg>
             IMPORTAR
           </Button>
-          <Button variant="outline" onClick={() => router.push('/inventario')}>
+          <Button variant="outline" onClick={() => router.push('/inventario')} className="w-full sm:w-auto">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
             CANCELAR
           </Button>
-          <Button variant="outline" disabled={isSaving}>
+          <Button variant="outline" disabled={isSaving} className="w-full sm:w-auto">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
             GUARDAR BORRADOR
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -796,7 +796,7 @@ function InventarioEdicionPageContent() {
 
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b border-gray-200 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <Select
               options={[
                 { value: 'all', label: 'TODAS LAS EMPRESAS' },
@@ -804,7 +804,7 @@ function InventarioEdicionPageContent() {
               ]}
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-64"
+              className="w-full md:w-64"
             />
             {!isService && (
               <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -1019,16 +1019,16 @@ function InventarioEdicionPageContent() {
         </div>
 
         <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center gap-4">
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">TAB</kbd> Siguiente celda</span>
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">CTRL + DELETE</kbd> Borrar fila</span>
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">ENTER</kbd> Agregar nueva fila</span>
-              <span><kbd className="px-2 py-1 bg-white border border-gray-300 rounded">↑</kbd> <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">↓</kbd> Navegar entre filas</span>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap justify-center md:justify-start items-center gap-4">
+              <span className="flex items-center gap-2"><kbd className="px-2 py-1 bg-white border border-gray-300 shadow-sm rounded font-mono text-xs">TAB</kbd> <span className="hidden sm:inline">Siguiente celda</span></span>
+              <span className="flex items-center gap-2"><kbd className="px-2 py-1 bg-white border border-gray-300 shadow-sm rounded font-mono text-xs">CTRL + DEL</kbd> <span className="hidden sm:inline">Borrar fila</span></span>
+              <span className="flex items-center gap-2"><kbd className="px-2 py-1 bg-white border border-gray-300 shadow-sm rounded font-mono text-xs">ENTER</kbd> <span className="hidden sm:inline">Nueva fila</span></span>
+              <span className="flex items-center gap-2"><kbd className="px-2 py-1 bg-white border border-gray-300 shadow-sm rounded font-mono text-xs">↑</kbd> <kbd className="px-2 py-1 bg-white border border-gray-300 shadow-sm rounded font-mono text-xs">↓</kbd> <span className="hidden sm:inline">Navegar</span></span>
             </div>
             <button
               onClick={addRow}
-              className="text-primary hover:text-primary-dark font-medium flex items-center gap-1"
+              className="w-full md:w-auto justify-center text-primary hover:text-primary-dark font-bold flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
