@@ -138,6 +138,7 @@ function ClientesPageContent() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [isQuickViewLoading, setIsQuickViewLoading] = useState(false)
   const [quickViewTab, setQuickViewTab] = useState<'resumen' | 'actividad' | 'documentos' | 'historial'>('resumen')
+  const [rowFieldErrors, setRowFieldErrors] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
@@ -465,6 +466,12 @@ function ClientesPageContent() {
       delete next[clientId]
       return next
     })
+    setRowFieldErrors((prev) => {
+      const next = { ...prev }
+      delete next[`edit-${clientId}-ruc`]
+      delete next[`edit-${clientId}-cedula`]
+      return next
+    })
   }
 
   const updateDraftRow = (tempId: number, field: keyof ClientRowDraft, value: string) => {
@@ -514,6 +521,35 @@ function ClientesPageContent() {
       console.error('Error checking uniqueness:', e)
     }
     return null
+  }
+
+  const handleFieldBlur = async (row: ClientRowDraft, mode: 'create' | 'update', field: 'ruc' | 'cedula') => {
+    const val = field === 'ruc' ? row.ruc : row.cedula
+    if (!val) return
+    const params = new URLSearchParams({ companyId: row.companyId })
+    params.append(field, val)
+    if (mode === 'update' && row.sourceId) params.append('excludeId', row.sourceId)
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch(`/api/clients/check-cedula-ruc?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      const key = `${mode === 'create' ? 'draft' : 'edit'}-${mode === 'create' ? row.tempId : row.sourceId}-${field}`
+      if (data.success && data.data.conflicts.length > 0) {
+        setRowFieldErrors(prev => ({ ...prev, [key]: data.data.conflicts[0] }))
+      } else {
+        setRowFieldErrors(prev => ({ ...prev, [key]: '' }))
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const clearFieldError = (row: ClientRowDraft, mode: 'create' | 'update', field: 'ruc' | 'cedula') => {
+    const key = `${mode === 'create' ? 'draft' : 'edit'}-${mode === 'create' ? row.tempId : row.sourceId}-${field}`
+    setRowFieldErrors(prev => ({ ...prev, [key]: '' }))
   }
 
   const saveRow = async (row: ClientRowDraft, mode: 'create' | 'update') => {
@@ -920,27 +956,37 @@ function ClientesPageContent() {
                     <div className="space-y-1">
                       <input
                         value={row.ruc}
-                        onChange={(e) => updateDraftRow(row.tempId, 'ruc', e.target.value)}
+                        onChange={(e) => { updateDraftRow(row.tempId, 'ruc', e.target.value); clearFieldError(row, 'create', 'ruc') }}
+                        onBlur={() => handleFieldBlur(row, 'create', 'ruc')}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
                         className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
-                          row.ruc && !validateRuc(row.ruc).valid ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                          row.ruc && !validateRuc(row.ruc).valid ? 'border-red-400 bg-red-50' : 
+                          rowFieldErrors[`draft-${row.tempId}-ruc`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}
                         placeholder="RUC (J0310000000000)"
                       />
                       {row.ruc && !validateRuc(row.ruc).valid && (
                         <p className="text-xs text-red-500">{validateRuc(row.ruc).message}</p>
                       )}
+                      {rowFieldErrors[`draft-${row.tempId}-ruc`] && (
+                        <p className="text-xs text-red-500">{rowFieldErrors[`draft-${row.tempId}-ruc`]}</p>
+                      )}
                       <input
                         value={row.cedula}
-                        onChange={(e) => updateDraftRow(row.tempId, 'cedula', e.target.value)}
+                        onChange={(e) => { updateDraftRow(row.tempId, 'cedula', e.target.value); clearFieldError(row, 'create', 'cedula') }}
+                        onBlur={() => handleFieldBlur(row, 'create', 'cedula')}
                         onKeyDown={(e) => handleRowKeyDown(e, row, 'create')}
                         className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
-                          row.cedula && !validateCedula(row.cedula).valid ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                          row.cedula && !validateCedula(row.cedula).valid ? 'border-red-400 bg-red-50' : 
+                          rowFieldErrors[`draft-${row.tempId}-cedula`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
                         }`}
                         placeholder="Cédula (001-010190-0001A)"
                       />
                       {row.cedula && !validateCedula(row.cedula).valid && (
                         <p className="text-xs text-red-500">{validateCedula(row.cedula).message}</p>
+                      )}
+                      {rowFieldErrors[`draft-${row.tempId}-cedula`] && (
+                        <p className="text-xs text-red-500">{rowFieldErrors[`draft-${row.tempId}-cedula`]}</p>
                       )}
                     </div>
                   </td>
@@ -1054,18 +1100,38 @@ function ClientesPageContent() {
                       <div className="space-y-2">
                         <input
                           value={editingRows[client.id].ruc}
-                          onChange={(e) => updateEditingRow(client.id, 'ruc', e.target.value)}
+                          onChange={(e) => { updateEditingRow(client.id, 'ruc', e.target.value); clearFieldError(editingRows[client.id], 'update', 'ruc') }}
+                          onBlur={() => handleFieldBlur(editingRows[client.id], 'update', 'ruc')}
                           onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                            editingRows[client.id].ruc && !validateRuc(editingRows[client.id].ruc).valid ? 'border-red-400 bg-red-50' :
+                            rowFieldErrors[`edit-${client.id}-ruc`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                          }`}
                           placeholder="RUC"
                         />
+                        {editingRows[client.id].ruc && !validateRuc(editingRows[client.id].ruc).valid && (
+                          <p className="text-xs text-red-500">{validateRuc(editingRows[client.id].ruc).message}</p>
+                        )}
+                        {rowFieldErrors[`edit-${client.id}-ruc`] && (
+                          <p className="text-xs text-red-500">{rowFieldErrors[`edit-${client.id}-ruc`]}</p>
+                        )}
                         <input
                           value={editingRows[client.id].cedula}
-                          onChange={(e) => updateEditingRow(client.id, 'cedula', e.target.value)}
+                          onChange={(e) => { updateEditingRow(client.id, 'cedula', e.target.value); clearFieldError(editingRows[client.id], 'update', 'cedula') }}
+                          onBlur={() => handleFieldBlur(editingRows[client.id], 'update', 'cedula')}
                           onKeyDown={(e) => handleRowKeyDown(e, editingRows[client.id], 'update')}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
+                          className={`w-full px-2 py-1.5 border rounded-lg text-sm ${
+                            editingRows[client.id].cedula && !validateCedula(editingRows[client.id].cedula).valid ? 'border-red-400 bg-red-50' :
+                            rowFieldErrors[`edit-${client.id}-cedula`] ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                          }`}
                           placeholder="Cédula"
                         />
+                        {editingRows[client.id].cedula && !validateCedula(editingRows[client.id].cedula).valid && (
+                          <p className="text-xs text-red-500">{validateCedula(editingRows[client.id].cedula).message}</p>
+                        )}
+                        {rowFieldErrors[`edit-${client.id}-cedula`] && (
+                          <p className="text-xs text-red-500">{rowFieldErrors[`edit-${client.id}-cedula`]}</p>
+                        )}
                       </div>
                     </td>
                     <td className="py-2 px-2">
