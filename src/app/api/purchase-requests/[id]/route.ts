@@ -258,7 +258,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
                 stock: quantityToReceive,
                 minStock: item.minimumStock || 0,
                 cost: inventoryCost,
-                price: inventoryCost * 1.3,
+                publicPrice: inventoryCost * 1.3,
+                minPrice: inventoryCost * 1.2,
+                distributorPrice: inventoryCost * 1.1,
                 type: 'PRODUCT'
               }
             })

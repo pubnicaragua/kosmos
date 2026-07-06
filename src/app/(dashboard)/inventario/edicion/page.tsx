@@ -460,9 +460,9 @@ function InventarioEdicionPageContent() {
             description: String(pickValue('descripcion', 'description', 'detalle', 'desc') || descripcionParts).trim(),
             sku,
             cost: toNumber(pickValue('costo', 'cost', 'preciocosto', 'costopromedio', 'costoenbodega')),
-            publicPrice: toNumber(pickValue('preciopublico', 'pub', 'publicprice', 'precio')),
-            minPrice: toNumber(pickValue('preciominimo', 'min', 'minprice')),
-            distributorPrice: toNumber(pickValue('preciodistribuidor', 'dis', 'distributorprice')),
+            publicPrice: toNumber(pickValue('preciopublico', 'preciopub', 'pub', 'publicprice', 'precio')),
+            minPrice: toNumber(pickValue('preciominimo', 'preciomin', 'min', 'minprice')),
+            distributorPrice: toNumber(pickValue('preciodistribuidor', 'preciodis', 'dis', 'distributorprice')),
             stock: toNumber(pickValue('stock', 'cantidad', 'cantidadenbodega', 'existencia')),
             isNew: true,
           }
