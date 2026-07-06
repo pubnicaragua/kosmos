@@ -85,6 +85,7 @@ export default function ClientesMultiagregadoPage() {
       return
     }
 
+    // Server-side validates uniqueness for ruc/cedula
     setIsSaving(true)
     try {
       const response = await fetch('/api/clients/bulk', {

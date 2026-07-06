@@ -70,6 +70,37 @@ interface ClientRowDraft {
   status: Client['status']
 }
 
+interface PreviewRowData {
+  name: string
+  email?: string
+  phone?: string
+  cedula?: string
+  ruc?: string
+  address?: string
+  city?: string
+  country?: string
+  contactName?: string
+  alias?: string
+  status?: string
+}
+
+interface PreviewRow {
+  rowIndex: number
+  data: PreviewRowData
+  errors?: string[]
+}
+
+interface PreviewData {
+  totalRows: number
+  validCount: number
+  invalidCount: number
+  validRows: PreviewRow[]
+  invalidRows: PreviewRow[]
+  errorSummary: { error: string; count: number }[]
+  hasIncomes: boolean
+  incomesCount: number
+}
+
 function ClientesPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -95,6 +126,10 @@ function ClientesPageContent() {
   const [isImporting, setIsImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importResult, setImportResult] = useState<any>(null)
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+  const [selectedPreviewRows, setSelectedPreviewRows] = useState<Set<number>>(new Set())
+  const [importStep, setImportStep] = useState<'upload' | 'preview' | 'done'>('upload')
   const [draftRows, setDraftRows] = useState<ClientRowDraft[]>([])
   const [editingRows, setEditingRows] = useState<Record<string, ClientRowDraft>>({})
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
@@ -255,6 +290,122 @@ function ClientesPageContent() {
     }
   }
 
+  const handlePreview = async () => {
+    if (!importFile) {
+      alert('Por favor selecciona un archivo')
+      return
+    }
+
+    if (selectedCompany === 'all') {
+      alert('Por favor selecciona una empresa')
+      return
+    }
+
+    setIsPreviewing(true)
+    setPreviewData(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      formData.append('companyId', selectedCompany)
+
+      const token = localStorage.getItem('accessToken')
+
+      const response = await fetch('/api/clients/import/preview', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setPreviewData(result.data)
+        setSelectedPreviewRows(new Set(result.data.validRows.map((r: PreviewRow) => r.rowIndex)))
+        setImportStep('preview')
+      } else {
+        alert(result.error || 'Error al previsualizar archivo')
+      }
+    } catch (error) {
+      console.error('Preview error:', error)
+      alert('Error al previsualizar archivo')
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
+
+  const handleImportFromPreview = async () => {
+    if (selectedPreviewRows.size === 0) {
+      alert('Selecciona al menos una fila para importar')
+      return
+    }
+
+    setIsImporting(true)
+    setImportProgress({ current: 0, total: selectedPreviewRows.size })
+    let progressInterval: ReturnType<typeof setInterval> | null = null
+
+    try {
+      progressInterval = setInterval(() => {
+        setImportProgress(prev => {
+          const target = Math.max(1, Math.floor(prev.total * 0.9))
+          if (prev.current < target) {
+            return { ...prev, current: Math.min(prev.current + Math.ceil(prev.total / 15), target) }
+          }
+          return prev
+        })
+      }, 500)
+
+      const formData = new FormData()
+      formData.append('file', importFile!)
+      formData.append('companyId', selectedCompany)
+      formData.append('importIncomes', importIncomes.toString())
+      formData.append('selectedRows', JSON.stringify(Array.from(selectedPreviewRows)))
+
+      const token = localStorage.getItem('accessToken')
+
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 180000)
+
+      const response = await fetch('/api/clients/import', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      const result = await response.json()
+
+      if (result.success) {
+        setImportProgress({ current: selectedPreviewRows.size, total: selectedPreviewRows.size })
+        setImportResult(result.data)
+        setImportStep('done')
+        fetchData()
+        setTimeout(() => {
+          setShowImportModal(false)
+          setImportFile(null)
+          setImportIncomes(false)
+          setImportResult(null)
+          setPreviewData(null)
+          setImportProgress({ current: 0, total: 0 })
+          setImportStep('upload')
+        }, 5000)
+      } else {
+        alert(`Error: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Import error:', error)
+      alert(
+        error instanceof Error && error.name === 'AbortError'
+          ? 'La importación tardó demasiado. Intenta dividir el archivo en lotes más pequeños.'
+          : 'Error al importar archivo'
+      )
+    } finally {
+      if (progressInterval) clearInterval(progressInterval)
+      setIsImporting(false)
+    }
+  }
+
   const resolveDefaultCompanyId = () => {
     if (selectedCompany !== 'all') return selectedCompany
     const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
@@ -340,6 +491,31 @@ function ClientesPageContent() {
     }))
   }
 
+  const checkUniqueness = async (row: ClientRowDraft, mode: 'create' | 'update'): Promise<string | null> => {
+    if (!row.ruc && !row.cedula) return null
+
+    const params = new URLSearchParams({ companyId: row.companyId })
+    if (row.ruc) params.append('ruc', row.ruc)
+    if (row.cedula) params.append('cedula', row.cedula)
+    if (mode === 'update' && row.sourceId) params.append('excludeId', row.sourceId)
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return null
+
+    try {
+      const response = await fetch(`/api/clients/check-cedula-ruc?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success && data.data.conflicts.length > 0) {
+        return data.data.conflicts.join('. ')
+      }
+    } catch (e) {
+      console.error('Error checking uniqueness:', e)
+    }
+    return null
+  }
+
   const saveRow = async (row: ClientRowDraft, mode: 'create' | 'update') => {
     if (!row.name || (mode === 'create' && !row.companyId)) {
       alert('Completa empresa y nombre del cliente')
@@ -360,6 +536,12 @@ function ClientesPageContent() {
     const rucValidation = validateRuc(row.ruc)
     if (!rucValidation.valid) {
       alert('RUC inválido: ' + rucValidation.message)
+      return
+    }
+
+    const conflictMsg = await checkUniqueness(row, mode)
+    if (conflictMsg) {
+      alert(conflictMsg)
       return
     }
 
@@ -1160,15 +1342,21 @@ function ClientesPageContent() {
       {/* Modal de Importación */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Importar Clientes desde Excel</h2>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {importStep === 'upload' && 'Importar Clientes desde Excel'}
+                  {importStep === 'preview' && 'Previsualización de Importación'}
+                  {importStep === 'done' && 'Resultado de Importación'}
+                </h2>
                 <button 
                   onClick={() => {
                     setShowImportModal(false)
                     setImportFile(null)
                     setImportResult(null)
+                    setPreviewData(null)
+                    setImportStep('upload')
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -1180,7 +1368,8 @@ function ClientesPageContent() {
             </div>
 
             <div className="p-6 space-y-6">
-              {!importResult ? (
+              {/* STEP 1: Upload */}
+              {importStep === 'upload' && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1285,12 +1474,150 @@ function ClientesPageContent() {
                     <ul className="text-xs text-gray-600 space-y-1">
                       <li>• El sistema detecta automáticamente las columnas del Excel</li>
                       <li>• Soporta múltiples formatos de columnas por empresa</li>
-                      <li>• Los clientes duplicados serán omitidos</li>
+                      <li>• Se validarán RUC, cédula y duplicados antes de importar</li>
                       <li>• Campos no reconocidos se guardan como datos personalizados</li>
                     </ul>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {/* STEP 2: Preview */}
+              {importStep === 'preview' && previewData && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`flex-1 p-4 rounded-lg ${previewData.invalidCount === 0 ? 'bg-green-50' : 'bg-yellow-50'}`}>
+                      <p className="text-sm text-gray-600 mb-1">Filas válidas</p>
+                      <p className={`text-2xl font-bold ${previewData.invalidCount === 0 ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {previewData.validCount} / {previewData.totalRows}
+                      </p>
+                    </div>
+                    {previewData.invalidCount > 0 && (
+                      <div className="flex-1 p-4 bg-red-50 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-1">Filas con errores</p>
+                        <p className="text-2xl font-bold text-red-600">{previewData.invalidCount}</p>
+                      </div>
+                    )}
+                    {previewData.hasIncomes && (
+                      <div className="flex-1 p-4 bg-blue-50 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-1">Ingresos detectados</p>
+                        <p className="text-2xl font-bold text-blue-600">{previewData.incomesCount}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {previewData.errorSummary.length > 0 && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <h4 className="text-sm font-semibold text-red-800 mb-2">
+                        ⚠️ {previewData.invalidCount} fila(s) con errores:
+                      </h4>
+                      <ul className="space-y-1">
+                        {previewData.errorSummary.map((item, idx) => (
+                          <li key={idx} className="text-sm text-red-700 flex items-start gap-2">
+                            <span className="mt-0.5">•</span>
+                            <span>{item.error} <strong className="text-red-800">(x{item.count})</strong></span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedPreviewRows.size === previewData.validRows.length && previewData.validRows.length > 0}
+                              onChange={() => {
+                                if (selectedPreviewRows.size === previewData.validRows.length) {
+                                  setSelectedPreviewRows(new Set())
+                                } else {
+                                  setSelectedPreviewRows(new Set(previewData.validRows.map(r => r.rowIndex)))
+                                }
+                              }}
+                              className="w-4 h-4"
+                            />
+                          </th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">#</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Nombre</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Email</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">RUC / Cédula</th>
+                          <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.validRows.map((row) => (
+                          <tr key={row.rowIndex} className="border-t border-gray-100 hover:bg-gray-50">
+                            <td className="py-2 px-3">
+                              <input
+                                type="checkbox"
+                                checked={selectedPreviewRows.has(row.rowIndex)}
+                                onChange={() => {
+                                  const next = new Set(selectedPreviewRows)
+                                  if (next.has(row.rowIndex)) next.delete(row.rowIndex)
+                                  else next.add(row.rowIndex)
+                                  setSelectedPreviewRows(next)
+                                }}
+                                className="w-4 h-4"
+                              />
+                            </td>
+                            <td className="py-2 px-3 text-gray-500">{row.rowIndex + 2}</td>
+                            <td className="py-2 px-3 font-medium text-gray-900">{row.data.name}</td>
+                            <td className="py-2 px-3 text-gray-600">{row.data.email || '—'}</td>
+                            <td className="py-2 px-3 text-gray-600">
+                              {row.data.ruc && <span>RUC: {row.data.ruc}</span>}
+                              {row.data.cedula && <span>{row.data.ruc ? ' | ' : ''}Cédula: {row.data.cedula}</span>}
+                              {!row.data.ruc && !row.data.cedula && <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ✅ Válida
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {previewData.invalidRows.map((row) => (
+                          <tr key={`invalid-${row.rowIndex}`} className="border-t border-gray-100 bg-red-50">
+                            <td className="py-2 px-3 text-gray-400">
+                              <input type="checkbox" disabled className="w-4 h-4 opacity-40" />
+                            </td>
+                            <td className="py-2 px-3 text-gray-400">{row.rowIndex + 2}</td>
+                            <td className="py-2 px-3 text-gray-500">{row.data.name || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500">{row.data.email || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500">
+                              {row.data.ruc && <span>RUC: {row.data.ruc}</span>}
+                              {row.data.cedula && <span>{row.data.ruc ? ' | ' : ''}Cédula: {row.data.cedula}</span>}
+                              {!row.data.ruc && !row.data.cedula && <span className="text-gray-400">—</span>}
+                            </td>
+                            <td className="py-2 px-3 text-center" title={row.errors?.join('\n')}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-help">
+                                ❌ Error
+                              </span>
+                              <div className="text-xs text-red-600 mt-1">
+                                {row.errors?.slice(0, 2).map((e, i) => (
+                                  <div key={i}>{e}</div>
+                                ))}
+                                {row.errors && row.errors.length > 2 && (
+                                  <div className="text-red-400">+{row.errors.length - 2} más</div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="text-sm text-gray-500">
+                    {selectedPreviewRows.size} fila(s) seleccionada(s) para importar
+                    {previewData.hasIncomes && importIncomes && ` · ${previewData.incomesCount} ingreso(s) incluido(s)`}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Done */}
+              {importStep === 'done' && importResult && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
                     <svg className="w-8 h-8 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1328,23 +1655,52 @@ function ClientesPageContent() {
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowImportModal(false)
-                  setImportFile(null)
-                  setImportResult(null)
-                }}
-                disabled={isImporting}
-              >
-                Cancelar
-              </Button>
-              {!importResult && (
+              {importStep === 'upload' && (
                 <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportResult(null)
+                      setPreviewData(null)
+                      setImportStep('upload')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handlePreview}
+                    disabled={!importFile || selectedCompany === 'all' || isPreviewing}
+                  >
+                    {isPreviewing ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Analizando...
+                      </div>
+                    ) : (
+                      'Previsualizar'
+                    )}
+                  </Button>
+                </>
+              )}
+
+              {importStep === 'preview' && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setImportStep('upload')
+                      setPreviewData(null)
+                    }}
+                    disabled={isImporting}
+                  >
+                    Volver
+                  </Button>
                   {isImporting && importProgress.total > 0 && (
                     <div className="flex-1">
                       <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Procesando clientes...</span>
+                        <span className="text-gray-600">Importando...</span>
                         <span className="font-semibold text-primary">
                           {importProgress.current} / {importProgress.total}
                         </span>
@@ -1358,8 +1714,8 @@ function ClientesPageContent() {
                     </div>
                   )}
                   <Button
-                    onClick={handleImport}
-                    disabled={!importFile || selectedCompany === 'all' || isImporting}
+                    onClick={handleImportFromPreview}
+                    disabled={selectedPreviewRows.size === 0 || isImporting}
                   >
                     {isImporting ? (
                       <div className="flex items-center gap-2">
@@ -1367,10 +1723,25 @@ function ClientesPageContent() {
                         Importando...
                       </div>
                     ) : (
-                      'Importar'
+                      `Importar ${selectedPreviewRows.size > 0 ? `(${selectedPreviewRows.size})` : ''}`
                     )}
                   </Button>
                 </>
+              )}
+
+              {importStep === 'done' && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                    setImportResult(null)
+                    setPreviewData(null)
+                    setImportStep('upload')
+                  }}
+                >
+                  Cerrar
+                </Button>
               )}
             </div>
           </div>

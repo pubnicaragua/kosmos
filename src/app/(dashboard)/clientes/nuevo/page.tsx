@@ -84,11 +84,41 @@ export default function NuevoClientePage() {
     return errs
   }
 
+  const checkUniqueness = async (): Promise<string | null> => {
+    if (!formData.ruc && !formData.cedula) return null
+
+    const params = new URLSearchParams({ companyId: selectedCompany })
+    if (formData.ruc) params.append('ruc', formData.ruc)
+    if (formData.cedula) params.append('cedula', formData.cedula)
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return null
+
+    try {
+      const response = await fetch(`/api/clients/check-cedula-ruc?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (data.success && data.data.conflicts.length > 0) {
+        return data.data.conflicts.join('. ')
+      }
+    } catch (e) {
+      console.error('Error checking uniqueness:', e)
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const errs = validate()
     setErrors(errs)
     if (Object.keys(errs).length > 0) return
+
+    const conflictMsg = await checkUniqueness()
+    if (conflictMsg) {
+      setErrors({ general: conflictMsg })
+      return
+    }
 
     const token = localStorage.getItem('accessToken')
     if (!token) return

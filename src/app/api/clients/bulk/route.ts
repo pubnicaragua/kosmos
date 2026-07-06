@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { checkDbDuplicateCedulaRuc } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,21 @@ export async function POST(request: NextRequest) {
     })
 
     if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
+
+    const allDupErrors: string[] = []
+    for (let i = 0; i < clients.length; i++) {
+      const c = clients[i]
+      const errs = await checkDbDuplicateCedulaRuc(companyId, {
+        cedula: c.cedula,
+        ruc: c.ruc,
+      })
+      if (errs.length > 0) {
+        allDupErrors.push(`Fila ${i + 1}: ${errs.map(e => e.message).join(', ')}`)
+      }
+    }
+    if (allDupErrors.length > 0) {
+      return apiError(allDupErrors.join('. '), 409)
+    }
 
     const created = await prisma.client.createMany({
       data: clients.map((client: any) => ({

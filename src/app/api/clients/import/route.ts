@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
 import { getCompanyAccess } from '@/lib/company-access'
+import { checkDbDuplicateCedulaRuc, findFileDuplicates, validateRowFormat } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File
     const companyId = formData.get('companyId') as string
     const importIncomes = formData.get('importIncomes') === 'true'
+    const selectedRowsRaw = formData.get('selectedRows')
+    const selectedRows: number[] | null = selectedRowsRaw ? JSON.parse(selectedRowsRaw as string) : null
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No se proporcionó archivo' }, { status: 400 })
@@ -55,7 +58,17 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     
     // Parsear Excel (procesa todas las hojas)
-    const result = parseExcelFileAllSheets(buffer)
+    const parsedResult = parseExcelFileAllSheets(buffer)
+
+    // Filtrar por filas seleccionadas si viene del preview
+    const result = selectedRows
+      ? {
+          clients: parsedResult.clients.filter((_, i) => selectedRows.includes(i)),
+          incomes: parsedResult.incomes.filter((_, i) => selectedRows.includes(i)),
+          hasIncomes: parsedResult.hasIncomes,
+          errors: parsedResult.errors,
+        }
+      : parsedResult
 
     console.log('Resultado del parseo:', {
       clientsFound: result.clients.length,
@@ -74,6 +87,29 @@ export async function POST(request: NextRequest) {
           clientsFound: result.clients.length,
           incomesFound: result.incomes.length
         }
+      }, { status: 400 })
+    }
+
+    const allRowErrors: string[] = []
+    for (let i = 0; i < result.clients.length; i++) {
+      const cd = result.clients[i]
+      const formatErrors = validateRowFormat(cd)
+      formatErrors.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
+
+      const fileDups = findFileDuplicates(result.clients, i)
+      fileDups.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
+
+      const dbDups = await checkDbDuplicateCedulaRuc(companyId, {
+        cedula: cd.cedula,
+        ruc: cd.ruc,
+      })
+      dbDups.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
+    }
+    if (allRowErrors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Errores de validación en el archivo',
+        details: allRowErrors,
       }, { status: 400 })
     }
 

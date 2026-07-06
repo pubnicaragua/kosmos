@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { clientSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { checkDbDuplicateCedulaRuc } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +93,14 @@ export async function POST(request: NextRequest) {
 
     const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'clientes')
     if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear clientes', 403)
+
+    const dupErrors = await checkDbDuplicateCedulaRuc(validatedData.companyId, {
+      cedula: validatedData.cedula,
+      ruc: validatedData.ruc,
+    })
+    if (dupErrors.length > 0) {
+      return apiError(dupErrors.map(e => e.message).join('. '), 409)
+    }
 
     const client = await prisma.client.create({
       data: validatedData,

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { checkDbDuplicateCedulaRuc } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,6 +50,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const moduleAccess = await getModuleAccess(decoded.userId, client.companyId, 'clientes')
     if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar clientes', 403)
+
+    const dupErrors = await checkDbDuplicateCedulaRuc(client.companyId, {
+      cedula: body.cedula,
+      ruc: body.ruc,
+    }, params.id)
+    if (dupErrors.length > 0) {
+      return apiError(dupErrors.map(e => e.message).join('. '), 409)
+    }
 
     const updated = await prisma.client.update({
       where: { id: params.id },

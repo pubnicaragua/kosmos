@@ -139,6 +139,22 @@ export default function ClientDetailPage() {
       const token = localStorage.getItem('accessToken')
       if (!token) return
 
+      if (editData.ruc || editData.cedula) {
+        const sp = new URLSearchParams({ companyId: client?.company?.id || '' })
+        if (editData.ruc) sp.append('ruc', editData.ruc)
+        if (editData.cedula) sp.append('cedula', editData.cedula)
+        sp.append('excludeId', params.id as string)
+
+        const checkRes = await fetch(`/api/clients/check-cedula-ruc?${sp}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const checkData = await checkRes.json()
+        if (checkData.success && checkData.data.conflicts.length > 0) {
+          alert(checkData.data.conflicts.join('. '))
+          return
+        }
+      }
+
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'PUT',
         headers: {
