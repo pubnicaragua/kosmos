@@ -1521,6 +1521,13 @@ function ClientesPageContent() {
                     </div>
                   )}
 
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Vista previa de datos principales. Todos los campos del Excel se importarán completos (dirección, ciudad, país, contacto, estado, datos personalizados, etc.).</span>
+                  </div>
+
                   <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
@@ -1542,8 +1549,10 @@ function ClientesPageContent() {
                           <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">#</th>
                           <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Nombre</th>
                           <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Email</th>
-                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">RUC / Cédula</th>
-                          <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Estado</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Teléfono</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">RUC</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase">Cédula</th>
+                          <th className="text-center py-2 px-3 text-xs font-semibold text-gray-600 uppercase w-24">Estado</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1563,16 +1572,14 @@ function ClientesPageContent() {
                               />
                             </td>
                             <td className="py-2 px-3 text-gray-500">{row.rowIndex + 2}</td>
-                            <td className="py-2 px-3 font-medium text-gray-900">{row.data.name}</td>
-                            <td className="py-2 px-3 text-gray-600">{row.data.email || '—'}</td>
-                            <td className="py-2 px-3 text-gray-600">
-                              {row.data.ruc && <span>RUC: {row.data.ruc}</span>}
-                              {row.data.cedula && <span>{row.data.ruc ? ' | ' : ''}Cédula: {row.data.cedula}</span>}
-                              {!row.data.ruc && !row.data.cedula && <span className="text-gray-400">—</span>}
-                            </td>
+                            <td className="py-2 px-3 font-medium text-gray-900 max-w-[200px] truncate" title={row.data.name}>{row.data.name}</td>
+                            <td className="py-2 px-3 text-gray-600 max-w-[180px] truncate" title={row.data.email}>{row.data.email || '—'}</td>
+                            <td className="py-2 px-3 text-gray-600">{row.data.phone || '—'}</td>
+                            <td className="py-2 px-3 text-gray-600 font-mono text-xs">{row.data.ruc || '—'}</td>
+                            <td className="py-2 px-3 text-gray-600 font-mono text-xs">{row.data.cedula || '—'}</td>
                             <td className="py-2 px-3 text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                ✅ Válida
+                                ✅
                               </span>
                             </td>
                           </tr>
@@ -1583,20 +1590,18 @@ function ClientesPageContent() {
                               <input type="checkbox" disabled className="w-4 h-4 opacity-40" />
                             </td>
                             <td className="py-2 px-3 text-gray-400">{row.rowIndex + 2}</td>
-                            <td className="py-2 px-3 text-gray-500">{row.data.name || '—'}</td>
-                            <td className="py-2 px-3 text-gray-500">{row.data.email || '—'}</td>
-                            <td className="py-2 px-3 text-gray-500">
-                              {row.data.ruc && <span>RUC: {row.data.ruc}</span>}
-                              {row.data.cedula && <span>{row.data.ruc ? ' | ' : ''}Cédula: {row.data.cedula}</span>}
-                              {!row.data.ruc && !row.data.cedula && <span className="text-gray-400">—</span>}
-                            </td>
+                            <td className="py-2 px-3 text-gray-500 max-w-[200px] truncate" title={row.data.name}>{row.data.name || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500 max-w-[180px] truncate">{row.data.email || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500">{row.data.phone || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500 font-mono text-xs">{row.data.ruc || '—'}</td>
+                            <td className="py-2 px-3 text-gray-500 font-mono text-xs">{row.data.cedula || '—'}</td>
                             <td className="py-2 px-3 text-center" title={row.errors?.join('\n')}>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 cursor-help">
-                                ❌ Error
+                                ❌
                               </span>
-                              <div className="text-xs text-red-600 mt-1">
+                              <div className="text-xs text-red-600 mt-1 text-left">
                                 {row.errors?.slice(0, 2).map((e, i) => (
-                                  <div key={i}>{e}</div>
+                                  <div key={i} className="truncate max-w-[180px]" title={e}>{e}</div>
                                 ))}
                                 {row.errors && row.errors.length > 2 && (
                                   <div className="text-red-400">+{row.errors.length - 2} más</div>
