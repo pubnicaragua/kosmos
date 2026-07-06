@@ -1342,7 +1342,7 @@ function ClientesPageContent() {
       {/* Modal de Importación */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">
@@ -1528,7 +1528,7 @@ function ClientesPageContent() {
                     <span>Vista previa de datos principales. Todos los campos del Excel se importarán completos (dirección, ciudad, país, contacto, estado, datos personalizados, etc.).</span>
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
+                  <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 sticky top-0">
                         <tr>
