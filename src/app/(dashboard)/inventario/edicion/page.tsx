@@ -833,11 +833,11 @@ function InventarioEdicionPageContent() {
                 <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase w-40">
                   SKU {isService && <span className="text-gray-400">(Opcional)</span>}
                 </th>
-                {!isService && <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-24">STOCK</th>}
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">COSTO</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO PUB</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO MIN</th>
-                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-28">PRECIO DIS</th>
+                {!isService && <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-24 min-w-[6rem]">STOCK</th>}
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32 min-w-[8rem]">COSTO</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32 min-w-[8rem]">PRECIO PUB</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32 min-w-[8rem]">PRECIO MIN</th>
+                <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase w-32 min-w-[8rem]">PRECIO DIS</th>
                 <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase w-20"></th>
               </tr>
             </thead>
