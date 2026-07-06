@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
         sku,
         stock: Number(product.stock || 0),
         cost: Number(product.cost || 0),
-        price: Number(product.price || 0),
-        netMargin: product.netMargin === null || product.netMargin === undefined ? null : Number(product.netMargin),
+        publicPrice: Number(product.publicPrice || 0),
+        minPrice: Number(product.minPrice || 0),
+        distributorPrice: Number(product.distributorPrice || 0),
         companyId,
       }
     })
@@ -72,7 +73,9 @@ export async function POST(request: NextRequest) {
               description: product.description,
               stock: product.stock,
               cost: product.cost,
-              price: product.price,
+              publicPrice: product.publicPrice,
+              minPrice: product.minPrice,
+              distributorPrice: product.distributorPrice,
             },
           })
           updated++
