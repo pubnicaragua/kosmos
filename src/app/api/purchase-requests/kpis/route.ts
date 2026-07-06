@@ -116,15 +116,15 @@ export async function GET(request: NextRequest) {
 
     // 4. Productos más rentables (mayor margen)
     const profitableProducts = products
-      .filter(p => p.isActive && p.price > p.cost)
+      .filter(p => p.isActive && p.publicPrice > p.cost)
       .map(p => ({
         id: p.id,
         name: p.name,
         sku: p.sku,
         cost: p.cost,
-        price: p.price,
-        margin: p.price - p.cost,
-        marginPercentage: ((p.price - p.cost) / p.cost * 100).toFixed(2)
+        price: p.publicPrice,
+        margin: p.publicPrice - p.cost,
+        marginPercentage: ((p.publicPrice - p.cost) / (p.cost || 1) * 100).toFixed(2)
       }))
       .sort((a, b) => b.margin - a.margin)
       .slice(0, 20)

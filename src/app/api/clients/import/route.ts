@@ -77,84 +77,123 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Importar clientes
-    const importedClients = []
-    const skippedClients = []
+    const importedClients: any[] = []
+    const skippedClients: any[] = []
+    
+    // 1. Obtener todos los clientes existentes en memoria para búsqueda O(1)
+    const existingDbClients = await prisma.client.findMany({
+      where: { companyId },
+      select: { 
+        id: true, name: true, cedula: true, ruc: true, email: true, phone: true, 
+        phone2: true, alias: true, codigoInterno: true, curso: true, sucursal: true, 
+        contribuyente: true, telefonoTutor: true, notes: true, address: true, city: true, 
+        country: true, contactName: true, status: true 
+      }
+    });
+
+    const nameMap = new Map();
+    const cedulaMap = new Map();
+    const rucMap = new Map();
+
+    for (const c of existingDbClients) {
+      if (c.name) nameMap.set(c.name.toLowerCase(), c);
+      if (c.cedula) cedulaMap.set(c.cedula, c);
+      if (c.ruc) rucMap.set(c.ruc, c);
+    }
+
+    const toCreate = [];
+    const toUpdate = [];
 
     for (const clientData of result.clients) {
-      try {
-        // Verificar si ya existe por nombre o cédula/RUC
-        const existing = await prisma.client.findFirst({
-          where: {
-            companyId,
-            OR: [
-              { name: clientData.name },
-              ...(clientData.cedula ? [{ cedula: clientData.cedula }] : []),
-              ...(clientData.ruc ? [{ ruc: clientData.ruc }] : [])
-            ]
-          }
-        })
-
-        if (existing) {
-          // Actualizar cliente existente (sobrescribir)
-          const updated = await prisma.client.update({
-            where: { id: existing.id },
-            data: {
-              email: clientData.email || existing.email,
-              phone: clientData.phone || existing.phone,
-              phone2: clientData.phone2 || existing.phone2,
-              cedula: clientData.cedula || existing.cedula,
-              ruc: clientData.ruc || existing.ruc,
-              alias: clientData.alias || existing.alias,
-              codigoInterno: clientData.codigoInterno || existing.codigoInterno,
-              curso: clientData.curso || existing.curso,
-              sucursal: clientData.sucursal || existing.sucursal,
-              contribuyente: clientData.contribuyente || existing.contribuyente,
-              telefonoTutor: clientData.telefonoTutor || existing.telefonoTutor,
-              notes: clientData.notes || existing.notes,
-              address: clientData.address || existing.address,
-              city: clientData.city || existing.city,
-              country: clientData.country || existing.country,
-              contactName: clientData.contactName || existing.contactName,
-              status: clientData.status || existing.status,
-              ...(clientData.customFields ? { customFields: clientData.customFields } : {}),
-            }
-          })
-          skippedClients.push({ name: clientData.name, reason: 'Actualizado (ya existía)' })
-          continue
-        }
-
-        // Crear cliente nuevo
-        const client = await prisma.client.create({
-          data: {
-            companyId,
-            name: clientData.name,
-            email: clientData.email,
-            phone: clientData.phone,
-            phone2: clientData.phone2,
-            cedula: clientData.cedula,
-            ruc: clientData.ruc,
-            alias: clientData.alias,
-            codigoInterno: clientData.codigoInterno,
-            curso: clientData.curso,
-            sucursal: clientData.sucursal,
-            contribuyente: clientData.contribuyente,
-            telefonoTutor: clientData.telefonoTutor,
-            notes: clientData.notes,
-            address: clientData.address,
-            city: clientData.city,
-            country: clientData.country,
-            contactName: clientData.contactName,
-            customFields: clientData.customFields,
-            status: clientData.status || 'ACTIVO'
-          }
-        })
-
-        importedClients.push(client)
-      } catch (error) {
-        console.error('Error importing client:', clientData.name, error)
-        skippedClients.push({ name: clientData.name, reason: 'Error al procesar' })
+      let existing = null;
+      if (clientData.name && nameMap.has(clientData.name.toLowerCase())) {
+        existing = nameMap.get(clientData.name.toLowerCase());
+      } else if (clientData.cedula && cedulaMap.has(clientData.cedula)) {
+        existing = cedulaMap.get(clientData.cedula);
+      } else if (clientData.ruc && rucMap.has(clientData.ruc)) {
+        existing = rucMap.get(clientData.ruc);
       }
+
+      if (existing) {
+        toUpdate.push({ existing, clientData });
+      } else {
+        toCreate.push({
+          companyId,
+          name: clientData.name,
+          email: clientData.email,
+          phone: clientData.phone,
+          phone2: clientData.phone2,
+          cedula: clientData.cedula,
+          ruc: clientData.ruc,
+          alias: clientData.alias,
+          codigoInterno: clientData.codigoInterno,
+          curso: clientData.curso,
+          sucursal: clientData.sucursal,
+          contribuyente: clientData.contribuyente,
+          telefonoTutor: clientData.telefonoTutor,
+          notes: clientData.notes,
+          address: clientData.address,
+          city: clientData.city,
+          country: clientData.country,
+          contactName: clientData.contactName,
+          customFields: clientData.customFields || {},
+          status: clientData.status || 'ACTIVO'
+        });
+        
+        // Registrar en mapas para evitar duplicados en el mismo archivo
+        const newMock = { id: 'temp', name: clientData.name, cedula: clientData.cedula, ruc: clientData.ruc };
+        if (clientData.name) nameMap.set(clientData.name.toLowerCase(), newMock);
+        if (clientData.cedula) cedulaMap.set(clientData.cedula, newMock);
+        if (clientData.ruc) rucMap.set(clientData.ruc, newMock);
+      }
+    }
+
+    // 2. Ejecutar inserciones en bloque
+    if (toCreate.length > 0) {
+      try {
+        await prisma.client.createMany({ data: toCreate, skipDuplicates: true });
+        importedClients.push(...toCreate);
+      } catch (err) {
+        console.error('Error en createMany:', err);
+      }
+    }
+
+    // 3. Ejecutar actualizaciones en lotes paralelos (para no ahogar la DB)
+    const batchSize = 100;
+    for (let i = 0; i < toUpdate.length; i += batchSize) {
+      const batch = toUpdate.slice(i, i + batchSize);
+      await Promise.all(batch.map(item => {
+        const { existing, clientData } = item;
+        if (existing.id === 'temp') {
+          skippedClients.push({ name: clientData.name, reason: 'Duplicado en Excel' });
+          return Promise.resolve();
+        }
+        
+        skippedClients.push({ name: clientData.name, reason: 'Actualizado (ya existía)' });
+        return prisma.client.update({
+          where: { id: existing.id },
+          data: {
+            email: clientData.email || existing.email,
+            phone: clientData.phone || existing.phone,
+            phone2: clientData.phone2 || existing.phone2,
+            cedula: clientData.cedula || existing.cedula,
+            ruc: clientData.ruc || existing.ruc,
+            alias: clientData.alias || existing.alias,
+            codigoInterno: clientData.codigoInterno || existing.codigoInterno,
+            curso: clientData.curso || existing.curso,
+            sucursal: clientData.sucursal || existing.sucursal,
+            contribuyente: clientData.contribuyente || existing.contribuyente,
+            telefonoTutor: clientData.telefonoTutor || existing.telefonoTutor,
+            notes: clientData.notes || existing.notes,
+            address: clientData.address || existing.address,
+            city: clientData.city || existing.city,
+            country: clientData.country || existing.country,
+            contactName: clientData.contactName || existing.contactName,
+            status: clientData.status || existing.status,
+            ...(clientData.customFields ? { customFields: clientData.customFields } : {}),
+          }
+        }).catch(err => console.error('Update error:', err));
+      }));
     }
 
     // Importar ingresos si aplica

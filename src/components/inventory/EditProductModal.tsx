@@ -8,6 +8,7 @@ export interface EditProductTarget {
   name: string
   sku: string
   stock: number
+  cost: number
   publicPrice: number
   minPrice: number
   distributorPrice: number

@@ -341,8 +341,11 @@ function InventarioEdicionPageContent() {
         id: skuWarning.product.id,
         name: skuWarning.product.name,
         sku: skuWarning.product.sku,
+        cost: skuWarning.product.cost,
+        publicPrice: skuWarning.product.publicPrice,
+        minPrice: skuWarning.product.minPrice || 0,
+        distributorPrice: skuWarning.product.distributorPrice || 0,
         stock: skuWarning.product.stock,
-        price: skuWarning.product.price,
       })
     } else {
       // Clear the SKU field and continue
@@ -1069,8 +1072,8 @@ function InventarioEdicionPageContent() {
                   <p className="font-semibold text-blue-600">{skuWarning.product.stock} unidades</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Precio:</span>
-                  <p className="font-semibold text-green-600">${skuWarning.product.price}</p>
+                  <p className="text-xs text-slate-500 uppercase font-semibold">Precio Público</p>
+                  <p className="font-semibold text-green-600">${skuWarning.product.publicPrice}</p>
                 </div>
               </div>
             </div>

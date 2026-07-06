@@ -508,14 +508,14 @@ async function main() {
   const servicesCat = await prisma.productCategory.findFirst({ where: { name: 'Servicios', companyId: extel.id } })
 
   const products = [
-    { sku: 'HW-001', name: 'Laptop Dell XPS 15', categoryId: hardwareCat!.id, stock: 15, cost: 1200, price: 1800, description: 'Laptop profesional' },
-    { sku: 'HW-002', name: 'Monitor LG 27"', categoryId: hardwareCat!.id, stock: 8, cost: 250, price: 400, description: 'Monitor 4K' },
-    { sku: 'SW-001', name: 'Licencia Office 365', categoryId: softwareCat!.id, stock: 50, cost: 80, price: 150, description: 'Licencia anual' },
-    { sku: 'SW-002', name: 'Antivirus Kaspersky', categoryId: softwareCat!.id, stock: 30, cost: 40, price: 80, description: 'ProtecciÃ³n empresarial' },
-    { sku: 'SV-001', name: 'ConsultorÃ­a IT', categoryId: servicesCat!.id, stock: 100, cost: 50, price: 120, description: 'Hora de consultorÃ­a' },
-    { sku: 'SV-002', name: 'Soporte TÃ©cnico', categoryId: servicesCat!.id, stock: 100, cost: 30, price: 75, description: 'Hora de soporte' },
-    { sku: 'HW-003', name: 'Teclado MecÃ¡nico', categoryId: hardwareCat!.id, stock: 25, cost: 60, price: 120, description: 'Teclado gaming' },
-    { sku: 'HW-004', name: 'Mouse InalÃ¡mbrico', categoryId: hardwareCat!.id, stock: 40, cost: 15, price: 35, description: 'Mouse ergonÃ³mico' },
+    { sku: 'HW-001', name: 'Laptop Dell XPS 15', categoryId: hardwareCat!.id, stock: 15, cost: 1200, publicPrice: 1800, description: 'Laptop profesional' },
+    { sku: 'HW-002', name: 'Monitor LG 27"', categoryId: hardwareCat!.id, stock: 8, cost: 250, publicPrice: 400, description: 'Monitor 4K' },
+    { sku: 'SW-001', name: 'Licencia Office 365', categoryId: softwareCat!.id, stock: 50, cost: 80, publicPrice: 150, description: 'Licencia anual' },
+    { sku: 'SW-002', name: 'Antivirus Kaspersky', categoryId: softwareCat!.id, stock: 30, cost: 40, publicPrice: 80, description: 'ProtecciÃ³n empresarial' },
+    { sku: 'SV-001', name: 'ConsultorÃ­a IT', categoryId: servicesCat!.id, stock: 100, cost: 50, publicPrice: 120, description: 'Hora de consultorÃ­a' },
+    { sku: 'SV-002', name: 'Soporte TÃ©cnico', categoryId: servicesCat!.id, stock: 100, cost: 30, publicPrice: 75, description: 'Hora de soporte' },
+    { sku: 'HW-003', name: 'Teclado MecÃ¡nico', categoryId: hardwareCat!.id, stock: 25, cost: 60, publicPrice: 120, description: 'Teclado gaming' },
+    { sku: 'HW-004', name: 'Mouse InalÃ¡mbrico', categoryId: hardwareCat!.id, stock: 40, cost: 15, publicPrice: 35, description: 'Mouse ergonÃ³mico' },
   ]
 
   for (const product of products) {
@@ -532,7 +532,7 @@ async function main() {
         description: product.description,
         stock: product.stock,
         cost: product.cost,
-        price: product.price,
+        publicPrice: product.publicPrice,
       },
       create: {
         companyId: extel.id,
@@ -542,7 +542,7 @@ async function main() {
         description: product.description,
         stock: product.stock,
         cost: product.cost,
-        price: product.price,
+        publicPrice: product.publicPrice,
       },
     })
   }

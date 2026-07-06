@@ -52,14 +52,14 @@ export async function GET(req: Request) {
     const topProducts = await Promise.all(topProductsRaw.map(async (item) => {
       const product = await prisma.product.findUnique({
         where: { id: item.productId as string },
-        select: { name: true, sku: true, price: true, cost: true }
+        select: { name: true, sku: true, publicPrice: true, cost: true }
       })
       return {
         name: product?.name || 'Desconocido',
         sku: product?.sku || 'N/A',
         totalSold: item._sum.quantity,
-        revenue: (item._sum.quantity || 0) * (product?.price || 0),
-        profit: (item._sum.quantity || 0) * ((product?.price || 0) - (product?.cost || 0))
+        revenue: (item._sum.quantity || 0) * (product?.publicPrice || 0),
+        profit: (item._sum.quantity || 0) * ((product?.publicPrice || 0) - (product?.cost || 0))
       }
     }))
 
