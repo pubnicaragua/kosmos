@@ -3,7 +3,7 @@ import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
 import { getCompanyAccess } from '@/lib/company-access'
-import { checkDbDuplicateCedulaRuc, findFileDuplicates, validateRowFormat } from '@/lib/client-validations'
+import { findFileDuplicates, validateRowFormat } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,32 +90,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const allRowErrors: string[] = []
-    for (let i = 0; i < result.clients.length; i++) {
-      const cd = result.clients[i]
-      const formatErrors = validateRowFormat(cd)
-      formatErrors.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
-
-      const fileDups = findFileDuplicates(result.clients, i)
-      fileDups.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
-
-      const dbDups = await checkDbDuplicateCedulaRuc(companyId, {
-        cedula: cd.cedula,
-        ruc: cd.ruc,
-      })
-      dbDups.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
-    }
-    if (allRowErrors.length > 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Errores de validación en el archivo',
-        details: allRowErrors,
-      }, { status: 400 })
-    }
-
-    const importedClients: any[] = []
-    const skippedClients: any[] = []
-    
     // 1. Obtener todos los clientes existentes en memoria para búsqueda O(1)
     const existingDbClients = await prisma.client.findMany({
       where: { companyId },
@@ -136,6 +110,35 @@ export async function POST(request: NextRequest) {
       if (c.cedula) cedulaMap.set(c.cedula, c);
       if (c.ruc) rucMap.set(c.ruc, c);
     }
+
+    // Validación previa (formato, duplicados en archivo, duplicados en BD)
+    const allRowErrors: string[] = []
+    for (let i = 0; i < result.clients.length; i++) {
+      const cd = result.clients[i]
+      const formatErrors = validateRowFormat(cd)
+      formatErrors.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
+
+      const fileDups = findFileDuplicates(result.clients, i)
+      fileDups.forEach(e => allRowErrors.push(`Fila ${i + 2}: ${e.message}`))
+
+      // Verificar contra BD (mapas en memoria, sin queries por fila)
+      if (cd.ruc?.trim() && rucMap.has(cd.ruc.trim())) {
+        allRowErrors.push(`Fila ${i + 2}: RUC "${cd.ruc}" ya está registrado en cliente "${rucMap.get(cd.ruc.trim()).name}"`)
+      }
+      if (cd.cedula?.trim() && cedulaMap.has(cd.cedula.trim())) {
+        allRowErrors.push(`Fila ${i + 2}: Cédula "${cd.cedula}" ya está registrada en cliente "${cedulaMap.get(cd.cedula.trim()).name}"`)
+      }
+    }
+    if (allRowErrors.length > 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Errores de validación en el archivo',
+        details: allRowErrors,
+      }, { status: 400 })
+    }
+
+    const importedClients: any[] = []
+    const skippedClients: any[] = []
 
     const toCreate = [];
     const toUpdate = [];

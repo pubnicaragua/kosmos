@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import { parseExcelFileAllSheets } from '@/lib/import-clients'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
-import { validateRowFormat, checkDbDuplicateCedulaRuc, findFileDuplicates, groupErrors } from '@/lib/client-validations'
+import { validateRowFormat, findFileDuplicates, groupErrors } from '@/lib/client-validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Batch fetch all existing cedulas/rucs for this company (single query)
+    const existingClients = await prisma.client.findMany({
+      where: { companyId },
+      select: { name: true, cedula: true, ruc: true },
+    })
+    const cedulaMap = new Map<string, string>()
+    const rucMap = new Map<string, string>()
+    for (const c of existingClients) {
+      if (c.cedula) cedulaMap.set(c.cedula, c.name)
+      if (c.ruc) rucMap.set(c.ruc, c.name)
+    }
+
     const validRows: { rowIndex: number; data: (typeof result.clients)[0] }[] = []
     const invalidRows: { rowIndex: number; data: (typeof result.clients)[0]; errors: string[] }[] = []
     const allErrors: { field: string; message: string }[] = []
@@ -70,14 +83,23 @@ export async function POST(request: NextRequest) {
         allErrors.push(e)
       })
 
-      const dbDuplicates = await checkDbDuplicateCedulaRuc(companyId, {
-        cedula: clientData.cedula,
-        ruc: clientData.ruc,
-      })
-      dbDuplicates.forEach(e => {
-        rowErrors.push(e.message)
-        allErrors.push(e)
-      })
+      // Check against batch-loaded DB maps
+      if (clientData.ruc?.trim()) {
+        const owner = rucMap.get(clientData.ruc.trim())
+        if (owner) {
+          const msg = `RUC "${clientData.ruc}" ya está registrado en cliente "${owner}"`
+          rowErrors.push(msg)
+          allErrors.push({ field: 'ruc', message: msg })
+        }
+      }
+      if (clientData.cedula?.trim()) {
+        const owner = cedulaMap.get(clientData.cedula.trim())
+        if (owner) {
+          const msg = `Cédula "${clientData.cedula}" ya está registrada en cliente "${owner}"`
+          rowErrors.push(msg)
+          allErrors.push({ field: 'cedula', message: msg })
+        }
+      }
 
       if (rowErrors.length > 0) {
         invalidRows.push({ rowIndex: i, data: clientData, errors: rowErrors })
