@@ -925,9 +925,14 @@ function InventarioEdicionPageContent() {
                     <td className="py-3 px-4">
                       <Input
                         type="number"
+                        min="0"
                         value={row.stock || 0}
                         onChange={(e) => updateRow(index, 'stock', parseInt(e.target.value) || 0)}
-                        onKeyDown={(e) => handleKeyDown(e, index)}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                          handleKeyDown(e as any, index);
+                          if (e.key === '-') e.preventDefault();
+                        }}
                         placeholder="0"
                         fullWidth
                       />
@@ -936,9 +941,14 @@ function InventarioEdicionPageContent() {
                   <td className="py-3 px-4">
                     <Input
                       type="number"
+                      min="0"
                       value={row.cost}
                       onChange={(e) => updateRow(index, 'cost', parseFloat(e.target.value) || 0)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        handleKeyDown(e as any, index);
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       placeholder={index === rows.length - 1 ? 'Costo...' : '18 $'}
                       fullWidth
                     />
@@ -946,9 +956,14 @@ function InventarioEdicionPageContent() {
                   <td className="py-3 px-4">
                     <Input
                       type="number"
+                      min="0"
                       value={row.publicPrice}
                       onChange={(e) => updateRow(index, 'publicPrice', parseFloat(e.target.value) || 0)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        handleKeyDown(e as any, index);
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       placeholder={index === rows.length - 1 ? 'PUB...' : '34 $'}
                       fullWidth
                       className={row.publicPrice < row.cost ? '!border-red-500 bg-red-50' : ''}
@@ -957,9 +972,14 @@ function InventarioEdicionPageContent() {
                   <td className="py-3 px-4">
                     <Input
                       type="number"
+                      min="0"
                       value={row.minPrice}
                       onChange={(e) => updateRow(index, 'minPrice', parseFloat(e.target.value) || 0)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        handleKeyDown(e as any, index);
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       placeholder={index === rows.length - 1 ? 'MIN...' : '30 $'}
                       fullWidth
                       className={row.minPrice < row.cost ? '!border-red-500 bg-red-50' : ''}
@@ -968,9 +988,14 @@ function InventarioEdicionPageContent() {
                   <td className="py-3 px-4">
                     <Input
                       type="number"
+                      min="0"
                       value={row.distributorPrice}
                       onChange={(e) => updateRow(index, 'distributorPrice', parseFloat(e.target.value) || 0)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        handleKeyDown(e as any, index);
+                        if (e.key === '-') e.preventDefault();
+                      }}
                       placeholder={index === rows.length - 1 ? 'DIS...' : '28 $'}
                       fullWidth
                       className={row.distributorPrice < row.cost ? '!border-red-500 bg-red-50' : ''}

@@ -244,8 +244,11 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
                 <label className={labelBase}>Stock</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.stock}
                   onChange={(e) => updateField('stock', e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                   className={`${inputBase} text-center`}
                   placeholder="0"
                 />
@@ -255,8 +258,11 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
                 <label className={labelBase}>Costo</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.cost}
                   onChange={(e) => updateField('cost', e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                   className={`${inputBase} text-right`}
                   placeholder="0"
                 />
@@ -266,8 +272,11 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
                 <label className={labelBase}>Precio Público</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.publicPrice}
                   onChange={(e) => updateField('publicPrice', e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                   className={`${inputBase} text-right ${Number(form.publicPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
                   placeholder="0"
                 />
@@ -277,8 +286,11 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
                 <label className={labelBase}>Precio Mínimo</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.minPrice}
                   onChange={(e) => updateField('minPrice', e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                   className={`${inputBase} text-right ${Number(form.minPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
                   placeholder="0"
                 />
@@ -288,8 +300,11 @@ export function EditProductModal({ product, onClose, onSaved }: EditProductModal
                 <label className={labelBase}>Precio Distribuidor</label>
                 <input
                   type="number"
+                  min="0"
                   value={form.distributorPrice}
                   onChange={(e) => updateField('distributorPrice', e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                   className={`${inputBase} text-right ${Number(form.distributorPrice) < Number(form.cost) ? 'border-red-400 bg-red-50' : ''}`}
                   placeholder="0"
                 />

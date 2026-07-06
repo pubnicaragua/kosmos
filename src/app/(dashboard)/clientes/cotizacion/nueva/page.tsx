@@ -758,8 +758,11 @@ useEffect(() => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Porcentaje de Margen (%)</label>
                   <Input
                     type="number"
+                    min="0"
                     value={customMargin}
                     onChange={(e) => setCustomMargin(parseFloat(e.target.value) || 0)}
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => { if (e.key === '-') e.preventDefault() }}
                     fullWidth
                     placeholder="Ej: 20"
                   />
