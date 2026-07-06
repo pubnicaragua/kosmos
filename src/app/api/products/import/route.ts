@@ -83,13 +83,32 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        let categoryId = null
+        if (normalizedRow.category) {
+          const cat = await prisma.productCategory.findFirst({
+            where: { companyId, name: String(normalizedRow.category) }
+          })
+          if (cat) {
+            categoryId = cat.id
+          } else {
+            const newCat = await prisma.productCategory.create({
+              data: { companyId, name: String(normalizedRow.category) }
+            })
+            categoryId = newCat.id
+          }
+        }
+
+        const basePrice = normalizedRow.price || 0
+
         // Crear producto
         await prisma.product.create({
           data: {
             name: normalizedRow.name || normalizedRow.sku,
             sku: normalizedRow.sku || `AUTO-${Date.now()}`,
-            category: normalizedRow.category || 'General',
-            price: normalizedRow.price || 0,
+            categoryId,
+            publicPrice: basePrice,
+            minPrice: basePrice * 0.9,
+            distributorPrice: basePrice * 0.8,
             cost: normalizedRow.cost || 0,
             stock: normalizedRow.stock || 0,
             minStock: normalizedRow.minStock || 0,
