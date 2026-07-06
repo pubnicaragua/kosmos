@@ -42,7 +42,7 @@ interface PurchaseReason {
 }
 
 const TYPES = [
-  { value: '', label: '' },
+  { value: '', label: 'Seleccionar tipo...', disabled: true, hidden: true },
   { value: 'REPOSICION', label: 'Reposición de Inventario' },
   { value: 'PRODUCTO_NUEVO', label: 'Producto Nuevo' },
   { value: 'PEDIDO_ESPECIAL', label: 'Pedido Especial (Proyecto)' },
@@ -511,8 +511,7 @@ export default function NuevaSolicitudPage() {
                           type="number"
                           min="0"
                           value={item.currentStock}
-                          onChange={(e) => updateItem(item.tempId, 'currentStock', parseInt(e.target.value) || 0)}
-                          disabled={!!item.productId}
+                          disabled={true}
                           className="bg-white border-slate-200 rounded-xl font-bold"
                         />
                       </div>
@@ -525,6 +524,7 @@ export default function NuevaSolicitudPage() {
                           type="number"
                           min="1"
                           value={item.requestedQuantity}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => updateItem(item.tempId, 'requestedQuantity', parseInt(e.target.value) || 0)}
                           className="bg-white border-slate-200 rounded-xl font-bold text-lg"
                         />
@@ -638,7 +638,7 @@ export default function NuevaSolicitudPage() {
                 <label className="text-[11px] font-black text-slate-500 uppercase tracking-tighter ml-1">Área Solicitante</label>
                 <Select 
                   options={[
-                    { value: '', label: 'Seleccionar área...' },
+                    { value: '', label: 'Seleccionar área...', disabled: true, hidden: true },
                     ...departments.map(d => ({ value: d.id, label: d.name }))
                   ]}
                   value={formData.requestingArea}
