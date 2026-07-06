@@ -57,6 +57,7 @@ export default function NuevoClientePage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const validate = () => {
     const errs: Record<string, string> = {}
@@ -107,6 +108,48 @@ export default function NuevoClientePage() {
     }
     return null
   }
+
+  const checkFieldUniqueness = async (field: 'ruc' | 'cedula') => {
+    const val = field === 'ruc' ? formData.ruc : formData.cedula
+    if (!val || !selectedCompany) return
+    const params = new URLSearchParams({ companyId: selectedCompany })
+    params.append(field, val)
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch(`/api/clients/check-cedula-ruc?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success && data.data.conflicts.length > 0) {
+        setFieldErrors(prev => ({ ...prev, [field]: data.data.conflicts[0] || '' }))
+      } else {
+        setFieldErrors(prev => ({ ...prev, [field]: '' }))
+      }
+    } catch {}
+  }
+
+  const handleFieldBlur = (field: 'ruc' | 'cedula') => {
+    const val = field === 'ruc' ? formData.ruc : formData.cedula
+    if (!val) return
+    const validator = field === 'ruc' ? validateRuc : validateCedula
+    const fmt = validator(val)
+    if (!fmt.valid) {
+      setFieldErrors(prev => ({ ...prev, [field]: fmt.message || '' }))
+      return
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: '' }))
+    checkFieldUniqueness(field)
+  }
+
+  const handleFieldChange = (field: 'ruc' | 'cedula', value: string) => {
+    const processed = field === 'ruc' ? formatRuc(value) : formatCedula(value)
+    setFormData(prev => ({ ...prev, [field]: processed }))
+    setErrors(prev => ({ ...prev, [field]: '' }))
+    setFieldErrors(prev => ({ ...prev, [field]: '' }))
+  }
+
+  const hasBlockingErrors = Object.keys(fieldErrors).length > 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -258,13 +301,15 @@ export default function NuevoClientePage() {
               <Input
                 type="text"
                 value={formData.ruc}
-                onChange={(e) => { const v = formatRuc(e.target.value); setFormData({ ...formData, ruc: v }); setErrors(prev => ({ ...prev, ruc: '' })) }}
+                onChange={(e) => handleFieldChange('ruc', e.target.value)}
+                onBlur={() => handleFieldBlur('ruc')}
                 placeholder="J0310000000000"
                 fullWidth
-                className={errors.ruc ? 'border-red-400' : ''}
+                className={errors.ruc || fieldErrors.ruc ? 'border-red-400' : ''}
               />
               {errors.ruc && <p className="mt-1 text-sm text-red-600">{errors.ruc}</p>}
-              {formData.ruc && !errors.ruc && validateRuc(formData.ruc).valid === false && <p className="mt-1 text-xs text-red-500">{validateRuc(formData.ruc).message}</p>}
+              {fieldErrors.ruc && <p className="mt-1 text-xs text-red-500">{fieldErrors.ruc}</p>}
+              {formData.ruc && !errors.ruc && !fieldErrors.ruc && validateRuc(formData.ruc).valid === false && <p className="mt-1 text-xs text-red-500">{validateRuc(formData.ruc).message}</p>}
             </div>
 
             <div>
@@ -272,13 +317,15 @@ export default function NuevoClientePage() {
               <Input
                 type="text"
                 value={formData.cedula}
-                onChange={(e) => { const v = formatCedula(e.target.value); setFormData({ ...formData, cedula: v }); setErrors(prev => ({ ...prev, cedula: '' })) }}
+                onChange={(e) => handleFieldChange('cedula', e.target.value)}
+                onBlur={() => handleFieldBlur('cedula')}
                 placeholder="001-010101-0001A"
                 fullWidth
-                className={errors.cedula ? 'border-red-400' : ''}
+                className={errors.cedula || fieldErrors.cedula ? 'border-red-400' : ''}
               />
               {errors.cedula && <p className="mt-1 text-sm text-red-600">{errors.cedula}</p>}
-              {formData.cedula && !errors.cedula && validateCedula(formData.cedula).valid === false && <p className="mt-1 text-xs text-red-500">{validateCedula(formData.cedula).message}</p>}
+              {fieldErrors.cedula && <p className="mt-1 text-xs text-red-500">{fieldErrors.cedula}</p>}
+              {formData.cedula && !errors.cedula && !fieldErrors.cedula && validateCedula(formData.cedula).valid === false && <p className="mt-1 text-xs text-red-500">{validateCedula(formData.cedula).message}</p>}
             </div>
 
             <div>
@@ -332,7 +379,7 @@ export default function NuevoClientePage() {
             <Button type="button" variant="outline" onClick={() => router.push('/clientes')}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || hasBlockingErrors}>
               {isSaving ? 'Guardando...' : 'Crear Cliente'}
             </Button>
           </div>

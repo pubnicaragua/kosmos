@@ -543,7 +543,6 @@ function InventarioPageContent() {
       'PRECIO PUB': p.publicPrice,
       'PRECIO MIN': p.minPrice,
       'PRECIO DIS': p.distributorPrice,
-      'PROMO': p.promotion || ''
     }))
 
     exportWithCompanyHeader(

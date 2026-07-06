@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { ArrowLeft, Mail, Phone, MapPin, Building2, User, Calendar, Edit, Trash2, FileText, Plus } from 'lucide-react'
+import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nicaragua-validators'
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
@@ -66,6 +67,8 @@ export default function ClientDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<Client>>({})
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -134,6 +137,42 @@ export default function ClientDetailPage() {
     }
   }, [params.id, router])
 
+  const checkFieldUniqueness = async (field: 'ruc' | 'cedula') => {
+    const val = field === 'ruc' ? editData.ruc : editData.cedula
+    if (!val || !client?.company?.id) return
+    const sp = new URLSearchParams({ companyId: client.company.id })
+    sp.append(field, val)
+    sp.append('excludeId', params.id as string)
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+    try {
+      const res = await fetch(`/api/clients/check-cedula-ruc?${sp}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success && data.data.conflicts.length > 0) {
+        setFieldErrors(prev => ({ ...prev, [field]: data.data.conflicts[0] || '' }))
+      } else {
+        setFieldErrors(prev => ({ ...prev, [field]: '' }))
+      }
+    } catch {}
+  }
+
+  const handleFieldBlur = (field: 'ruc' | 'cedula') => {
+    const val = field === 'ruc' ? editData.ruc : editData.cedula
+    if (!val) return
+    const validator = field === 'ruc' ? validateRuc : validateCedula
+    const fmt = validator(val)
+    if (!fmt.valid) {
+      setFieldErrors(prev => ({ ...prev, [field]: fmt.message || '' }))
+      return
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: '' }))
+    checkFieldUniqueness(field)
+  }
+
+  const hasBlockingErrors = Object.keys(fieldErrors).length > 0
+
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('accessToken')
@@ -155,6 +194,7 @@ export default function ClientDetailPage() {
         }
       }
 
+      setIsSaving(true)
       const response = await fetch(`/api/clients/${params.id}`, {
         method: 'PUT',
         headers: {
@@ -175,6 +215,8 @@ export default function ClientDetailPage() {
       }
     } catch (err) {
       alert('Error de conexión')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -260,9 +302,10 @@ export default function ClientDetailPage() {
               {permissions.canEdit && (
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  disabled={isSaving || hasBlockingErrors}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white ${isSaving || hasBlockingErrors ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                 >
-                  Guardar
+                  {isSaving ? 'Guardando...' : 'Guardar'}
                 </button>
               )}
               <button
@@ -404,13 +447,17 @@ export default function ClientDetailPage() {
               <div className="flex-1">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">RUC</p>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editData.ruc || ''}
-                    onChange={(e) => setEditData({ ...editData, ruc: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="J0310000000000"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={editData.ruc || ''}
+                      onChange={(e) => { setEditData({ ...editData, ruc: formatRuc(e.target.value) }); setFieldErrors(prev => { const n = { ...prev }; delete n.ruc; return n }) }}
+                      onBlur={() => handleFieldBlur('ruc')}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.ruc ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+                      placeholder="J0310000000000"
+                    />
+                    {fieldErrors.ruc && <p className="mt-1 text-xs text-red-500">{fieldErrors.ruc}</p>}
+                  </>
                 ) : (
                   <p className="text-base font-medium text-slate-900">{client.ruc}</p>
                 )}
@@ -424,13 +471,17 @@ export default function ClientDetailPage() {
               <div className="flex-1">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Cédula</p>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editData.cedula || ''}
-                    onChange={(e) => setEditData({ ...editData, cedula: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="000-000000-0000A"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={editData.cedula || ''}
+                      onChange={(e) => { setEditData({ ...editData, cedula: formatCedula(e.target.value) }); setFieldErrors(prev => { const n = { ...prev }; delete n.cedula; return n }) }}
+                      onBlur={() => handleFieldBlur('cedula')}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${fieldErrors.cedula ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+                      placeholder="000-000000-0000A"
+                    />
+                    {fieldErrors.cedula && <p className="mt-1 text-xs text-red-500">{fieldErrors.cedula}</p>}
+                  </>
                 ) : (
                   <p className="text-base font-medium text-slate-900">{client.cedula}</p>
                 )}

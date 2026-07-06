@@ -1041,7 +1041,11 @@ function ClientesPageContent() {
                   </td>
                   <td className="py-2 px-2">
                     <div className="flex items-center justify-center gap-2">
-                      <Button size="sm" onClick={() => saveRow(row, 'create')}>Guardar</Button>
+                      {(() => {
+                        const hasFmt = (row.ruc && !validateRuc(row.ruc).valid) || (row.cedula && !validateCedula(row.cedula).valid)
+                        const hasUniq = rowFieldErrors[`draft-${row.tempId}-ruc`] || rowFieldErrors[`draft-${row.tempId}-cedula`]
+                        return <Button size="sm" onClick={() => saveRow(row, 'create')} disabled={hasFmt || !!hasUniq}>Guardar</Button>
+                      })()}
                       <Button size="sm" variant="outline" onClick={() => setDraftRows((prev) => prev.filter((item) => item.tempId !== row.tempId))}>Quitar</Button>
                     </div>
                   </td>
@@ -1176,7 +1180,12 @@ function ClientesPageContent() {
                     </td>
                     <td className="py-2 px-2">
                       <div className="flex items-center justify-center gap-2">
-                        <Button size="sm" onClick={() => saveRow(editingRows[client.id], 'update')}>Guardar</Button>
+                        {(() => {
+                          const ed = editingRows[client.id]
+                          const hasFmt = (ed.ruc && !validateRuc(ed.ruc).valid) || (ed.cedula && !validateCedula(ed.cedula).valid)
+                          const hasUniq = rowFieldErrors[`edit-${client.id}-ruc`] || rowFieldErrors[`edit-${client.id}-cedula`]
+                          return <Button size="sm" onClick={() => saveRow(ed, 'update')} disabled={hasFmt || !!hasUniq}>Guardar</Button>
+                        })()}
                         <Button size="sm" variant="outline" onClick={() => cancelEditingRow(client.id)}>Cancelar</Button>
                       </div>
                     </td>
