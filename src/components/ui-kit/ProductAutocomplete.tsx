@@ -51,7 +51,7 @@ export function ProductAutocomplete({
       const token = localStorage.getItem('accessToken')
       if (!token) return
       try {
-        const res = await fetch(`/api/products?companyId=${companyId}`, {
+        const res = await fetch(`/api/products?companyId=${companyId}&limit=10000`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()

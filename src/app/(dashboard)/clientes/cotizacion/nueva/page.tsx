@@ -232,7 +232,7 @@ useEffect(() => {
       }
 
       try {
-        const params = new URLSearchParams({ companyId: selectedCompany })
+        const params = new URLSearchParams({ companyId: selectedCompany, limit: '10000' })
         const response = await fetch(`/api/products?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         })

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '10', 10)
     const safePage = Number.isNaN(page) || page < 1 ? 1 : page
-    const safeLimit = Number.isNaN(limit) || limit < 1 ? 10 : Math.min(limit, 100)
+    const safeLimit = Number.isNaN(limit) || limit < 1 ? 10 : Math.min(limit, 10000)
     const skip = (safePage - 1) * safeLimit
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
@@ -68,10 +68,14 @@ export async function GET(request: NextRequest) {
       }
     }
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
-      ]
+      const searchTerms = search.trim().split(/\s+/)
+      where.AND = searchTerms.map(term => ({
+        OR: [
+          { name: { contains: term, mode: 'insensitive' } },
+          { sku: { contains: term, mode: 'insensitive' } },
+          { description: { contains: term, mode: 'insensitive' } }
+        ]
+      }))
     }
     
     if (stockFilter === 'high') {
