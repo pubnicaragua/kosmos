@@ -171,7 +171,7 @@ export default function ClientDetailPage() {
     checkFieldUniqueness(field)
   }
 
-  const hasBlockingErrors = Object.keys(fieldErrors).length > 0
+  const hasBlockingErrors = Object.values(fieldErrors).some(err => err !== '')
 
   const handleSave = async () => {
     try {

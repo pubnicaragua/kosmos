@@ -149,7 +149,7 @@ export default function NuevoClientePage() {
     setFieldErrors(prev => ({ ...prev, [field]: '' }))
   }
 
-  const hasBlockingErrors = Object.keys(fieldErrors).length > 0
+  const hasBlockingErrors = Object.values(fieldErrors).some(err => err !== '')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
