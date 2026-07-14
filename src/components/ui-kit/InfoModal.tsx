@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 interface InfoModalProps {
   isOpen: boolean
@@ -23,8 +24,8 @@ export function InfoModal({ isOpen, onClose, title, children }: InfoModalProps) 
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return typeof document !== 'undefined' ? createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
@@ -53,6 +54,7 @@ export function InfoModal({ isOpen, onClose, title, children }: InfoModalProps) 
           </button>
         </div>
       </div>
-    </div>
-  )
+    </div>,
+    document.body
+  ) : null
 }

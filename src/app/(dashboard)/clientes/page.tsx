@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui-kit/Card'
 import { Select } from '@/components/ui-kit/Select'
@@ -1828,10 +1829,10 @@ function ClientesPageContent() {
         </div>
       )}
 
-      {quickViewClient && (
+      {quickViewClient && typeof document !== 'undefined' && createPortal(
         <>
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={closeQuickView} />
-          <aside className="fixed right-0 top-0 z-50 h-full w-full max-w-[430px] bg-white border-l border-slate-200 shadow-2xl overflow-y-auto">
+          <div className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm" onClick={closeQuickView} />
+          <aside className="fixed right-0 top-0 z-[9999] h-full w-full max-w-[430px] bg-white border-l border-slate-200 shadow-2xl overflow-y-auto">
             <div className="p-6 border-b border-slate-100">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -2037,8 +2038,7 @@ function ClientesPageContent() {
               )}
             </div>
           </aside>
-        </>
-      )}
+        </>, document.body)}
     </div>
   )
 }

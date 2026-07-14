@@ -245,7 +245,7 @@ export function Header() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex-shrink-0 z-10 relative">
+    <header className="bg-white border-b border-gray-200 h-16 flex-shrink-0">
       <div className="h-full px-6 flex items-center justify-between">
         <div className="flex items-center gap-4 flex-1 max-w-xl">
           <div ref={searchRef} className="relative flex-1">
