@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ClientOption {
   id: string
@@ -97,6 +98,30 @@ export function ClientAutocomplete({
     setIsOpen(false)
   }
 
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
+
+  useEffect(() => {
+    if (isOpen && wrapperRef.current) {
+      const updatePosition = () => {
+        if (!wrapperRef.current) return
+        const rect = wrapperRef.current.getBoundingClientRect()
+        setDropdownStyle({
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        })
+      }
+      updatePosition()
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true)
+        window.removeEventListener('resize', updatePosition)
+      }
+    }
+  }, [isOpen])
+
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <input
@@ -112,8 +137,8 @@ export function ClientAutocomplete({
         disabled={disabled}
         className={`w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
       />
-      {isOpen && filtered.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+      {isOpen && filtered.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div style={dropdownStyle} className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
           {filtered.map((c) => (
             <button
               key={c.id}
@@ -127,8 +152,10 @@ export function ClientAutocomplete({
               )}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
 }
+

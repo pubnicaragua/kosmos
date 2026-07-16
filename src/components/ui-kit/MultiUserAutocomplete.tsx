@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 interface User {
   userId: string
@@ -84,6 +85,30 @@ export function MultiUserAutocomplete({
     onChange(next.join(','))
   }
 
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
+
+  useEffect(() => {
+    if (isOpen && wrapperRef.current) {
+      const updatePosition = () => {
+        if (!wrapperRef.current) return
+        const rect = wrapperRef.current.getBoundingClientRect()
+        setDropdownStyle({
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        })
+      }
+      updatePosition()
+      window.addEventListener('scroll', updatePosition, true)
+      window.addEventListener('resize', updatePosition)
+      return () => {
+        window.removeEventListener('scroll', updatePosition, true)
+        window.removeEventListener('resize', updatePosition)
+      }
+    }
+  }, [isOpen])
+
   return (
     <div ref={wrapperRef} className={`relative ${fullWidth ? 'w-full' : ''}`}>
       <div className="flex flex-wrap gap-1 min-h-[36px] px-2 py-1 border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-primary focus-within:border-transparent">
@@ -111,8 +136,8 @@ export function MultiUserAutocomplete({
           className="flex-1 min-w-[80px] text-sm outline-none bg-transparent py-0.5"
         />
       </div>
-      {isOpen && filteredUsers.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+      {isOpen && filteredUsers.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div style={dropdownStyle} className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {filteredUsers.map((u) => (
             <button
               key={u.userId}
@@ -124,8 +149,10 @@ export function MultiUserAutocomplete({
               <span className="text-xs text-gray-500">{u.user.email}</span>
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
 }
+
