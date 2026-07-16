@@ -31,6 +31,7 @@ export function MultiUserAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const selected: string[] = value
     ? value.split(',').map((s) => s.trim()).filter(Boolean)
@@ -56,7 +57,11 @@ export function MultiUserAutocomplete({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const clickedInsideWrapper = wrapperRef.current?.contains(target)
+      const clickedInsideDropdown = dropdownRef.current?.contains(target)
+      
+      if (!clickedInsideWrapper && !clickedInsideDropdown) {
         setIsOpen(false)
       }
     }
@@ -96,7 +101,7 @@ export function MultiUserAutocomplete({
           position: 'fixed',
           top: rect.bottom + 4,
           left: rect.left,
-          width: rect.width,
+          minWidth: Math.max(rect.width, 320),
         })
       }
       updatePosition()
@@ -137,16 +142,20 @@ export function MultiUserAutocomplete({
         />
       </div>
       {isOpen && filteredUsers.length > 0 && typeof document !== 'undefined' && createPortal(
-        <div style={dropdownStyle} className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <div 
+          ref={dropdownRef}
+          style={dropdownStyle} 
+          className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+        >
           {filteredUsers.map((u) => (
             <button
               key={u.userId}
               type="button"
               onClick={() => addUser(u.user.name)}
-              className="w-full px-4 py-2 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0"
+              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0"
             >
               <span className="text-sm font-medium text-gray-900">{u.user.name}</span>
-              <span className="text-xs text-gray-500">{u.user.email}</span>
+              <span className="text-xs text-gray-500 mt-1">{u.user.email}</span>
             </button>
           ))}
         </div>,

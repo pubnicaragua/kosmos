@@ -33,6 +33,7 @@ export function ClientAutocomplete({
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState(value)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // If value looks like an ID (cuid format), find the client name
@@ -74,7 +75,11 @@ export function ClientAutocomplete({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const clickedInsideWrapper = wrapperRef.current?.contains(target)
+      const clickedInsideDropdown = dropdownRef.current?.contains(target)
+      
+      if (!clickedInsideWrapper && !clickedInsideDropdown) {
         setIsOpen(false)
       }
     }
@@ -109,7 +114,7 @@ export function ClientAutocomplete({
           position: 'fixed',
           top: rect.bottom + 4,
           left: rect.left,
-          width: rect.width,
+          minWidth: Math.max(rect.width, 320),
         })
       }
       updatePosition()
@@ -138,17 +143,21 @@ export function ClientAutocomplete({
         className={`w-full px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
       />
       {isOpen && filtered.length > 0 && typeof document !== 'undefined' && createPortal(
-        <div style={dropdownStyle} className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+        <div 
+          ref={dropdownRef}
+          style={dropdownStyle} 
+          className="z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+        >
           {filtered.map((c) => (
             <button
               key={c.id}
               type="button"
               onClick={() => handleSelect(c)}
-              className="w-full px-3 py-2 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0"
+              className="w-full px-4 py-3 text-left hover:bg-gray-50 flex flex-col border-b border-gray-100 last:border-b-0"
             >
               <span className="text-sm font-medium text-gray-900">{c.name}</span>
               {(c.contactName || c.email) && (
-                <span className="text-xs text-gray-500">{c.contactName || c.email}</span>
+                <span className="text-xs text-gray-500 mt-1">{c.contactName || c.email}</span>
               )}
             </button>
           ))}
