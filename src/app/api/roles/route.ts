@@ -31,7 +31,7 @@ const PREDEFINED_ROLES = [
     name: 'RRHH',
     description: 'Gestión de recursos humanos y nóminas',
     color: '#f59e0b',
-    modules: { empleados: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
+    modules: { 'recursos-humanos': { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, actividades: { canView: true, canCreate: true, canEdit: true, canDelete: true, canExport: true }, documentos: { canView: true, canCreate: true, canEdit: true, canDelete: false, canExport: true }, contratos: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: true }, dashboard: { canView: true, canCreate: false, canEdit: false, canDelete: false, canExport: false } },
   },
   {
     name: 'Inventario',
