@@ -51,7 +51,7 @@ interface Payroll {
 }
 
 export default function RecursosHumanosPage() {
-  const permissions = useModulePermissions('empleados', { requireAction: 'view' })
+  const permissions = useModulePermissions('recursos-humanos', { requireAction: 'view' })
   const [activeTab, setActiveTab] = useState<'employees' | 'payrolls'>('employees')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activeCompany, setActiveCompany] = useState<any>(null)
