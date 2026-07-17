@@ -54,17 +54,21 @@ export async function GET(request: NextRequest) {
       
       // Filtrar por visibilidad en memoria para soportar sharedWith JSON
       documents = allDocs.filter((doc: any) => {
-        // Documentos públicos/compartidos
-        if (!doc.visibility || doc.visibility !== 'PRIVADO') return true
+        // Documentos públicos
+        if (doc.visibility === 'PUBLICO') return true
+        
         // Documentos propios
         if (doc.uploadedBy === decoded.userId) return true
-        // Documentos compartidos específicamente con este usuario
-        if (doc.sharedWith) {
+
+        // Documentos compartidos
+        if (doc.visibility === 'COMPARTIDO') {
+          if (!doc.sharedWith || doc.sharedWith === '[]' || doc.sharedWith === '""') return true // Para toda la empresa/área
           try {
             const sharedUsers = JSON.parse(doc.sharedWith)
             if (Array.isArray(sharedUsers) && sharedUsers.includes(decoded.userId)) return true
           } catch { /* ignore parse errors */ }
         }
+        
         return false
       })
     } catch (innerErr: any) {

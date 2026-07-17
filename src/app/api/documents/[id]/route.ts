@@ -63,6 +63,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const moduleAccess = await getModuleAccess(decoded.userId, document.companyId, 'documentos')
     if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar documentos', 403)
 
+    // Check if user is owner or super_admin
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
+    if (document.uploadedBy !== decoded.userId && user?.role !== 'SUPER_ADMIN') {
+      return apiError('Solo el propietario del documento puede eliminarlo', 403)
+    }
+
     await prisma.document.delete({ where: { id: params.id } })
     return apiSuccess({ message: 'Documento eliminado' })
   } catch (error) {
