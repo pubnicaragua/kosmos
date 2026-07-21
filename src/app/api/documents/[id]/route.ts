@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         fileUrl: body.fileUrl,
         ...(body.area !== undefined ? { area: body.area } : {}),
         ...(body.visibility !== undefined ? { visibility: body.visibility } : {}),
-        ...(body.sharedWith !== undefined ? { sharedWith: JSON.stringify(body.sharedWith) } : {}),
+        ...(body.sharedWith !== undefined ? { sharedWith: typeof body.sharedWith === 'string' ? body.sharedWith : JSON.stringify(body.sharedWith) } : {}),
       },
       include: { company: { select: { name: true } } },
     })

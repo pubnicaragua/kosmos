@@ -64,7 +64,10 @@ export async function GET(request: NextRequest) {
         if (doc.visibility === 'COMPARTIDO') {
           if (!doc.sharedWith || doc.sharedWith === '[]' || doc.sharedWith === '""') return true // Para toda la empresa/área
           try {
-            const sharedUsers = JSON.parse(doc.sharedWith)
+            let sharedUsers = JSON.parse(doc.sharedWith)
+            if (typeof sharedUsers === 'string') {
+              sharedUsers = JSON.parse(sharedUsers)
+            }
             if (Array.isArray(sharedUsers) && sharedUsers.includes(decoded.userId)) return true
           } catch { /* ignore parse errors */ }
         }
@@ -127,7 +130,7 @@ export async function POST(request: NextRequest) {
           area: area || 'General',
           visibility: visibility || 'COMPARTIDO',
           category: category || 'General',
-          sharedWith: sharedWith ? JSON.stringify(sharedWith) : null,
+          sharedWith: typeof sharedWith === 'string' ? sharedWith : (sharedWith ? JSON.stringify(sharedWith) : null),
         },
       })
     } catch (innerErr: any) {
