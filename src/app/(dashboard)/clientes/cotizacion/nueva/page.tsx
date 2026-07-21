@@ -74,12 +74,12 @@ function NuevaCotizacionContent() {
   const [customMargin, setCustomMargin] = useState<number>(0)
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<QuoteItem[]>([
-    { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }
+    { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '' as any, unitPrice: '', discount: '', tax: 15, total: 0 }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: 1, unitPrice: '', discount: '', tax: 15, total: 0 }]
+    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '' as any, unitPrice: '', discount: '', tax: 15, total: 0 }]
     return items
   }, [items])
 
@@ -90,7 +90,8 @@ function NuevaCotizacionContent() {
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
     const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
     const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
-    const subtotalValue = item.quantity * unitPrice
+    const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity
+    const subtotalValue = qty * unitPrice
     const discountAmount = subtotalValue * (discount / 100)
     const taxableValue = subtotalValue - discountAmount
     const taxAmount = applyTax ? taxableValue * (item.tax / 100) : 0
@@ -286,7 +287,7 @@ useEffect(() => {
       description: '',
       sku: '',
       stock: null,
-      quantity: 1,
+      quantity: '' as any,
       unitPrice: '',
       discount: '',
       tax: 15,
@@ -329,12 +330,16 @@ useEffect(() => {
     if (priceMode === 'DIS') initialUnitPrice = baseDist
     if (priceMode === 'MARGIN') initialUnitPrice = baseCost + (baseCost * (customMargin / 100))
 
+    const currentQty = typeof updated[index].quantity === 'string' ? parseFloat(updated[index].quantity as string) || 0 : updated[index].quantity
+    const newQty = currentQty < 1 ? 1 : currentQty
+
     updated[index] = {
       ...updated[index],
       productId: product.id,
       description: product.name,
       sku: product.sku || '',
       stock: typeof product.stock === 'number' ? product.stock : null,
+      quantity: newQty,
       unitPrice: initialUnitPrice,
       baseCost,
       basePublic,
@@ -355,7 +360,7 @@ useEffect(() => {
         description: '',
         sku: '',
         stock: null,
-        quantity: 1,
+        quantity: '' as any,
         unitPrice: '',
         discount: '',
         tax: 15,
@@ -366,12 +371,14 @@ useEffect(() => {
 
   const subtotal = itemsArray.reduce((sum: number, item: any) => {
     const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
-    return sum + (item.quantity * unitPrice)
+    const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity
+    return sum + (qty * unitPrice)
   }, 0)
   const totalDiscount = (subtotal * (globalDiscount / 100)) + itemsArray.reduce((sum: number, item: any) => {
     const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
     const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
-    const itemSubtotal = item.quantity * unitPrice
+    const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity
+    const itemSubtotal = qty * unitPrice
     return sum + (itemSubtotal * (discount / 100))
   }, 0)
   const taxableAmount = subtotal - totalDiscount
@@ -409,7 +416,7 @@ useEffect(() => {
           items: itemsArray.filter((item: any) => item.description.trim() !== '').map((item: any) => ({
             productId: item.productId || undefined,
             description: item.description,
-            quantity: item.quantity,
+            quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity,
             unitPrice: typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice,
             discount: typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount,
             tax: item.tax,
@@ -594,7 +601,7 @@ useEffect(() => {
                         <Input
                           type="number"
                           value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
                           fullWidth
                         />
                       </td>

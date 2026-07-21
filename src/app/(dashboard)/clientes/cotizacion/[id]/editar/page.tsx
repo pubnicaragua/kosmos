@@ -180,7 +180,7 @@ export default function EditarCotizacionPage() {
       tempId: Date.now(),
       productId: '',
       description: '',
-      quantity: 1,
+      quantity: '' as any,
       unitPrice: 0,
       discount: 0,
       tax: 15,
@@ -211,10 +211,14 @@ export default function EditarCotizacionPage() {
     if (priceMode === 'DIS') initialUnitPrice = baseDist
     if (priceMode === 'MARGIN') initialUnitPrice = baseCost + (baseCost * (customMargin / 100))
 
+    const currentQty = typeof updated[index].quantity === 'string' ? parseFloat(updated[index].quantity as string) || 0 : updated[index].quantity
+    const newQty = currentQty < 1 ? 1 : currentQty
+
     updated[index] = {
       ...updated[index],
       productId: product.id,
       description: product.name,
+      quantity: newQty,
       unitPrice: initialUnitPrice,
       baseCost,
       basePublic,
@@ -233,7 +237,7 @@ export default function EditarCotizacionPage() {
         tempId: items[0].tempId,
         productId: '',
         description: '',
-        quantity: 1,
+        quantity: '' as any,
         unitPrice: 0,
         discount: 0,
         tax: 15,
@@ -244,14 +248,16 @@ export default function EditarCotizacionPage() {
 
   const subtotal = items.reduce((sum, item) => {
     const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
-    return sum + item.quantity * unitPrice
+    const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity
+    return sum + qty * unitPrice
   }, 0)
   const totalDiscount =
     subtotal * (globalDiscount / 100) +
     items.reduce((sum, item) => {
       const unitPrice = typeof item.unitPrice === 'string' ? parseFloat(item.unitPrice) || 0 : item.unitPrice
       const discount = typeof item.discount === 'string' ? parseFloat(item.discount) || 0 : item.discount
-      return sum + item.quantity * unitPrice * (discount / 100)
+      const qty = typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity
+      return sum + qty * unitPrice * (discount / 100)
     }, 0)
   const taxableAmount = subtotal - totalDiscount
   const totalTax = taxApplies ? taxableAmount * 0.15 : 0
@@ -288,7 +294,7 @@ export default function EditarCotizacionPage() {
           items: items.map(i => ({
             productId: i.productId || null,
             description: i.description,
-            quantity: i.quantity,
+            quantity: typeof i.quantity === 'string' ? parseFloat(i.quantity) || 0 : i.quantity,
             unitPrice: i.unitPrice,
             discount: i.discount,
             tax: i.tax,
@@ -435,7 +441,7 @@ export default function EditarCotizacionPage() {
                         <Input
                           type="number"
                           value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
                           fullWidth
                         />
                       </td>
