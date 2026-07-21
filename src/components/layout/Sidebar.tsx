@@ -273,19 +273,15 @@ export function Sidebar() {
         w-64
       `}>
         {/* Logo + Toggle */}
-        <div className={`p-4 border-b border-gray-100 flex items-center transition-all ${isCollapsed ? 'lg:justify-center' : 'justify-between'}`}>
-          {!isCollapsed ? (
+        <div className={`p-4 border-b border-gray-100 flex items-center transition-all ${isCollapsed ? 'flex-col gap-2 justify-center' : 'justify-between'}`}>
+          {!isCollapsed && (
             <div className="flex items-center w-full max-w-[90px]">
               <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-full h-auto object-contain" />
-            </div>
-          ) : (
-            <div className="hidden lg:flex w-10 h-10 items-center justify-center">
-              <img src="/assets/logos/icon.png" alt="Kosmos CRM" className="w-10 h-10 object-contain" />
             </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`hidden lg:flex p-1.5 hover:bg-gray-100 rounded-lg transition-colors items-center justify-center ${isCollapsed ? 'absolute top-4 right-2' : ''}`}
+            className={`hidden lg:flex p-1.5 hover:bg-gray-100 rounded-lg transition-colors items-center justify-center w-8 h-8`}
             title={isCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4 text-gray-600" /> : <ChevronLeft className="w-4 h-4 text-gray-600" />}

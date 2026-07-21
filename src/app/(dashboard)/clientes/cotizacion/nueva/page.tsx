@@ -516,12 +516,12 @@ useEffect(() => {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[40%]">PRODUCTO/SERVICIO</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">CANT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-24">DESC. %</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[300px]">PRODUCTO/SERVICIO</th>
+                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">CANT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-40 min-w-[150px]">PRECIO UNIT.</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">DESC. %</th>
                     <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32">TOTAL</th>
+                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-40 min-w-[150px]">TOTAL</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>

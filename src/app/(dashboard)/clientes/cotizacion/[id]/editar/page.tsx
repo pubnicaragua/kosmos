@@ -377,12 +377,12 @@ export default function EditarCotizacionPage() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase w-8">#</th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">DESCRIPCIÓN</th>
-                    <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-20">CANT.</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-28">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-20">DESC. %</th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase min-w-[300px]">DESCRIPCIÓN</th>
+                    <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-32 min-w-[120px]">CANT.</th>
+                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-40 min-w-[150px]">PRECIO UNIT.</th>
+                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-32 min-w-[120px]">DESC. %</th>
                     <th className="text-center py-3 px-2 text-xs font-medium text-gray-500 uppercase w-24">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-28">TOTAL</th>
+                    <th className="text-right py-3 px-2 text-xs font-medium text-gray-500 uppercase w-40 min-w-[150px]">TOTAL</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
