@@ -534,6 +534,10 @@ export default function DetalleCotizacionPage() {
         {/* Totals */}
         <div className="flex justify-end mb-4">
           <table className="text-xs border-collapse">
+            <tr>
+              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">SUBTOTAL</td>
+              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
             {quote.discount > 0 && (
               <tr>
                 <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO</td>
