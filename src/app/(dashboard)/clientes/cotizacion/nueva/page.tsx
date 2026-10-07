@@ -447,7 +447,7 @@ useEffect(() => {
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Sin permisos</h1>
         <p className="text-gray-500 mb-6 max-w-md">
-          No tienes permisos para crear cotizaciones. Contacta al administrador para que te asigne el permiso de "Crear" en el módulo de Cotizaciones.
+          No tienes permisos para crear cotizaciones. Contacta al administrador para que te asigne el permiso de &quot;Crear&quot; en el módulo de Cotizaciones.
         </p>
         <button
           onClick={() => router.push('/clientes/cotizacion')}

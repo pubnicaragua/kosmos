@@ -38,6 +38,7 @@ export async function getPurchasePermissions(
     where: {
       userId,
       endedAt: null,
+      user: { is: { isActive: true } },
       department: { companyId },
     },
     select: { isApprover: true, isReceiver: true, isBuyer: true, role: true },

@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       where: { companyId },
       include: {
         userDepartments: {
+          where: { endedAt: null, user: { is: { isActive: true } } },
           select: {
             id: true,
             userId: true,
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         },
         _count: {
           select: {
-            userDepartments: true,
+            userDepartments: { where: { endedAt: null, user: { is: { isActive: true } } } },
             purchaseRequests: true,
           },
         },

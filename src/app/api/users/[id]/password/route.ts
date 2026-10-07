@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { canChangeMemberPassword } from '@/lib/user-management-permissions'
 import bcrypt from 'bcryptjs'
 
 export const dynamic = 'force-dynamic'
@@ -22,50 +24,82 @@ export async function PUT(
       return errorResponse('Token inválido o expirado', 401)
     }
 
-    // Verificar que el usuario que hace la petición es SUPER_ADMIN o ADMIN
-    const requestingUser = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      include: {
-        userCompanies: { where: { endedAt: null } },
-      },
-    })
-
-    if (!requestingUser) {
-      return errorResponse('Usuario no encontrado', 404)
-    }
-
-    const hasPermission = requestingUser.userCompanies.some(
-      (uc) => uc.role === 'SUPER_ADMIN' || uc.role === 'ADMIN'
-    )
-
-    if (!hasPermission) {
-      return errorResponse('Solo SUPER_ADMIN o ADMIN puede cambiar contraseñas', 403)
-    }
-
     const body = await request.json()
-    const { password } = body
+    const { password, companyId } = body
 
     if (!password || typeof password !== 'string' || password.length < 6) {
       return errorResponse('La contraseña debe tener al menos 6 caracteres', 400)
     }
+    if (typeof companyId !== 'string' || !companyId) {
+      return errorResponse('companyId es requerido', 400)
+    }
 
-    // Verificar que el usuario objetivo existe
-    const targetUser = await prisma.user.findUnique({
-      where: { id: params.id },
+    const currentAdminMembership = await prisma.userCompany.findFirst({
+      where: {
+        userId: payload.userId,
+        companyId,
+        role: { in: ['SUPER_ADMIN', 'ADMIN'] },
+        endedAt: null,
+        user: { is: { isActive: true } },
+      },
+      select: { companyId: true, role: true },
     })
 
-    if (!targetUser) {
-      return errorResponse('Usuario no encontrado', 404)
+    if (!currentAdminMembership) {
+      return errorResponse('Solo administradores activos de la empresa pueden cambiar contraseñas', 403)
     }
 
     // Hash de la nueva contraseña
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Actualizar contraseña
-    await prisma.user.update({
-      where: { id: params.id },
-      data: { password: hashedPassword },
-    })
+    const result = await prisma.$transaction(async (tx) => {
+      const adminMembership = await tx.userCompany.findFirst({
+        where: {
+          userId: payload.userId,
+          companyId,
+          role: { in: ['SUPER_ADMIN', 'ADMIN'] },
+          endedAt: null,
+          user: { is: { isActive: true } },
+        },
+        select: { companyId: true, role: true },
+      })
+
+      if (!adminMembership) return { kind: 'forbidden' as const }
+
+      const targetMembership = await tx.userCompany.findFirst({
+        where: {
+          userId: params.id,
+          companyId,
+          endedAt: null,
+          user: { is: { isActive: true } },
+        },
+        select: { companyId: true, endedAt: true, role: true },
+      })
+
+      if (!canChangeMemberPassword({
+        actorRole: adminMembership.role,
+        actorCompanyId: adminMembership.companyId,
+        targetCompanyId: targetMembership?.companyId ?? '',
+        targetMembershipActive: targetMembership?.endedAt === null,
+        targetRole: targetMembership?.role ?? '',
+      })) {
+        return { kind: 'not-found' as const }
+      }
+
+      await tx.user.update({
+        where: { id: params.id },
+        data: { password: hashedPassword },
+      })
+
+      return { kind: 'updated' as const }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+
+    if (result.kind === 'forbidden') {
+      return errorResponse('Solo administradores activos de la empresa pueden cambiar contraseñas', 403)
+    }
+    if (result.kind === 'not-found') {
+      return errorResponse('Usuario no encontrado en la empresa activa', 404)
+    }
 
     return successResponse({ message: 'Contraseña actualizada exitosamente' })
   } catch (error) {

@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
+import QuoteKanban from './QuoteKanban'
+import {
+  QUOTE_PAGE_SIZES,
+  QUOTE_PIPELINE_STAGE_LABELS,
+  type QuotePageSize,
+  type QuotePipelineStage,
+} from '@/lib/quote-pipeline'
 
 interface Quote {
   id: string
@@ -15,14 +22,45 @@ interface Quote {
   currency: string
   total: number
   status: string
+  pipelineStage: QuotePipelineStage
   validUntil: string
   createdAt: string
-  createdByUser?: { name: string }
+  createdByUser?: { name: string } | null
+  stageHistory?: Array<{
+    fromStage: QuotePipelineStage | null
+    toStage: QuotePipelineStage
+    actorName: string
+    changedAt: string
+    source: string
+  }>
 }
 
 interface Company {
   id: string
   name: string
+}
+
+interface QuotePagination {
+  page: number
+  pageSize: QuotePageSize
+  total: number
+  totalPages: number
+}
+
+const ZERO_STAGE_COUNTS: Record<QuotePipelineStage, number> = {
+  PROSPECTO: 0,
+  PROPUESTA: 0,
+  NEGOCIACION: 0,
+  REALIZADA: 0,
+  RECHAZADA: 0,
+}
+
+const DOCUMENT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Borrador',
+  SENT: 'Enviada',
+  APPROVED: 'Aprobada',
+  REJECTED: 'Rechazada',
+  EXPIRED: 'Vencida',
 }
 
 export default function CotizacionesList() {
@@ -32,12 +70,28 @@ export default function CotizacionesList() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string>('')
+  const [userRole, setUserRole] = useState('')
+  const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<QuotePageSize>(25)
+  const [quoteRefreshVersion, setQuoteRefreshVersion] = useState(0)
+  const [pagination, setPagination] = useState<QuotePagination>({
+    page: 1,
+    pageSize: 25,
+    total: 0,
+    totalPages: 0,
+  })
+  const [stageCounts, setStageCounts] = useState(ZERO_STAGE_COUNTS)
+  const [canEditByCompany, setCanEditByCompany] = useState<Record<string, boolean>>({})
+  const [loadError, setLoadError] = useState('')
+  const [moveError, setMoveError] = useState('')
+  const quoteRequestSequence = useRef(0)
+  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}`
+  const currentQueryKeyRef = useRef(currentQueryKey)
+  currentQueryKeyRef.current = currentQueryKey
 
-  // Bypass: si tiene canCreate para cotizaciones, accede sin necesidad de canView ni clientes
   useEffect(() => {
     if (!permissions.loading && !permissions.canView && !permissions.canCreate) {
-      // Solo redirigir si hay una empresa activa válida — evita falsos negativos durante carga
       const activeCompany = JSON.parse(localStorage.getItem('activeCompany') || '{}')
       if (activeCompany?.id && activeCompany.id !== 'all') {
         router.push('/sistema/unauthorized')
@@ -46,104 +100,142 @@ export default function CotizacionesList() {
   }, [permissions.loading, permissions.canView, permissions.canCreate, router])
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadMetadata = async () => {
       const token = localStorage.getItem('accessToken')
       if (!token) return
 
       try {
-        // Get user role
-        const userRes = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const userData = await userRes.json()
-        if (userData.success) {
-          setUserRole(userData.data.role || 'USER')
-        }
-
-        // Get companies
-        const companiesRes = await fetch('/api/companies', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const companiesData = await companiesRes.json()
-        if (companiesData.success) {
-          setCompanies(companiesData.data)
-        }
-
-        // Get quotes
-        await fetchQuotes(token, selectedCompany)
+        const [userRes, companiesRes] = await Promise.all([
+          fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/companies', { headers: { Authorization: `Bearer ${token}` } }),
+        ])
+        const [userData, companiesData] = await Promise.all([userRes.json(), companiesRes.json()])
+        if (userData.success) setUserRole(userData.data.role || 'USER')
+        if (companiesData.success) setCompanies(companiesData.data)
       } catch (error) {
-        console.error('Error loading data:', error)
-      } finally {
-        setIsLoading(false)
+        console.error('Error loading quote page metadata:', error)
       }
     }
 
-    loadData()
+    void loadMetadata()
   }, [])
 
-  useEffect(() => {
+  const loadQuotes = useCallback(async (showLoading = true) => {
+    const requestSequence = ++quoteRequestSequence.current
+    const queryKey = `${page}:${pageSize}:${selectedCompany}`
     const token = localStorage.getItem('accessToken')
-    if (token) {
-      fetchQuotes(token, selectedCompany)
+    if (!token) {
+      if (requestSequence === quoteRequestSequence.current) setIsLoading(false)
+      return
     }
-  }, [selectedCompany])
 
-  const fetchQuotes = async (token: string, companyId: string) => {
+    if (showLoading) setIsLoading(true)
+    setLoadError('')
+
     try {
-      const params = new URLSearchParams()
-      if (companyId !== 'all') params.append('companyId', companyId)
-      
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+      if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+
       const response = await fetch(`/api/quotes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await response.json()
-      if (data.success) {
-        setQuotes(data.data || [])
+      const result = await response.json()
+      if (!response.ok || !result.success || !result.data?.items) {
+        throw new Error(result.error || 'No se pudieron cargar las cotizaciones')
       }
+
+      if (requestSequence !== quoteRequestSequence.current || currentQueryKeyRef.current !== queryKey) return
+      setQuotes(result.data.items)
+      setPagination(result.data.pagination)
+      setStageCounts({ ...ZERO_STAGE_COUNTS, ...result.data.stageCounts })
+      setCanEditByCompany(result.data.canEditByCompany || {})
     } catch (error) {
+      if (requestSequence !== quoteRequestSequence.current || currentQueryKeyRef.current !== queryKey) return
       console.error('Error fetching quotes:', error)
+      setLoadError(error instanceof Error ? error.message : 'No se pudieron cargar las cotizaciones')
+    } finally {
+      if (showLoading && requestSequence === quoteRequestSequence.current && currentQueryKeyRef.current === queryKey) {
+        setIsLoading(false)
+      }
+    }
+  }, [page, pageSize, selectedCompany])
+
+  useEffect(() => {
+    void loadQuotes()
+  }, [loadQuotes, quoteRefreshVersion])
+
+  const handleMoveQuote = async (quoteId: string, pipelineStage: QuotePipelineStage, reopen = false) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    setMoveError('')
+    try {
+      const response = await fetch(`/api/quotes/${quoteId}/pipeline-stage`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pipelineStage, ...(reopen ? { reopen: true } : {}) }),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'No se pudo mover la cotización')
+      }
+      quoteRequestSequence.current += 1
+      setQuoteRefreshVersion((version) => version + 1)
+    } catch (error) {
+      console.error('Error moving quote:', error)
+      setMoveError(error instanceof Error ? error.message : 'No se pudo mover la cotización')
     }
   }
 
-  const handleViewQuote = (quoteId: string) => {
-    router.push(`/clientes/cotizacion/${quoteId}`)
+  const handleViewQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}`)
+  const handleEditQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}/editar`)
+
+  const documentStatus = (status: string) => DOCUMENT_STATUS_LABELS[status] || status
+  const documentStatusClass = (status: string) => {
+    if (status === 'APPROVED') return 'bg-green-100 text-green-800'
+    if (status === 'REJECTED') return 'bg-red-100 text-red-800'
+    if (status === 'SENT') return 'bg-blue-100 text-blue-800'
+    if (status === 'EXPIRED') return 'bg-orange-100 text-orange-800'
+    return 'bg-gray-100 text-gray-800'
   }
 
-  const handleEditQuote = (quoteId: string) => {
-    router.push(`/clientes/cotizacion/${quoteId}/editar`)
-  }
+  const lastPage = Math.max(1, pagination.totalPages)
 
-  if (isLoading) {
-    return <SkeletonTable />
-  }
+  if (isLoading) return <SkeletonTable />
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
             <button onClick={() => router.push('/clientes/cotizacion')} className="hover:text-primary">COTIZACIONES</button>
             <span>&gt;</span>
-            <span className="text-primary font-medium">COTIZACIONES</span>
+            <span className="font-medium text-primary">COTIZACIONES</span>
           </div>
           <h1 className="text-2xl font-semibold text-gray-900">Cotizaciones</h1>
-          <p className="text-sm text-gray-500 mt-1">Lista de todas las cotizaciones creadas</p>
+          <p className="mt-1 text-sm text-gray-500">Consulta y gestiona las etapas comerciales de tus cotizaciones</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
             <Select
               options={[
                 { value: 'all', label: 'Todas las empresas' },
-                ...companies.map((c) => ({ value: c.id, label: c.name })),
+                ...companies.map((company) => ({ value: company.id, label: company.name })),
               ]}
               value={selectedCompany}
-              onChange={(e) => setSelectedCompany(e.target.value)}
+              onChange={(event) => {
+                setSelectedCompany(event.target.value)
+                setPage(1)
+              }}
               className="w-64"
             />
           )}
           {permissions.canCreate && (
             <Button onClick={() => router.push('/clientes/cotizacion/nueva')}>
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Nueva Cotización
@@ -152,85 +244,117 @@ export default function CotizacionesList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Válida hasta</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado por</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {quotes.length === 0 ? (
+      <div className="flex border-b border-gray-200" role="tablist" aria-label="Vistas de cotizaciones">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'list'}
+          onClick={() => setActiveTab('list')}
+          className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'list' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          Lista
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'kanban'}
+          onClick={() => setActiveTab('kanban')}
+          className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          Kanban
+        </button>
+      </div>
+
+      {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadError}</p>}
+      {moveError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{moveError}</p>}
+
+      {activeTab === 'list' ? (
+        <div className="overflow-x-auto rounded-lg bg-white shadow">
+          <table className="w-full">
+            <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                  No hay cotizaciones registradas
-                </td>
+                {['Número', 'Cliente', 'Empresa', 'Total', 'Etapa comercial', 'Estado documental', 'Válida hasta', 'Creado por', 'Acciones'].map((label) => (
+                  <th key={label} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{label}</th>
+                ))}
               </tr>
-            ) : (
-              quotes.map((quote) => (
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {quotes.length === 0 ? (
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">No hay cotizaciones en esta página</td></tr>
+              ) : quotes.map((quote) => (
                 <tr key={quote.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {quote.quoteNumber}
+                  <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">{quote.quoteNumber}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900">{quote.client.name}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{quote.company.name}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">
+                    {quote.currency === 'NIO' ? 'C$' : '$'}{quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {quote.client.name}
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900">
+                    {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {quote.company.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                    {quote.currency === 'NIO' ? 'C$' : '$'}
-                    {quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      quote.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                      quote.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      quote.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {quote.status === 'APPROVED' ? 'Aprobada' :
-                       quote.status === 'PENDING' ? 'Pendiente' :
-                       quote.status === 'REJECTED' ? 'Rechazada' :
-                       quote.status === 'DRAFT' ? 'Borrador' :
-                       quote.status === 'SENT' ? 'Enviada' :
-                       quote.status}
+                  <td className="whitespace-nowrap px-4 py-4">
+                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${documentStatusClass(quote.status)}`}>
+                      {documentStatus(quote.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(quote.validUntil).toLocaleDateString('es-NI')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {quote.createdByUser?.name || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleViewQuote(quote.id)}
-                      className="text-primary hover:text-primary/80 mr-3"
-                    >
-                      Ver
-                    </button>
-                    {permissions.canEdit && (
-                      <button
-                        onClick={() => handleEditQuote(quote.id)}
-                        className="text-primary hover:text-primary/80"
-                      >
-                        Editar
-                      </button>
-                    )}
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{new Date(quote.validUntil).toLocaleDateString('es-NI')}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{quote.createdByUser?.name || 'N/A'}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-right text-sm font-medium">
+                    <button onClick={() => handleViewQuote(quote.id)} className="mr-3 text-primary hover:text-primary/80">Ver</button>
+                    {canEditByCompany[quote.company.id] && <button onClick={() => handleEditQuote(quote.id)} className="text-primary hover:text-primary/80">Editar</button>}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <QuoteKanban
+          quotes={quotes}
+          stageCounts={stageCounts}
+          canEditByCompany={canEditByCompany}
+          onOpen={handleViewQuote}
+          onMove={handleMoveQuote}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <div className="text-sm text-gray-600">
+          {pagination.total === 0
+            ? '0 cotizaciones'
+            : `Página ${page} de ${lastPage} · ${pagination.total} cotizaciones`}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Por página
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value) as QuotePageSize)
+                setPage(1)
+              }}
+              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+            >
+              {QUOTE_PAGE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            disabled={pagination.totalPages === 0 || page >= pagination.totalPages}
+            onClick={() => setPage((current) => current + 1)}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
     </div>
   )

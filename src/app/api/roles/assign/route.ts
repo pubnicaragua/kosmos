@@ -29,14 +29,14 @@ export async function POST(request: NextRequest) {
       if (!role) return apiError('Rol no pertenece a esta empresa', 400)
     }
 
-    const membership = await prisma.userCompany.findFirst({
-      where: { userId, companyId, endedAt: null },
+    const targetMembership = await prisma.userCompany.findFirst({
+      where: { userId, companyId, endedAt: null, user: { is: { isActive: true } } },
       select: { id: true },
     })
-    if (!membership) return apiError('Usuario sin membresía activa en esta empresa', 404)
+    if (!targetMembership) return apiError('El usuario no tiene membresía activa en esta empresa', 404)
 
     const updated = await prisma.userCompany.update({
-      where: { id: membership.id },
+      where: { id: targetMembership.id },
       data: { customRoleId: customRoleId || null },
       include: {
         user: { select: { id: true, name: true, email: true } },

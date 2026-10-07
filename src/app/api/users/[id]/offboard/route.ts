@@ -3,12 +3,18 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiError, apiSuccess } from '@/lib/api-response'
+import { deactivateUserInTransaction } from '@/lib/user-lifecycle'
 
 export const dynamic = 'force-dynamic'
 
 async function hasGlobalOffboardingPermission(userId: string) {
   return prisma.userCompany.findFirst({
-    where: { userId, role: 'SUPER_ADMIN', endedAt: null },
+    where: {
+      userId,
+      role: 'SUPER_ADMIN',
+      endedAt: null,
+      user: { is: { isActive: true } },
+    },
     select: { id: true },
   })
 }
@@ -24,7 +30,7 @@ export async function GET(
     const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido o usuario inactivo', 401)
     if (!(await hasGlobalOffboardingPermission(decoded.userId))) {
-      return apiError('Solo SUPER_ADMIN puede dar de baja global', 403)
+      return apiError('Solo SUPER_ADMIN puede desactivar cuentas globalmente', 403)
     }
 
     const target = await prisma.user.findUnique({
@@ -34,6 +40,8 @@ export async function GET(
         email: true,
         name: true,
         avatar: true,
+        isActive: true,
+        deactivatedAt: true,
         userCompanies: {
           include: { company: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'asc' },
@@ -43,7 +51,14 @@ export async function GET(
     if (!target) return apiError('Usuario no encontrado', 404)
 
     return apiSuccess({
-      user: { id: target.id, email: target.email, name: target.name, avatar: target.avatar },
+      user: {
+        id: target.id,
+        email: target.email,
+        name: target.name,
+        avatar: target.avatar,
+        isActive: target.isActive,
+        deactivatedAt: target.deactivatedAt,
+      },
       companies: target.userCompanies.map((membership) => ({
         id: membership.company.id,
         name: membership.company.name,
@@ -52,8 +67,8 @@ export async function GET(
       })),
     })
   } catch (error: any) {
-    console.error('Error loading global user offboarding preview:', error?.message)
-    return apiError('Error al revisar la baja global', 500)
+    console.error('Error loading global user deactivation preview:', error?.message)
+    return apiError('Error al revisar la desactivación global', 500)
   }
 }
 
@@ -67,132 +82,35 @@ export async function POST(
 
     const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido o usuario inactivo', 401)
-    if (decoded.userId === params.id) return apiError('No puedes dar de baja tu propio usuario', 400)
-    if (!(await hasGlobalOffboardingPermission(decoded.userId))) {
-      return apiError('Solo SUPER_ADMIN puede dar de baja global', 403)
-    }
+    if (decoded.userId === params.id) return apiError('No puedes desactivar tu propio usuario', 400)
 
-    const archivedAt = new Date()
-    const result = await prisma.$transaction(async (tx) => {
-      const actorRole = await tx.userCompany.findFirst({
-        where: { userId: decoded.userId, role: 'SUPER_ADMIN', endedAt: null },
-        select: { id: true },
-      })
-      if (!actorRole) throw new Error('GLOBAL_PERMISSION_REQUIRED')
-
-      const target = await tx.user.findUnique({
-        where: { id: params.id },
-        include: {
-          userCompanies: {
-            where: { endedAt: null },
-            include: { company: { select: { id: true, name: true } } },
-          },
-        },
-      })
-      if (!target) throw new Error('USER_NOT_FOUND')
-
-      const targetIsSuperAdmin = target.userCompanies.some((membership) => membership.role === 'SUPER_ADMIN')
-      if (targetIsSuperAdmin) {
-        const otherSuperAdmins = await tx.userCompany.count({
-          where: {
-            role: 'SUPER_ADMIN',
-            endedAt: null,
-            userId: { notIn: [target.id] },
-          },
-        })
-        if (otherSuperAdmins === 0) throw new Error('LAST_SUPER_ADMIN')
-      }
-
-      await tx.archivedUser.create({
-        data: {
-          id: target.id,
-          email: target.email,
-          name: target.name,
-          avatar: target.avatar,
-          userCreatedAt: target.createdAt,
-          userUpdatedAt: target.updatedAt,
-          archivedAt,
-          archivedById: decoded.userId,
-        },
-      })
-
-      await tx.userCompany.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.userCompany.updateMany({
-        where: { userId: target.id, endedAt: null },
-        data: { endedAt: archivedAt },
-      })
-
-      await tx.refreshToken.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.refreshToken.updateMany({
-        where: { userId: target.id, revokedAt: null },
-        data: { revokedAt: archivedAt },
-      })
-
-      await tx.quote.updateMany({
-        where: { createdBy: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.ticketComment.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.ticketMember.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.notification.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.template.updateMany({
-        where: { createdBy: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.userDepartment.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-      await tx.userDepartment.updateMany({
-        where: { userId: target.id, endedAt: null },
-        data: { endedAt: archivedAt },
-      })
-      await tx.userPreferences.updateMany({
-        where: { userId: target.id },
-        data: { archivedUserId: target.id },
-      })
-
-      await tx.user.delete({ where: { id: target.id } })
-
-      return target.userCompanies.map((membership) => ({
-        id: membership.company.id,
-        name: membership.company.name,
-        role: membership.role,
-      }))
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+    const result = await prisma.$transaction((tx) => deactivateUserInTransaction(tx, {
+      actorUserId: decoded.userId,
+      targetUserId: params.id,
+      deactivatedAt: new Date(),
+    }), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
     return apiSuccess({
-      message: 'Usuario dado de baja global; correo liberado y registros históricos conservados',
-      archivedUserId: params.id,
-      companies: result,
+      message: 'Usuario desactivado globalmente. Correo, registros y relaciones se conservaron.',
+      userId: params.id,
+      companies: result.companies,
     })
   } catch (error: any) {
     if (error?.message === 'GLOBAL_PERMISSION_REQUIRED') {
-      return apiError('Solo SUPER_ADMIN puede dar de baja global', 403)
+      return apiError('Solo SUPER_ADMIN puede desactivar cuentas globalmente', 403)
+    }
+    if (error?.message === 'SELF_DEACTIVATION') {
+      return apiError('No puedes desactivar tu propio usuario', 400)
     }
     if (error?.message === 'USER_NOT_FOUND') return apiError('Usuario no encontrado', 404)
+    if (error?.message === 'USER_ALREADY_INACTIVE') return apiError('El usuario ya está desactivado', 409)
     if (error?.message === 'LAST_SUPER_ADMIN') {
-      return apiError('No puedes dar de baja al último SUPER_ADMIN activo', 409)
+      return apiError('No puedes desactivar al último SUPER_ADMIN activo', 409)
     }
     if (error?.code === 'P2034') {
-      return apiError('Cambios simultáneos detectados; vuelve a revisar y confirmar la baja', 409)
+      return apiError('Cambios simultáneos detectados; vuelve a revisar y confirmar la desactivación', 409)
     }
-    console.error('Error executing global user offboarding:', error?.message)
-    return apiError('Error al ejecutar la baja global', 500)
+    console.error('Error executing global user deactivation:', error?.message)
+    return apiError('Error al desactivar el usuario', 500)
   }
 }

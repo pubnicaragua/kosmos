@@ -154,6 +154,7 @@ export async function GET(request: NextRequest) {
             expiresAt: { gt: now },
             revokedAt: null,
             user: {
+              isActive: true,
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
@@ -165,8 +166,8 @@ export async function GET(request: NextRequest) {
         }),
         prisma.refreshToken.findMany({
           where: {
-            revokedAt: null,
             user: {
+              isActive: true,
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
@@ -200,6 +201,7 @@ export async function GET(request: NextRequest) {
         prisma.notification.findMany({
           where: {
             user: {
+              isActive: true,
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
@@ -230,7 +232,7 @@ export async function GET(request: NextRequest) {
       ...loginEvents.map((event) => ({
         timestamp: event.createdAt.getTime(),
         time: event.createdAt.toLocaleTimeString('es-ES'),
-        action: `Inicio de sesión: ${event.user?.name || event.user?.email || 'Usuario archivado'}`,
+        action: `Inicio de sesión: ${event.user.name || event.user.email}`,
         status: 'success' as const,
       })),
       ...activityEvents.map((event) => ({

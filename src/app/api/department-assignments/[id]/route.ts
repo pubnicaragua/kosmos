@@ -17,8 +17,8 @@ export async function PUT(
     const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const existing = await prisma.userDepartment.findUnique({
-      where: { id: params.id },
+    const existing = await prisma.userDepartment.findFirst({
+      where: { id: params.id, endedAt: null, user: { is: { isActive: true } } },
       include: { department: { select: { companyId: true } } },
     })
     if (!existing) return apiError('Asignación no encontrada', 404)
@@ -61,8 +61,8 @@ export async function DELETE(
     const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
-    const existing = await prisma.userDepartment.findUnique({
-      where: { id: params.id },
+    const existing = await prisma.userDepartment.findFirst({
+      where: { id: params.id, endedAt: null, user: { is: { isActive: true } } },
       include: { department: { select: { companyId: true } } },
     })
     if (!existing) return apiError('Asignación no encontrada', 404)
@@ -72,8 +72,12 @@ export async function DELETE(
       return apiError('Solo admins pueden eliminar asignaciones', 403)
     }
 
-    await prisma.userDepartment.delete({ where: { id: params.id } })
-    return apiSuccess({ message: 'Asignación eliminada' })
+    const closed = await prisma.userDepartment.updateMany({
+      where: { id: params.id, endedAt: null },
+      data: { endedAt: new Date() },
+    })
+    if (closed.count !== 1) return apiError('Asignación no encontrada', 404)
+    return apiSuccess({ message: 'Asignación cerrada; el registro histórico se conservó' })
   } catch (error: any) {
     console.error('Error deleting department assignment:', error?.message)
     return apiError('Error al eliminar asignación', 500)

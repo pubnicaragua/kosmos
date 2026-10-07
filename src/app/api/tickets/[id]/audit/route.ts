@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
-import { getUserIdentityMap } from '@/lib/user-identity'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,12 +34,26 @@ export async function GET(
     })
 
     // Enriquecer con información de usuarios
-    const userMap = await getUserIdentityMap(auditLogs.map((log) => log.userId))
+    const userIds = [...new Set(auditLogs.map(log => log.userId))]
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true, avatar: true },
+    })
 
-    const enrichedLogs = auditLogs.map(log => ({
-      ...log,
-      user: userMap.get(log.userId) || null,
-    }))
+    const userMap = new Map(users.map(u => [u.id, u]))
+
+    const historicalNames = await resolveHistoricalUserNames(auditLogs.map((log) => ({
+      userId: log.userId,
+      occurredAt: log.createdAt,
+    })))
+
+    const enrichedLogs = auditLogs.map((log, index) => {
+      const user = userMap.get(log.userId) || null
+      return {
+        ...log,
+        user: user ? { ...user, name: historicalNames[index] || user.name } : null,
+      }
+    })
 
     return apiSuccess(enrichedLogs)
   } catch (error: any) {

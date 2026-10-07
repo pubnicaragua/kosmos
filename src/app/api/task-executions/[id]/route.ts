@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -86,7 +87,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       })
     }
 
-    return NextResponse.json({ success: true, data: updated })
+    const [completedByName] = await resolveHistoricalUserNames([{
+      userId: updated.completedBy,
+      occurredAt: updated.completedAt,
+    }])
+
+    return NextResponse.json({
+      success: true,
+      data: { ...updated, completedByName: completedByName || null },
+    })
   } catch (error) {
     console.error('Error updating execution:', error)
     return NextResponse.json({ success: false, error: 'Error interno' }, { status: 500 })

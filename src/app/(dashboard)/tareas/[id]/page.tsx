@@ -279,6 +279,9 @@ export default function TareaDetallePage({ params }: { params: { id: string } })
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Completado {new Date(execution.completedAt).toLocaleString()}</span>
                       </div>
+                      {execution.completedByName && (
+                        <p className="text-xs text-green-700">Por {execution.completedByName}</p>
+                      )}
                       
                       {execution.evidencePhotoUrl && (
                         <div className="mt-3">

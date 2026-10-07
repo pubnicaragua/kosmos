@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId, endedAt: null },
+      where: { userId: decoded.userId, endedAt: null, user: { is: { isActive: true } } },
       include: {
         company: true,
       },

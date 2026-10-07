@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,12 @@ export async function GET(request: NextRequest) {
     // Only SUPER_ADMIN / ADMIN can access this
     const requestingUser = await prisma.user.findUnique({
       where: { id: payload.userId },
-      include: { userCompanies: { where: { endedAt: null }, select: { role: true } } },
+      include: {
+        userCompanies: {
+          where: { endedAt: null },
+          select: { role: true },
+        },
+      },
     })
     const isAdmin = requestingUser?.userCompanies.some(
       (uc) => uc.role === 'SUPER_ADMIN' || uc.role === 'ADMIN'
@@ -143,27 +149,43 @@ export async function GET(request: NextRequest) {
     ])
 
     const userMap = Object.fromEntries(users.map((u) => [u.id, u]))
+    const [ticketCreatorNames, campaignCreatorNames] = await Promise.all([
+      resolveHistoricalUserNames(recentTickets.map((ticket) => ({
+        userId: ticket.createdBy,
+        occurredAt: ticket.createdAt,
+      }))),
+      resolveHistoricalUserNames(recentCampaigns.map((campaign) => ({
+        userId: campaign.createdBy,
+        occurredAt: campaign.createdAt,
+      }))),
+    ])
     // Build a name->user lookup for activities/opportunities assigned by name
     const userByName = Object.fromEntries(users.map((u) => [u.name, u]))
 
     const feed = [
-      ...recentTickets.map((t) => ({
+      ...recentTickets.map((t, index) => ({
         id: t.id,
         type: 'ticket' as const,
         title: t.title,
         status: t.status,
         company: t.company.name,
         createdAt: t.createdAt,
-        user: userMap[t.createdBy] ?? { id: t.createdBy, name: 'Sistema', email: '', avatar: null },
+        user: {
+          ...(userMap[t.createdBy] ?? { id: t.createdBy, name: 'Sistema', email: '', avatar: null }),
+          name: ticketCreatorNames[index] || userMap[t.createdBy]?.name || 'Sistema',
+        },
       })),
-      ...recentCampaigns.map((c) => ({
+      ...recentCampaigns.map((c, index) => ({
         id: c.id,
         type: 'campaign' as const,
         title: c.name,
         status: c.status,
         company: c.company.name,
         createdAt: c.createdAt,
-        user: userMap[c.createdBy] ?? { id: c.createdBy, name: 'Sistema', email: '', avatar: null },
+        user: {
+          ...(userMap[c.createdBy] ?? { id: c.createdBy, name: 'Sistema', email: '', avatar: null }),
+          name: campaignCreatorNames[index] || userMap[c.createdBy]?.name || 'Sistema',
+        },
       })),
       ...recentActivities.map((a) => {
         const assignee = a.assignedTo ? userByName[a.assignedTo.split(',')[0].trim()] : null

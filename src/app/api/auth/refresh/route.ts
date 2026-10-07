@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   verifyRefreshToken,
@@ -34,39 +35,48 @@ export async function POST(request: NextRequest) {
       where: { token },
     })
 
-    if (!storedToken || storedToken.revokedAt || !storedToken.userId || storedToken.expiresAt < new Date()) {
+    const now = new Date()
+    if (
+      !storedToken ||
+      storedToken.userId !== payload.userId ||
+      storedToken.revokedAt ||
+      storedToken.expiresAt <= now
+    ) {
       return errorResponse('Token de refresco inválido o expirado', 401)
-    }
-
-    const activeUser = await prisma.user.findUnique({
-      where: { id: storedToken.userId },
-      select: { id: true },
-    })
-    if (!activeUser || activeUser.id !== payload.userId) {
-      return errorResponse('La cuenta ya no está activa', 401)
     }
 
     const newAccessToken = generateAccessToken({ userId: payload.userId, email: payload.email })
     const newRefreshToken = generateRefreshToken({ userId: payload.userId, email: payload.email })
-    const rotatedAt = new Date()
 
-    const rotationSucceeded = await prisma.$transaction(async (tx) => {
-      const revoked = await tx.refreshToken.updateMany({
-        where: { id: storedToken.id, userId: activeUser.id, revokedAt: null },
-        data: { revokedAt: rotatedAt },
+    const rotated = await prisma.$transaction(async (tx) => {
+      const activeUser = await tx.user.findFirst({
+        where: { id: payload.userId, isActive: true },
+        select: { id: true },
       })
-      if (revoked.count !== 1) return false
+      if (!activeUser) return false
+
+      const consumed = await tx.refreshToken.updateMany({
+        where: {
+          id: storedToken.id,
+          userId: payload.userId,
+          revokedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { revokedAt: now },
+      })
+      if (consumed.count !== 1) return false
 
       await tx.refreshToken.create({
         data: {
           token: newRefreshToken,
-          userId: activeUser.id,
+          userId: payload.userId,
           expiresAt: getRefreshTokenExpiry(),
         },
       })
       return true
-    })
-    if (!rotationSucceeded) return errorResponse('Token de refresco inválido o ya utilizado', 401)
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+
+    if (!rotated) return errorResponse('Sesión inválida o cuenta desactivada', 401)
 
     const response = successResponse({
       accessToken: newAccessToken,
@@ -95,6 +105,9 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error('Refresh token error:', error)
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2034') {
+      return errorResponse('Sesión inválida o cuenta desactivada', 401)
+    }
     return errorResponse('Error al refrescar el token', 500)
   }
 }

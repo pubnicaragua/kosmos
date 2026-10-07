@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, FormEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, FormEvent } from 'react'
 import Image from 'next/image'
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
@@ -150,6 +150,7 @@ export default function AjustesPage() {
   const [modules, setModules] = useState<string[]>([])
   const [predefinedRoles, setPredefinedRoles] = useState<PredefinedRole[]>([])
   const [members, setMembers] = useState<CompanyMember[]>([])
+  const rolesRequestIdRef = useRef(0)
   const [rolesLoading, setRolesLoading] = useState(false)
   const [rolesCompanyId, setRolesCompanyId] = useState('')
   const [showRoleModal, setShowRoleModal] = useState(false)
@@ -172,6 +173,11 @@ export default function AjustesPage() {
   const [editingPasswordUserId, setEditingPasswordUserId] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
   const [changingPassword, setChangingPassword] = useState(false)
+  const [editingNameUserId, setEditingNameUserId] = useState<string | null>(null)
+  const [userNameDraft, setUserNameDraft] = useState('')
+  const [savingUserName, setSavingUserName] = useState(false)
+  const [userNameMsg, setUserNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
   const [templateTab, setTemplateTab] = useState<'quote' | 'invoice'>('quote')
 
@@ -372,9 +378,15 @@ export default function AjustesPage() {
   }
 
   const fetchRolesData = useCallback(async (cId: string) => {
+    const requestId = ++rolesRequestIdRef.current
     const token = localStorage.getItem('accessToken')
-    if (!token || !cId) return
+    if (!token || !cId) {
+      setMembers([])
+      setRolesLoading(false)
+      return
+    }
     setRolesLoading(true)
+    setMembers([])
     try {
       const [rolesRes, membersRes] = await Promise.all([
         fetch(`/api/roles?companyId=${cId}`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -382,6 +394,7 @@ export default function AjustesPage() {
       ])
       const rolesData = await rolesRes.json()
       const membersData = await membersRes.json()
+      if (requestId !== rolesRequestIdRef.current) return
       if (rolesData.success) {
         setRoles(rolesData.data.roles || [])
         setModules(rolesData.data.modules?.length ? rolesData.data.modules : FALLBACK_MODULES)
@@ -393,12 +406,15 @@ export default function AjustesPage() {
         setRoles([])
       }
       if (membersData.success) setMembers(membersData.data)
+      else setMembers([])
     } catch (err) {
+      if (requestId !== rolesRequestIdRef.current) return
       console.error('Error fetching roles data:', err)
+      setMembers([])
       setModules(FALLBACK_MODULES)
       setPredefinedRoles(FALLBACK_PREDEFINED_ROLES)
     } finally {
-      setRolesLoading(false)
+      if (requestId === rolesRequestIdRef.current) setRolesLoading(false)
     }
   }, [])
 
@@ -575,7 +591,15 @@ export default function AjustesPage() {
 
   const handleChangePassword = async (userId: string) => {
     const token = localStorage.getItem('accessToken')
-    if (!token || !newPassword || newPassword.length < 6) {
+    if (!token) {
+      alert('Inicia sesión nuevamente para cambiar la contraseña')
+      return
+    }
+    if (!rolesCompanyId) {
+      alert('Selecciona una empresa antes de cambiar la contraseña')
+      return
+    }
+    if (!newPassword || newPassword.length < 6) {
       alert('La contraseña debe tener al menos 6 caracteres')
       return
     }
@@ -584,7 +608,7 @@ export default function AjustesPage() {
       const res = await fetch(`/api/users/${userId}/password`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword }),
+        body: JSON.stringify({ password: newPassword, companyId: rolesCompanyId }),
       })
       const data = await res.json()
       if (data.success) {
@@ -602,32 +626,80 @@ export default function AjustesPage() {
     }
   }
 
+  const handleSaveUserName = async (userId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token || !rolesCompanyId) return
+    if (!userNameDraft.trim()) {
+      setUserNameMsg({ type: 'error', text: 'El nombre es requerido' })
+      return
+    }
+
+    setSavingUserName(true)
+    setUserNameMsg(null)
+    try {
+      const response = await fetch(`/api/companies/${rolesCompanyId}/users/${userId}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userNameDraft.trim() }),
+      })
+      const data = await response.json()
+      if (!data.success) {
+        setUserNameMsg({ type: 'error', text: data.error || 'Error al actualizar el nombre' })
+        return
+      }
+
+      setMembers((current) => current.map((member) =>
+        member.userId === userId
+          ? { ...member, user: { ...member.user, name: data.data.name } }
+          : member
+      ))
+      setEditingNameUserId(null)
+      setUserNameMsg(null)
+      await fetchRolesData(rolesCompanyId)
+    } catch {
+      setUserNameMsg({ type: 'error', text: 'Error de conexión' })
+    } finally {
+      setSavingUserName(false)
+    }
+  }
+
   const handleRemoveUser = async (userId: string) => {
     if (!confirm('¿Remover este usuario de la empresa?')) return
     const token = localStorage.getItem('accessToken')
     if (!token) return
     try {
-      const res = await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
-      const data = await res.json()
+      const response = await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo cerrar la membresía')
+        alert(data.error || 'No se pudo remover el usuario de la empresa')
         return
       }
       await fetchRolesData(rolesCompanyId)
-    } catch (err) { console.error(err) }
+    } catch (err) {
+      console.error(err)
+      alert('Error de conexión al remover el usuario')
+    }
   }
 
-  const handleGlobalOffboard = async (userId: string) => {
+  const handleGlobalDeactivate = async (userId: string) => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
+    setDeactivatingUserId(userId)
     try {
       const previewResponse = await fetch(`/api/users/${userId}/offboard`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const preview = await previewResponse.json()
       if (!preview.success) {
-        alert(preview.error || 'No se pudo revisar la baja global')
+        alert(preview.error || 'No se pudo revisar la desactivación')
+        return
+      }
+      if (!preview.data.user.isActive) {
+        alert('Esta cuenta ya está desactivada')
         return
       }
 
@@ -636,7 +708,7 @@ export default function AjustesPage() {
       )
       const companySummary = linkedCompanies.length ? linkedCompanies.join('\n• ') : 'Sin membresías de empresa registradas'
       const confirmed = window.confirm(
-        `Se dará de baja global a ${preview.data.user.name} (${preview.data.user.email}).\n\nEmpresas vinculadas:\n• ${companySummary}\n\nSe liberará el correo. Cotizaciones, comentarios, notificaciones, membresías y preferencias históricas se conservarán. ¿Continuar?`
+        `Se desactivará globalmente a ${preview.data.user.name} (${preview.data.user.email}).\n\nEmpresas vinculadas:\n• ${companySummary}\n\nSe revocarán sus sesiones y perderá acceso a todas las empresas. El correo seguirá reservado; cotizaciones, historial y relaciones se conservarán. ¿Continuar?`
       )
       if (!confirmed) return
 
@@ -646,15 +718,18 @@ export default function AjustesPage() {
       })
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo ejecutar la baja global')
+        alert(data.error || 'No se pudo desactivar la cuenta')
         return
       }
 
       alert(data.data.message)
       await fetchRolesData(rolesCompanyId)
+      clearPermissionsCache()
     } catch (err) {
-      console.error('Global user offboarding error:', err)
-      alert('Error de conexión al dar de baja el usuario')
+      console.error('Global user deactivation error:', err)
+      alert('Error de conexión al desactivar la cuenta')
+    } finally {
+      setDeactivatingUserId(null)
     }
   }
 
@@ -706,7 +781,13 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
+  const isSelectedCompanySuperAdmin = members.some((member) =>
+    member.userId === user?.id && member.role === 'SUPER_ADMIN'
+  )
   const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.some((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
+  const canChangeMemberPasswords = members.some((member) =>
+    member.userId === user?.id && ['ADMIN', 'SUPER_ADMIN'].includes(member.role)
+  )
 
   if (isLoading) {
     return (
@@ -1071,6 +1152,11 @@ export default function AjustesPage() {
               {/* Panel derecho: Usuarios de la empresa */}
               <Card>
                 <h3 className="font-semibold text-gray-900 mb-4">Usuarios <span className="text-gray-400 font-normal text-sm">({members.length})</span></h3>
+                {isSelectedCompanySuperAdmin && (
+                  <p className="-mt-2 mb-4 text-xs text-slate-500">
+                    Cambiar un nombre actualiza el perfil en todas las empresas donde está vinculada esa cuenta.
+                  </p>
+                )}
 
                 {/* Agregar usuario */}
                 {canManageRoles && (
@@ -1141,7 +1227,43 @@ export default function AjustesPage() {
                           {m.user.name?.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{m.user.name}</p>
+                          {editingNameUserId === m.userId ? (
+                            <div className="mt-1 space-y-2">
+                              <input
+                                type="text"
+                                value={userNameDraft}
+                                onChange={(event) => setUserNameDraft(event.target.value)}
+                                maxLength={160}
+                                aria-label={`Nuevo nombre de ${m.user.name}`}
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveUserName(m.userId)}
+                                  disabled={savingUserName || !userNameDraft.trim()}
+                                  className="text-xs px-2.5 py-1 rounded bg-primary text-white disabled:opacity-50"
+                                >
+                                  {savingUserName ? 'Guardando...' : 'Guardar nombre'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditingNameUserId(null); setUserNameMsg(null) }}
+                                  disabled={savingUserName}
+                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                              {userNameMsg && (
+                                <p className={`text-xs ${userNameMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {userNameMsg.text}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm font-medium text-gray-900 truncate">{m.user.name}</p>
+                          )}
                           <p className="text-xs text-gray-500 truncate">{m.user.email}</p>
                           <div className="flex items-center gap-1 mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_BADGE_COLORS[m.role] || 'bg-gray-100 text-gray-600'}`}>
@@ -1156,6 +1278,19 @@ export default function AjustesPage() {
                         </div>
                         {canManageRoles && (
                           <div className="flex flex-col gap-1 flex-shrink-0">
+                            {isSelectedCompanySuperAdmin && m.userId !== user?.id && editingNameUserId !== m.userId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNameUserId(m.userId)
+                                  setUserNameDraft(m.user.name)
+                                  setUserNameMsg(null)
+                                }}
+                                className="text-xs text-blue-600 hover:underline text-center"
+                              >
+                                Editar nombre
+                              </button>
+                            )}
                             <select
                               value={m.role}
                               onChange={(e) => handleChangeBaseRole(m.userId, e.target.value)}
@@ -1175,33 +1310,36 @@ export default function AjustesPage() {
                               <option value="">Sin rol personalizado</option>
                               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
-                            <button
-                              onClick={() => setEditingPasswordUserId(editingPasswordUserId === m.userId ? null : m.userId)}
-                              className="text-xs text-blue-500 hover:text-blue-700 text-center flex items-center justify-center gap-1"
-                              title="Asignar nueva contraseña para este usuario"
-                            >
-                              <Key className="w-3 h-3" />
-                              Contraseña
-                            </button>
+                            {canChangeMemberPasswords && (
+                              <button
+                                onClick={() => setEditingPasswordUserId(editingPasswordUserId === m.userId ? null : m.userId)}
+                                className="text-xs text-blue-500 hover:text-blue-700 text-center flex items-center justify-center gap-1"
+                                title="Asignar nueva contraseña para este usuario"
+                              >
+                                <Key className="w-3 h-3" />
+                                Contraseña
+                              </button>
+                            )}
                             <button
                               onClick={() => handleRemoveUser(m.userId)}
                               className="text-xs text-red-400 hover:text-red-600 text-center"
                             >
                               Remover de empresa
                             </button>
-                            {companyData?.role === 'SUPER_ADMIN' && m.userId !== user?.id && (
+                            {isSuperAdmin && m.userId !== user?.id && (
                               <button
-                                onClick={() => handleGlobalOffboard(m.userId)}
-                                className="text-xs text-red-700 hover:text-red-900 text-center font-medium"
-                                title="Archiva el perfil global y libera el correo corporativo"
+                                type="button"
+                                onClick={() => handleGlobalDeactivate(m.userId)}
+                                disabled={deactivatingUserId === m.userId}
+                                className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
                               >
-                                Baja global
+                                {deactivatingUserId === m.userId ? 'Desactivando...' : 'Desactivar globalmente'}
                               </button>
                             )}
                           </div>
                         )}
                       </div>
-                      {editingPasswordUserId === m.userId && canManageRoles && (
+                      {editingPasswordUserId === m.userId && canChangeMemberPasswords && (
                         <div className="px-3 pb-3 pt-0 border-t border-gray-100 mt-2">
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-2 mt-2">
                             <div className="flex items-start gap-1.5">

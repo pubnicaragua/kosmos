@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getAccessibleCompanies } from '@/lib/company-access'
-import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,10 +81,13 @@ export async function GET(request: NextRequest) {
 
     // Obtener nombres de vendedores
     const sellerIds = Object.keys(quotesBySeller)
-    const sellers = await getUserIdentityMap(sellerIds)
+    const sellers = await prisma.user.findMany({
+      where: { id: { in: sellerIds } },
+      select: { id: true, name: true }
+    })
 
     const quotesBySeller_withNames = Object.entries(quotesBySeller).map(([id, count]) => {
-      const seller = sellers.get(id)
+      const seller = sellers.find(s => s.id === id)
       return {
         sellerId: id,
         sellerName: seller?.name || 'Sin asignar',

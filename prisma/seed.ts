@@ -3,6 +3,18 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+async function ensureUserNameHistory(user: { id: string; name: string; createdAt: Date }) {
+  const currentVersion = await prisma.userNameHistory.findFirst({
+    where: { userId: user.id, validTo: null },
+    select: { id: true },
+  })
+  if (!currentVersion) {
+    await prisma.userNameHistory.create({
+      data: { userId: user.id, name: user.name, validFrom: user.createdAt },
+    })
+  }
+}
+
 async function main() {
   console.log('ðŸŒ± Iniciando seed de la base de datos...')
 
@@ -18,7 +30,6 @@ async function main() {
     where: { email: 'admin@kosmoscrm.com' },
     update: {
       password: hashedPassword,
-      name: 'Carlos Méndez',
       avatar: null,
     },
     create: {
@@ -28,12 +39,12 @@ async function main() {
       avatar: null,
     },
   })
+  await ensureUserNameHistory(superAdmin)
 
   const manager = await prisma.user.upsert({
     where: { email: 'manager@kosmoscrm.com' },
     update: {
       password: managerPassword,
-      name: 'Ana García',
       avatar: null,
     },
     create: {
@@ -43,12 +54,12 @@ async function main() {
       avatar: null,
     },
   })
+  await ensureUserNameHistory(manager)
 
   const regularUser = await prisma.user.upsert({
     where: { email: 'user@kosmoscrm.com' },
     update: {
       password: userPassword,
-      name: 'Juan Pérez',
       avatar: null,
     },
     create: {
@@ -58,6 +69,7 @@ async function main() {
       avatar: null,
     },
   })
+  await ensureUserNameHistory(regularUser)
 
   console.log('âœ… Usuarios creados:', superAdmin.email, manager.email, regularUser.email)
 
@@ -253,6 +265,7 @@ async function main() {
           avatar: null,
         },
       })
+      await ensureUserNameHistory(user)
 
       await prisma.userCompany.upsert({
         where: {

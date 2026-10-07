@@ -73,6 +73,11 @@ export async function POST(request: NextRequest) {
       return errorResponse('Email o contraseña incorrectos', 401)
     }
 
+    if (!user.isActive) {
+      console.warn(`⚠️ [LOGIN-API-${requestId}] Cuenta desactivada:`, email)
+      return errorResponse('Email o contraseña incorrectos', 401)
+    }
+
     console.log(`✅ [LOGIN-API-${requestId}] Contraseña válida`)
     console.log(`🎫 [LOGIN-API-${requestId}] Generando tokens...`)
 

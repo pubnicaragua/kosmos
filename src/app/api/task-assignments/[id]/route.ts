@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess } from '@/lib/company-access'
-import { getUserIdentityMap } from '@/lib/user-identity'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,16 +47,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Get user names
-    const userIdentities = await getUserIdentityMap([assignment.assignedTo, assignment.assignedBy])
-    const assignedUser = userIdentities.get(assignment.assignedTo)
-    const assignerUser = userIdentities.get(assignment.assignedBy)
+    const [assignedUser, assignedByNames, executionNames] = await Promise.all([
+      prisma.user.findUnique({ where: { id: assignment.assignedTo }, select: { id: true, name: true } }),
+      resolveHistoricalUserNames([{
+        userId: assignment.assignedBy,
+        occurredAt: assignment.createdAt,
+      }]),
+      resolveHistoricalUserNames(assignment.executions.map((execution) => ({
+        userId: execution.completedBy,
+        occurredAt: execution.completedAt,
+      }))),
+    ])
+    const executions = assignment.executions.map((execution, index) => ({
+      ...execution,
+      completedByName: executionNames[index] || null,
+    }))
 
     return NextResponse.json({
       success: true,
       data: {
         ...assignment,
+        executions,
         assignedToName: assignedUser?.name || 'Usuario desconocido',
-        assignedByName: assignerUser?.name || 'Usuario desconocido',
+        assignedByName: assignedByNames[0] || 'Usuario desconocido',
         progress: assignment.executions.length > 0
           ? (assignment.executions.filter(e => e.completed).length / assignment.executions.length) * 100
           : 0

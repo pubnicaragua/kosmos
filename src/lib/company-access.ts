@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function getAccessibleCompanies(userId: string) {
   const userCompanies = await prisma.userCompany.findMany({
-    where: { userId, endedAt: null },
+    where: { userId, endedAt: null, user: { is: { isActive: true } } },
     select: { companyId: true, role: true },
   })
 
@@ -48,7 +48,7 @@ export async function getModuleAccess(
   }
 
   const userCompany = await prisma.userCompany.findFirst({
-    where: { userId, companyId, endedAt: null },
+    where: { userId, companyId, endedAt: null, user: { is: { isActive: true } } },
     include: {
       customRole: {
         include: {

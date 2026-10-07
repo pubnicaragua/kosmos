@@ -26,16 +26,12 @@ export async function GET(request: NextRequest) {
     if (id) {
       const template = await prisma.template.findUnique({
         where: { id },
-        include: {
-          user: { select: { id: true, name: true, email: true, avatar: true } },
-          archivedUser: { select: { id: true, name: true, email: true, avatar: true } },
-        },
       })
       if (!template) return apiError('Plantilla no encontrada', 404)
       if (!companyIds.includes(template.companyId)) {
         return apiError('No tienes acceso a esta plantilla', 403)
       }
-      return apiSuccess({ ...template, user: template.user || template.archivedUser })
+      return apiSuccess(template)
     }
 
     const where: any = {
@@ -50,16 +46,11 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         company: { select: { name: true } },
-        user: { select: { id: true, name: true, email: true, avatar: true } },
-        archivedUser: { select: { id: true, name: true, email: true, avatar: true } },
       },
       orderBy: { name: 'asc' },
     })
 
-    return apiSuccess(templates.map((template) => ({
-      ...template,
-      user: template.user || template.archivedUser,
-    })))
+    return apiSuccess(templates)
   } catch (error) {
     console.error('Error fetching templates:', error)
     return apiError('Error al obtener plantillas', 500)

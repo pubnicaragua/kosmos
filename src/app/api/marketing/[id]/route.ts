@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,14 +61,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, campaign.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
-    const creator = await prisma.user.findUnique({
-      where: { id: campaign.createdBy },
-      select: { name: true },
-    })
+    const [createdByName] = await resolveHistoricalUserNames([{
+      userId: campaign.createdBy,
+      occurredAt: campaign.createdAt,
+    }])
 
     return apiSuccess({
       ...campaign,
-      createdByName: creator?.name || campaign.createdBy,
+      createdByName: createdByName || campaign.createdBy,
     })
   } catch (error) {
     console.error('Error fetching marketing campaign:', error)

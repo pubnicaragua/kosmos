@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       include: {
         permissions: true,
         userCompanies: {
-          where: { endedAt: null },
+          where: { endedAt: null, user: { is: { isActive: true } } },
           include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
@@ -81,7 +81,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return apiError('Solo admins pueden eliminar roles', 403)
 
     await prisma.userCompany.updateMany({
-      where: { customRoleId: params.id },
+      where: { customRoleId: params.id, endedAt: null },
       data: { customRoleId: null },
     })
 

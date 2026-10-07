@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,7 +102,12 @@ export async function PUT(
       data: updateData,
     })
 
-    return apiSuccess(item)
+    const [completedByName] = await resolveHistoricalUserNames([{
+      userId: item.completedBy,
+      occurredAt: item.completedAt,
+    }])
+
+    return apiSuccess({ ...item, completedByName: completedByName || null })
   } catch (error: any) {
     console.error('Error updating checklist item:', error)
     return apiError('Error al actualizar item', 500)

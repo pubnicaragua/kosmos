@@ -33,7 +33,11 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get('departmentId')
     const userId = searchParams.get('userId')
 
-    const where: any = { department: { companyId }, endedAt: null }
+    const where: any = {
+      department: { companyId },
+      endedAt: null,
+      user: { is: { isActive: true } },
+    }
     if (departmentId) where.departmentId = departmentId
     if (userId) where.userId = userId
 
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     const targetMembership = await prisma.userCompany.findFirst({
-      where: { userId, companyId: department.companyId, endedAt: null },
+      where: { userId, companyId: department.companyId, endedAt: null, user: { is: { isActive: true } } },
     })
     if (!targetMembership) {
       return apiError('El usuario no pertenece a esta empresa', 400)
@@ -93,14 +97,14 @@ export async function POST(request: NextRequest) {
 
     // Upsert: crear o actualizar si ya existe
     const existing = await prisma.userDepartment.findFirst({
-      where: { userId, departmentId, endedAt: null },
+      where: { userId, departmentId },
     })
 
     let result
     if (existing) {
       result = await prisma.userDepartment.update({
         where: { id: existing.id },
-        data: { isApprover, isReceiver, isBuyer, role: role || existing.role },
+        data: { isApprover, isReceiver, isBuyer, role: role || existing.role, endedAt: null },
         include: {
           user: { select: { id: true, name: true, email: true } },
           department: { select: { id: true, name: true } },

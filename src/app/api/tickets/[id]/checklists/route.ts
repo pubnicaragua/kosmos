@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +38,23 @@ export async function GET(
       orderBy: { position: 'asc' },
     })
 
-    return apiSuccess(checklists)
+    const items = checklists.flatMap((checklist) => checklist.items)
+    const completedByNames = await resolveHistoricalUserNames(items.map((item) => ({
+      userId: item.completedBy,
+      occurredAt: item.completedAt,
+    })))
+    const completedByNameByItemId = new Map(items.map((item, index) => [
+      item.id,
+      completedByNames[index] || null,
+    ]))
+
+    return apiSuccess(checklists.map((checklist) => ({
+      ...checklist,
+      items: checklist.items.map((item) => ({
+        ...item,
+        completedByName: completedByNameByItemId.get(item.id) || null,
+      })),
+    })))
   } catch (error: any) {
     console.error('Error fetching checklists:', error)
     return apiError('Error al obtener checklists', 500)

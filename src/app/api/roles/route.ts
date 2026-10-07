@@ -82,13 +82,7 @@ export async function GET(request: NextRequest) {
       canAccess = access.canAccess
     } catch (accessError: any) {
       console.error('getCompanyAccess error:', accessError?.message, accessError?.code)
-      // Si falla por columna faltante, verificar acceso de forma básica
-      try {
-        const uc = await prisma.userCompany.findFirst({ where: { userId: decoded.userId, companyId, endedAt: null } })
-        canAccess = Boolean(uc)
-      } catch {
-        canAccess = false
-      }
+      return apiError('No se pudo verificar el acceso a esta empresa', 503)
     }
     if (!canAccess) return apiError('Sin acceso a esta empresa', 403)
 
@@ -100,7 +94,7 @@ export async function GET(request: NextRequest) {
         include: {
           permissions: true,
           userCompanies: {
-            where: { endedAt: null },
+            where: { endedAt: null, user: { is: { isActive: true } } },
             include: { user: { select: { id: true, name: true, email: true } } },
           },
         },

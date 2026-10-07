@@ -44,26 +44,33 @@ export function generateRefreshToken(payload: TokenPayload): string {
   return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN } as any)
 }
 
-async function verifyActiveAccessToken(token: string): Promise<TokenPayload | null> {
-  let decoded: TokenPayload
+export async function verifyTokenForActiveUser(
+  token: string,
+  isUserActive: (userId: string) => Promise<boolean>
+): Promise<TokenPayload | null> {
+  let payload: TokenPayload
   try {
-    decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    payload = jwt.verify(token, JWT_SECRET) as TokenPayload
   } catch {
     return null
   }
 
-  if (!decoded || typeof decoded.userId !== 'string' || !decoded.userId) return null
+  if (!payload.userId || !payload.email) return null
+  return await isUserActive(payload.userId) ? payload : null
+}
 
-  const activeUser = await prisma.user.findUnique({
-    where: { id: decoded.userId },
-    select: { id: true },
+async function verifyActiveUserToken(token: string): Promise<TokenPayload | null> {
+  return verifyTokenForActiveUser(token, async (userId) => {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isActive: true },
+    })
+    return user?.isActive === true
   })
-
-  return activeUser ? decoded : null
 }
 
 export async function verifyAccessToken(token: string): Promise<TokenPayload | null> {
-  return verifyActiveAccessToken(token)
+  return verifyActiveUserToken(token)
 }
 
 export function verifyRefreshToken(token: string): TokenPayload | null {
@@ -88,5 +95,5 @@ export function getRefreshTokenMaxAgeSeconds(): number {
 }
 
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
-  return verifyActiveAccessToken(token)
+  return verifyActiveUserToken(token)
 }

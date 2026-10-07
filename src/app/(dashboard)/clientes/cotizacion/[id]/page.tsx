@@ -7,11 +7,13 @@ import jsPDF from 'jspdf'
 import { Button } from '@/components/ui-kit/Button'
 import { Modal } from '@/components/ui-kit/Modal'
 import { Input } from '@/components/ui-kit/Input'
+import { QUOTE_PIPELINE_STAGE_LABELS, type QuotePipelineStage } from '@/lib/quote-pipeline'
 
 interface Quote {
   id: string
   quoteNumber: string
   status: string
+  pipelineStage: QuotePipelineStage
   currency: string
   paymentMethod: 'CONTADO' | 'CREDITO'
   taxApplies: boolean
@@ -47,6 +49,14 @@ interface Quote {
     discount: number
     tax: number
     total: number
+  }>
+  stageHistory: Array<{
+    id: string
+    fromStage: QuotePipelineStage | null
+    toStage: QuotePipelineStage
+    actorName: string
+    changedAt: string
+    source: string
   }>
   discountApproval?: {
     status: string
@@ -327,8 +337,9 @@ export default function DetalleCotizacionPage() {
     setIsSendModalOpen(false)
   }
 
-  const handlePrintAndSend = () => {
-    window.print()
+  const handlePrintQuote = () => {
+    setIsSendModalOpen(false)
+    window.setTimeout(() => window.print(), 100)
   }
 
   const handleReject = async () => {
@@ -400,11 +411,18 @@ export default function DetalleCotizacionPage() {
             margin: 0 !important;
             padding: 0 !important;
           }
-          #proforma-print * {
-            display: revert !important;
+          #proforma-print table {
+            page-break-inside: auto;
+          }
+          #proforma-print thead {
+            display: table-header-group;
+          }
+          #proforma-print tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
           }
           @page {
-            margin: 0.5cm;
+            margin: 10mm;
           }
           body {
             margin: 0 !important;
@@ -508,14 +526,25 @@ export default function DetalleCotizacionPage() {
         </div>
 
         {/* Items table */}
-        <table className="w-full border-collapse text-xs mb-4">
+        <table className="w-full table-fixed border-collapse text-[10px] mb-4">
+          <colgroup>
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '29%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+          </colgroup>
           <thead>
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
               <th className="border border-gray-400 px-2 py-1 text-left font-bold">CODIGO</th>
               <th className="border border-gray-400 px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
               <th className="border border-gray-400 px-2 py-1 text-center font-bold">CANT.</th>
-              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO</th>
-              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO TOTAL</th>
+              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO UNIT.</th>
+              <th className="border border-gray-400 px-2 py-1 text-right font-bold">DESCUENTO</th>
+              <th className="border border-gray-400 px-2 py-1 text-center font-bold">IMPUESTO</th>
+              <th className="border border-gray-400 px-2 py-1 text-right font-bold">TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -525,6 +554,12 @@ export default function DetalleCotizacionPage() {
                 <td className="border border-gray-300 px-2 py-1">{item.description}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="border border-gray-300 px-2 py-1 text-right">
+                  {item.discount > 0
+                    ? `${item.discount}% · -${currencySymbol} ${(item.quantity * item.unitPrice * item.discount / 100 * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                    : 'Sin descuento'}
+                </td>
+                <td className="border border-gray-300 px-2 py-1 text-center">{quote.taxApplies ? 'IVA 15%' : 'No aplica'}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             ))}
@@ -538,18 +573,18 @@ export default function DetalleCotizacionPage() {
               <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">SUBTOTAL</td>
               <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
-            {quote.discount > 0 && (
-              <tr>
-                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO</td>
-                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              </tr>
-            )}
-            {quote.taxApplies && (
-              <tr>
-                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">IVA (15%)</td>
-                <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              </tr>
-            )}
+            <tr>
+              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO TOTAL</td>
+              <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">BASE IMPONIBLE</td>
+              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {((quote.subtotal - quote.discount) * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">{quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</td>
+              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+            </tr>
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
               <td className="border px-3 py-1.5 font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>TOTAL</td>
               <td className="border px-3 py-1.5 text-right font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>{currencySymbol} {(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
@@ -605,6 +640,9 @@ export default function DetalleCotizacionPage() {
           <p className="text-sm text-gray-500 mt-1">
             Creada el {new Date(quote.createdAt).toLocaleDateString()} • Vence en {Math.ceil((new Date(quote.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
           </p>
+          <p className="mt-2 text-sm font-medium text-primary">
+            Etapa comercial: {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {permissions.canEdit && (
@@ -616,7 +654,7 @@ export default function DetalleCotizacionPage() {
             </Button>
           )}
           <Button variant="outline" onClick={() => {
-            window.print()
+            handlePrintQuote()
           }}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -856,47 +894,31 @@ export default function DetalleCotizacionPage() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">HISTORIAL</h3>
-            <div className="space-y-4">
-              <div className="flex gap-3">
-                <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0"></div>
-                <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-1">Hoy, 10:30 AM</div>
-                  <div className="text-sm text-gray-900 font-medium">Estado cambiado a En Revisión</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-primary font-semibold text-xs">JP</span>
+            {quote.stageHistory.length === 0 ? (
+              <p className="text-sm text-gray-500">Todavía no hay cambios de etapa registrados.</p>
+            ) : (
+              <ol className="space-y-4">
+                {quote.stageHistory.map((event) => (
+                  <li key={event.id} className="flex gap-3">
+                    <span className={`mt-2 h-2 w-2 flex-shrink-0 rounded-full ${event.source === 'MIGRATION' ? 'bg-gray-400' : 'bg-blue-500'}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 text-xs text-gray-500">
+                        {new Date(event.changedAt).toLocaleString('es-NI')}
+                      </div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {event.fromStage
+                          ? `${QUOTE_PIPELINE_STAGE_LABELS[event.fromStage]} → ${QUOTE_PIPELINE_STAGE_LABELS[event.toStage]}`
+                          : `Etapa inicial: ${QUOTE_PIPELINE_STAGE_LABELS[event.toStage]}`}
+                      </div>
+                      {event.source === 'MIGRATION' && (
+                        <p className="mt-1 text-xs text-gray-500">Clasificación histórica registrada por migración.</p>
+                      )}
+                      <p className="mt-1 text-xs text-gray-600">{event.actorName}</p>
                     </div>
-                    <span className="text-xs text-gray-600">Juan Pérez</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-2 h-2 rounded-full bg-gray-300 mt-2 flex-shrink-0"></div>
-                <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-1">Hoy, 09:15 AM</div>
-                  <div className="text-sm text-gray-900 font-medium">Nota interna agregada</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-primary font-semibold text-xs">JP</span>
-                    </div>
-                    <span className="text-xs text-gray-600">Juan Pérez</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-2 h-2 rounded-full bg-gray-300 mt-2 flex-shrink-0"></div>
-                <div className="flex-1">
-                  <div className="text-xs text-gray-500 mb-1">Ayer, 04:00 PM</div>
-                  <div className="text-sm text-gray-900 font-medium">Cotización Creada</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-primary font-semibold text-xs">JP</span>
-                    </div>
-                    <span className="text-xs text-gray-600">Juan Pérez</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
@@ -930,7 +952,7 @@ export default function DetalleCotizacionPage() {
             <p className="text-sm text-blue-700 font-medium mb-2">📄 Paso 1: Imprimir / Guardar PDF</p>
             <p className="text-xs text-blue-600 mb-3">Genera el PDF de la proforma para adjuntarlo al email o enviarlo por WhatsApp.</p>
             <button
-              onClick={handlePrintAndSend}
+              onClick={handlePrintQuote}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

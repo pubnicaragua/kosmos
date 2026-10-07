@@ -4,6 +4,8 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { quoteSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
+import { parseQuotePagination, QUOTE_PIPELINE_STAGES } from '@/lib/quote-pipeline'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,14 +21,22 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const clientId = searchParams.get('clientId')
     const status = searchParams.get('status')
+    let pagination
+    try {
+      pagination = parseQuotePagination(searchParams.get('page'), searchParams.get('pageSize'))
+    } catch (error) {
+      return apiError(error instanceof Error ? error.message : 'Paginación inválida', 400)
+    }
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
     const allowedCompanyIds = []
+    const canEditByCompany: Record<string, boolean> = {}
 
     for (const cid of companyIds) {
       const moduleAccess = await getModuleAccess(decoded.userId, cid, 'cotizaciones')
       if (moduleAccess.canView || moduleAccess.canCreate) {
         allowedCompanyIds.push(cid)
+        canEditByCompany[cid] = moduleAccess.canEdit
       }
     }
 
@@ -46,22 +56,73 @@ export async function GET(request: NextRequest) {
     if (clientId) where.clientId = clientId
     if (status) where.status = status
 
-    const quotes = await prisma.quote.findMany({
+    const quoteQuery = {
       where,
       include: {
         client: { select: { id: true, name: true, email: true, phone: true } },
         company: { select: { id: true, name: true } },
-        createdByUser: { select: { id: true, name: true, email: true } },
-        createdByArchivedUser: { select: { id: true, name: true, email: true } },
+        createdByUser: { select: { name: true } },
         items: { include: { product: { select: { name: true } } } },
+        stageHistory: {
+          orderBy: { changedAt: 'desc' as const },
+          take: 1,
+        },
       },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
+    }
 
-    return apiSuccess(quotes.map((quote) => ({
-      ...quote,
-      createdByUser: quote.createdByUser || quote.createdByArchivedUser,
+    let quotes
+    let total = 0
+    let groupedStages: Array<{ pipelineStage: (typeof QUOTE_PIPELINE_STAGES)[number]; _count: { _all: number } }> = []
+
+    if (pagination) {
+      [quotes, total, groupedStages] = await prisma.$transaction(async (tx) => Promise.all([
+        tx.quote.findMany({
+          ...quoteQuery,
+          skip: pagination.skip,
+          take: pagination.pageSize,
+        }),
+        tx.quote.count({ where }),
+        tx.quote.groupBy({
+          by: ['pipelineStage'],
+          where,
+          _count: { _all: true },
+        }),
+      ]), { isolationLevel: 'RepeatableRead' })
+    } else {
+      quotes = await prisma.quote.findMany(quoteQuery)
+    }
+
+    const creatorNames = await resolveHistoricalUserNames(quotes.map((quote) => ({
+      userId: quote.createdBy,
+      occurredAt: quote.createdAt,
     })))
+
+    const items = quotes.map((quote, index) => ({
+      ...quote,
+      createdByUser: quote.createdByUser
+        ? { ...quote.createdByUser, name: creatorNames[index] || quote.createdByUser.name }
+        : null,
+    }))
+
+    if (!pagination) return apiSuccess(items)
+
+    const stageCounts = Object.fromEntries(QUOTE_PIPELINE_STAGES.map((stage) => [stage, 0]))
+    for (const group of groupedStages) {
+      stageCounts[group.pipelineStage] = group._count._all
+    }
+
+    return apiSuccess({
+      items,
+      pagination: {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        total,
+        totalPages: Math.ceil(total / pagination.pageSize),
+      },
+      stageCounts,
+      canEditByCompany,
+    })
   } catch (error) {
     console.error('Error fetching quotes:', error)
     return apiError('Error al obtener cotizaciones', 500)
@@ -84,6 +145,12 @@ export async function POST(request: NextRequest) {
 
     const moduleAccess = await getModuleAccess(decoded.userId, validatedData.companyId, 'cotizaciones')
     if (!moduleAccess.canCreate) return apiError('No tienes permisos para crear cotizaciones', 403)
+
+    const creator = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { name: true },
+    })
+    if (!creator) return apiError('Usuario no encontrado', 401)
 
     let subtotal = 0
     let totalDiscount = 0
@@ -136,13 +203,24 @@ export async function POST(request: NextRequest) {
         internalNotes: validatedData.internalNotes || null,
         terms: validatedData.terms || null,
         createdBy: decoded.userId,
+        pipelineStage: 'PROSPECTO',
         items: {
           create: itemsData,
+        },
+        stageHistory: {
+          create: {
+            fromStage: null,
+            toStage: 'PROSPECTO',
+            actorId: decoded.userId,
+            actorName: creator.name,
+            source: 'USER',
+          },
         },
       },
       include: {
         client: { select: { name: true } },
         items: true,
+        stageHistory: true,
       },
     })
 
@@ -153,11 +231,11 @@ export async function POST(request: NextRequest) {
           companyId: validatedData.companyId,
           role: { in: ['ADMIN', 'SUPER_ADMIN'] },
           endedAt: null,
+          user: { is: { isActive: true } },
         }
       })
 
       for (const cu of companyUsers) {
-        if (!cu.userId) continue
         if (cu.userId !== decoded.userId) {
           await prisma.notification.create({
             data: {

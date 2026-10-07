@@ -13,6 +13,9 @@ model User {
   password        String
   name            String
   avatar          String?
+  isActive        Boolean          @default(true) @map("is_active")
+  deactivatedAt   DateTime?        @map("deactivated_at")
+  deactivatedById String?          @map("deactivated_by_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   notifications   Notification[]
@@ -28,27 +31,28 @@ model User {
   @@map("users")
 }
 
-model ArchivedUser {
-  id              String            @id
-  email           String
-  name            String
-  avatar          String?
-  userCreatedAt   DateTime          @map("user_created_at")
-  userUpdatedAt   DateTime          @map("user_updated_at")
-  archivedAt      DateTime          @default(now()) @map("archived_at")
-  archivedById    String?           @map("archived_by_id")
-  notifications   Notification[]
-  preferences     UserPreferences[]
-  quotesCreated   Quote[]           @relation("QuoteArchivedCreatedBy")
-  refreshTokens   RefreshToken[]
-  templates       Template[]
-  ticketComments  TicketComment[]
-  ticketMembers   TicketMember[]
-  userCompanies   UserCompany[]
-  userDepartments UserDepartment[]
+model UserNameHistory {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  validFrom   DateTime  @map("valid_from")
+  validTo     DateTime? @map("valid_to")
+  changedById String?   @map("changed_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
-  @@index([email])
-  @@map("archived_users")
+  @@index([userId, validFrom, validTo])
+  @@map("user_name_history")
+}
+
+model UserPreferences {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  ticketColumns Json?    @map("ticket_columns")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 model Company {
@@ -96,38 +100,32 @@ model Company {
 }
 
 model UserCompany {
-  id             String        @id @default(cuid())
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  companyId      String        @map("company_id")
-  role           UserRole      @default(USER)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  endedAt        DateTime?     @map("ended_at")
-  customRoleId   String?       @map("custom_role_id")
-  custom_role    String?
-  customRole     CustomRole?   @relation(fields: [customRoleId], references: [id], onUpdate: NoAction, map: "fk_user_companies_custom_role")
-  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id           String      @id @default(cuid())
+  userId       String      @map("user_id")
+  companyId    String      @map("company_id")
+  role         UserRole    @default(USER)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  endedAt      DateTime?   @map("ended_at")
+  customRoleId String?     @map("custom_role_id")
+  custom_role  String?
+  customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onUpdate: NoAction, map: "fk_user_companies_custom_role")
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, companyId])
-  @@index([archivedUserId])
   @@map("user_companies")
 }
 
 model RefreshToken {
-  id             String        @id @default(cuid())
-  token          String        @unique
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  expiresAt      DateTime      @map("expires_at")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  revokedAt      DateTime?     @map("revoked_at")
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([archivedUserId])
   @@map("refresh_tokens")
 }
 
@@ -281,51 +279,67 @@ model Client {
 }
 
 model Quote {
-  id                    String        @id @default(cuid())
-  quoteNumber           String        @unique @map("quote_number")
-  companyId             String        @map("company_id")
-  clientId              String        @map("client_id")
-  contactName           String?       @map("contact_name")
-  contactEmail          String?       @map("contact_email")
-  contactPhone          String?       @map("contact_phone")
-  assignedTo            String?       @map("assigned_to")
-  clientType            ClientType    @default(NUEVO) @map("client_type")
-  status                QuoteStatus   @default(DRAFT)
-  closeProbability      Int?          @default(50) @map("close_probability")
-  currency              String        @default("USD")
-  subtotal              Float
-  discount              Float         @default(0)
-  tax                   Float         @default(0)
-  total                 Float
-  issueDate             DateTime      @default(now()) @map("issue_date")
-  validUntil            DateTime      @map("valid_until")
-  sentAt                DateTime?     @map("sent_at")
-  approvedAt            DateTime?     @map("approved_at")
-  rejectedAt            DateTime?     @map("rejected_at")
-  rejectionReason       String?       @map("rejection_reason")
-  closedAt              DateTime?     @map("closed_at")
-  notes                 String?
-  internalNotes         String?       @map("internal_notes")
-  terms                 String?
-  createdBy             String?       @map("created_by")
-  archivedUserId        String?       @map("archived_user_id")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
-  paymentMethod         PaymentMethod @default(CONTADO) @map("payment_method")
-  taxApplies            Boolean       @default(true) @map("tax_applies")
-  items                 QuoteItem[]
-  client                Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  company               Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdByUser         User?         @relation("QuoteCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  createdByArchivedUser ArchivedUser? @relation("QuoteArchivedCreatedBy", fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id               String        @id @default(cuid())
+  quoteNumber      String        @unique @map("quote_number")
+  companyId        String        @map("company_id")
+  clientId         String        @map("client_id")
+  contactName      String?       @map("contact_name")
+  contactEmail     String?       @map("contact_email")
+  contactPhone     String?       @map("contact_phone")
+  assignedTo       String?       @map("assigned_to")
+  clientType       ClientType    @default(NUEVO) @map("client_type")
+  status           QuoteStatus   @default(DRAFT)
+  pipelineStage    QuotePipelineStage @default(PROSPECTO) @map("pipeline_stage")
+  closeProbability Int?          @default(50) @map("close_probability")
+  currency         String        @default("USD")
+  subtotal         Float
+  discount         Float         @default(0)
+  tax              Float         @default(0)
+  total            Float
+  issueDate        DateTime      @default(now()) @map("issue_date")
+  validUntil       DateTime      @map("valid_until")
+  sentAt           DateTime?     @map("sent_at")
+  approvedAt       DateTime?     @map("approved_at")
+  rejectedAt       DateTime?     @map("rejected_at")
+  rejectionReason  String?       @map("rejection_reason")
+  closedAt         DateTime?     @map("closed_at")
+  notes            String?
+  internalNotes    String?       @map("internal_notes")
+  terms            String?
+  createdBy        String        @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  paymentMethod    PaymentMethod @default(CONTADO) @map("payment_method")
+  taxApplies       Boolean       @default(true) @map("tax_applies")
+  items            QuoteItem[]
+  stageHistory     QuoteStageHistory[]
+  client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdByUser    User          @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
 
   @@index([companyId])
   @@index([clientId])
   @@index([status])
+  @@index([pipelineStage])
   @@index([assignedTo])
   @@index([clientType])
-  @@index([archivedUserId])
   @@map("quotes")
+}
+
+model QuoteStageHistory {
+  id        String                   @id @default(cuid())
+  quoteId   String                   @map("quote_id")
+  fromStage QuotePipelineStage?      @map("from_stage")
+  toStage   QuotePipelineStage       @map("to_stage")
+  actorId   String?                  @map("actor_id")
+  actorName String                   @map("actor_name")
+  changedAt DateTime                 @default(now()) @map("changed_at")
+  source    QuoteStageHistorySource  @default(USER)
+  quote     Quote                    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId, changedAt])
+  @@index([actorId])
+  @@map("quote_stage_history")
 }
 
 model QuoteItem {
@@ -451,40 +465,34 @@ model Ticket {
 }
 
 model TicketComment {
-  id             String        @id @default(cuid())
-  ticketId       String        @map("ticket_id")
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  content        String
-  attachmentUrl  String?       @map("attachment_url")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  ticket         Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id            String   @id @default(cuid())
+  ticketId      String   @map("ticket_id")
+  userId        String   @map("user_id")
+  content       String
+  attachmentUrl String?  @map("attachment_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@index([userId])
-  @@index([archivedUserId])
   @@map("ticket_comments")
 }
 
 model TicketMember {
-  id             String        @id @default(cuid())
-  ticketId       String        @map("ticket_id")
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  role           String        @default("member")
-  addedBy        String        @map("added_by")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  ticket         Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id        String   @id @default(cuid())
+  ticketId  String   @map("ticket_id")
+  userId    String   @map("user_id")
+  role      String   @default("member")
+  addedBy   String   @map("added_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([ticketId, userId])
   @@index([ticketId])
   @@index([userId])
-  @@index([archivedUserId])
   @@map("ticket_members")
 }
 
@@ -578,21 +586,18 @@ model Activity {
 }
 
 model Notification {
-  id             String        @id @default(cuid())
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  type           String
-  title          String
-  message        String
-  link           String?
-  isRead         Boolean       @default(false) @map("is_read")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
-  @@index([archivedUserId])
   @@map("notifications")
 }
 
@@ -797,25 +802,20 @@ model PurchaseRequestItem {
 }
 
 model Template {
-  id             String        @id @default(cuid())
-  name           String
-  type           TemplateType
-  fileUrl        String?       @map("file_url")
-  content        String?
-  module         String
-  isActive       Boolean       @default(true) @map("is_active")
-  companyId      String        @map("company_id")
-  createdBy      String?       @map("created_by")
-  archivedUserId String?       @map("archived_user_id")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  company        Company       @relation(fields: [companyId], references: [id])
-  user           User?         @relation(fields: [createdBy], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id        String       @id @default(cuid())
+  name      String
+  type      TemplateType
+  fileUrl   String?
+  content   String?
+  module    String
+  isActive  Boolean      @default(true)
+  companyId String
+  createdBy String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  company   Company      @relation(fields: [companyId], references: [id])
+  user      User         @relation(fields: [createdBy], references: [id])
 
-  @@index([companyId])
-  @@index([module])
-  @@index([archivedUserId])
   @@map("templates")
 }
 
@@ -835,37 +835,20 @@ model Department {
 }
 
 model UserDepartment {
-  id             String        @id @default(cuid())
-  userId         String?       @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  departmentId   String        @map("department_id")
-  role           String?
-  isApprover     Boolean       @default(false) @map("is_approver")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  endedAt        DateTime?     @map("ended_at")
-  isReceiver     Boolean       @default(false) @map("is_receiver")
-  isBuyer        Boolean       @default(false) @map("is_buyer")
-  department     Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  user           User?         @relation("UserDepartmentUser", fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  departmentId String     @map("department_id")
+  role         String?
+  isApprover   Boolean    @default(false) @map("is_approver")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  endedAt      DateTime?  @map("ended_at")
+  isReceiver   Boolean    @default(false) @map("is_receiver")
+  isBuyer      Boolean    @default(false) @map("is_buyer")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserDepartmentUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, departmentId])
-  @@index([archivedUserId])
   @@map("user_departments")
-}
-
-model UserPreferences {
-  id             String        @id @default(cuid())
-  userId         String?       @unique @map("user_id")
-  archivedUserId String?       @map("archived_user_id")
-  ticketColumns  Json?         @map("ticket_columns")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  archivedUser   ArchivedUser? @relation(fields: [archivedUserId], references: [id], onDelete: Restrict)
-
-  @@index([archivedUserId])
-  @@map("user_preferences")
 }
 
 model TaskList {
@@ -1074,6 +1057,19 @@ enum QuoteStatus {
   APPROVED
   REJECTED
   EXPIRED
+}
+
+enum QuotePipelineStage {
+  PROSPECTO
+  PROPUESTA
+  NEGOCIACION
+  REALIZADA
+  RECHAZADA
+}
+
+enum QuoteStageHistorySource {
+  USER
+  MIGRATION
 }
 
 enum TicketStatus {

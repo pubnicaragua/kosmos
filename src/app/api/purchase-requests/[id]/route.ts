@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { getPurchasePermissions, type PurchasePermissions } from '@/lib/purchase-permissions'
-import { getUserIdentityMap } from '@/lib/user-identity'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,17 +40,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const departmentId = request.department?.id || request.departmentId
     const perms = await getPurchasePermissions(decoded.userId, request.companyId, departmentId)
 
-    const userIdentities = await getUserIdentityMap([request.requestedBy, request.approvedBy])
-    const requestedByUser = userIdentities.get(request.requestedBy)
-    const approvedByUser = request.approvedBy ? userIdentities.get(request.approvedBy) : null
+    const [requestedByName, approvedByName] = await resolveHistoricalUserNames([
+      { userId: request.requestedBy, occurredAt: request.requestDate || request.createdAt },
+      { userId: request.approvedBy, occurredAt: request.approvedAt },
+    ])
 
     return NextResponse.json({
       success: true,
       data: {
         ...request,
         requestingArea: request.department?.name || request.requestingArea,
-        requestedByName: requestedByUser?.name || null,
-        approvedByName: approvedByUser?.name || null,
+        requestedByName,
+        approvedByName,
         canApprove: perms.canApprove,
         canReceive: perms.canReceive,
         canBuy: perms.canBuy,
@@ -291,17 +292,18 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
     }
 
-    const userIdentities = await getUserIdentityMap([updated.requestedBy, updated.approvedBy])
-    const requestedByUser = userIdentities.get(updated.requestedBy)
-    const approvedByUser = updated.approvedBy ? userIdentities.get(updated.approvedBy) : null
+    const [requestedByName, approvedByName] = await resolveHistoricalUserNames([
+      { userId: updated.requestedBy, occurredAt: updated.requestDate || updated.createdAt },
+      { userId: updated.approvedBy, occurredAt: updated.approvedAt },
+    ])
 
     return NextResponse.json({
       success: true,
       data: {
         ...updated,
         requestingArea: updated.department?.name || updated.requestingArea,
-        requestedByName: requestedByUser?.name || null,
-        approvedByName: approvedByUser?.name || null,
+        requestedByName,
+        approvedByName,
         canApprove,
         canReceive,
         canBuy,

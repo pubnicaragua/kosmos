@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,20 +42,41 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         client: true,
         items: { include: { product: { select: { name: true } } } },
         company: { select: { name: true } },
-        createdByUser: { select: { id: true, name: true, email: true } },
-        createdByArchivedUser: { select: { id: true, name: true, email: true } },
+        stageHistory: { orderBy: { changedAt: 'asc' } },
       },
     })
+
+    // Obtener datos del usuario creador (asesor)
+    let createdByUser = null
+    if (quote?.createdBy) {
+      createdByUser = await prisma.user.findUnique({
+        where: { id: quote.createdBy },
+        select: { id: true, name: true, email: true },
+      })
+    }
 
     if (!quote) return apiError('Cotización no encontrada', 404)
 
     const access = await getCompanyAccess(decoded.userId, quote.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const discountApproval = extractDiscountApproval(quote.internalNotes)
+    const [createdByHistoricalName, approvedByHistoricalName] = await resolveHistoricalUserNames([
+      { userId: quote.createdBy, occurredAt: quote.createdAt },
+      {
+        userId: typeof discountApproval?.approvedBy === 'string' ? discountApproval.approvedBy : null,
+        occurredAt: discountApproval?.approvedAt ? new Date(discountApproval.approvedAt) : null,
+      },
+    ])
+
     return apiSuccess({
       ...quote,
-      createdByUser: quote.createdByUser || quote.createdByArchivedUser,
-      discountApproval: extractDiscountApproval(quote.internalNotes),
+      createdByUser: createdByUser
+        ? { ...createdByUser, name: createdByHistoricalName || createdByUser.name }
+        : null,
+      discountApproval: discountApproval && approvedByHistoricalName
+        ? { ...discountApproval, approvedBy: approvedByHistoricalName }
+        : discountApproval,
     })
   } catch (error) {
     console.error('Error fetching quote:', error)

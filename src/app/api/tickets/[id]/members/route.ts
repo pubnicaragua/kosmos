@@ -33,17 +33,11 @@ export async function GET(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
-        archivedUser: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
       },
       orderBy: { createdAt: 'asc' },
     })
 
-    return apiSuccess(members.map((member) => ({
-      ...member,
-      user: member.user || member.archivedUser,
-    })))
+    return apiSuccess(members)
   } catch (error: any) {
     console.error('Error fetching ticket members:', error)
     return apiError('Error al obtener miembros', 500)
@@ -95,9 +89,6 @@ export async function POST(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
-        archivedUser: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
       },
     })
 
@@ -112,7 +103,7 @@ export async function POST(
       },
     })
 
-    return apiSuccess({ ...member, user: member.user || member.archivedUser }, undefined, 201)
+    return apiSuccess(member, undefined, 201)
   } catch (error: any) {
     console.error('Error adding ticket member:', error)
     if (error.code === 'P2002') {

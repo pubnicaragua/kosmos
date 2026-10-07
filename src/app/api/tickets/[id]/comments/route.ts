@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,16 +34,20 @@ export async function GET(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
-        archivedUser: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
       },
       orderBy: { createdAt: 'asc' },
     })
 
-    return apiSuccess(comments.map((comment) => ({
+    const historicalNames = await resolveHistoricalUserNames(comments.map((comment) => ({
+      userId: comment.userId,
+      occurredAt: comment.createdAt,
+    })))
+
+    return apiSuccess(comments.map((comment, index) => ({
       ...comment,
-      user: comment.user || comment.archivedUser,
+      user: comment.user
+        ? { ...comment.user, name: historicalNames[index] || comment.user.name }
+        : null,
     })))
   } catch (error: any) {
     console.error('Error fetching ticket comments:', error)
@@ -89,9 +94,6 @@ export async function POST(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
-        archivedUser: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
       },
     })
 
@@ -100,7 +102,7 @@ export async function POST(
       data: { updatedAt: new Date() },
     })
 
-    return apiSuccess({ ...comment, user: comment.user || comment.archivedUser }, undefined, 201)
+    return apiSuccess(comment, undefined, 201)
   } catch (error: any) {
     console.error('Error creating ticket comment:', error)
     return apiError('Error al crear comentario', 500)

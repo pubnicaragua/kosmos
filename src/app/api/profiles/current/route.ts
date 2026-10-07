@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/auth'
 import { successResponse, errorResponse } from '@/lib/api-response'
+import { changeUserNameInTransaction } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -118,18 +120,32 @@ export async function PUT(request: NextRequest) {
       return errorResponse('El nombre es requerido', 400)
     }
 
-    const updated = await prisma.user.update({
-      where: { id: payload.userId },
-      data: {
-        name: name.trim(),
-        ...(avatar !== undefined ? { avatar } : {}),
-      },
-      select: { id: true, email: true, name: true, avatar: true },
-    })
+    const updated = await prisma.$transaction(async (tx) => {
+      await changeUserNameInTransaction(tx, {
+        userId: payload.userId,
+        name,
+        changedById: payload.userId,
+      })
+
+      return tx.user.update({
+        where: { id: payload.userId },
+        data: avatar !== undefined ? { avatar } : {},
+        select: { id: true, email: true, name: true, avatar: true },
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
     return successResponse(updated)
   } catch (error) {
     console.error('Update profile error:', error)
+    if (error instanceof Error && error.message === 'USER_NOT_FOUND') {
+      return errorResponse('Usuario no encontrado', 404)
+    }
+    if (error instanceof Error && error.message === 'USER_INACTIVE') {
+      return errorResponse('La cuenta está desactivada', 401)
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return errorResponse('Cambio simultáneo detectado; vuelve a intentar', 409)
+    }
     return errorResponse('Error al actualizar el perfil', 500)
   }
 }

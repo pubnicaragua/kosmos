@@ -63,7 +63,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const moduleAccess = await getModuleAccess(decoded.userId, document.companyId, 'documentos')
     if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar documentos', 403)
 
-    // Check if user is owner or super_admin
+    // Check if user is owner or SUPER_ADMIN in the document's company
     if (document.uploadedBy !== decoded.userId && access.effectiveRole !== 'SUPER_ADMIN') {
       return apiError('Solo el propietario del documento puede eliminarlo', 403)
     }

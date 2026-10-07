@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
-import { getUserIdentityMap } from '@/lib/user-identity'
+import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,11 +50,36 @@ export async function GET(request: NextRequest) {
 
     // Get user names for assigned users
     const userIds = [...new Set(assignments.map(a => a.assignedTo))]
-    const userMap = await getUserIdentityMap(userIds)
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true }
+    })
+    const userMap = new Map(users.map(u => [u.id, u.name]))
+    const assignerNames = await resolveHistoricalUserNames(assignments.map((assignment) => ({
+      userId: assignment.assignedBy,
+      occurredAt: assignment.createdAt,
+    })))
+    const executionNames = await resolveHistoricalUserNames(assignments.flatMap((assignment) =>
+      assignment.executions.map((execution) => ({
+        userId: execution.completedBy,
+        occurredAt: execution.completedAt,
+      }))
+    ))
+    const executionNameById = new Map(
+      assignments.flatMap((assignment) => assignment.executions).map((execution, index) => [
+        execution.id,
+        executionNames[index],
+      ])
+    )
 
-    const enriched = assignments.map(a => ({
+    const enriched = assignments.map((a, index) => ({
       ...a,
-      assignedToName: userMap.get(a.assignedTo)?.name || 'Usuario desconocido',
+      assignedToName: userMap.get(a.assignedTo) || 'Usuario desconocido',
+      assignedByName: assignerNames[index] || 'Usuario desconocido',
+      executions: a.executions.map((execution) => ({
+        ...execution,
+        completedByName: executionNameById.get(execution.id) || null,
+      })),
       progress: a.executions.length > 0 
         ? (a.executions.filter(e => e.completed).length / a.executions.length) * 100 
         : 0

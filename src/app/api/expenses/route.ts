@@ -184,11 +184,11 @@ export async function POST(request: NextRequest) {
           companyId: companyId,
           role: { in: ['ADMIN', 'SUPER_ADMIN'] },
           endedAt: null,
+          user: { is: { isActive: true } },
         }
       })
 
       for (const cu of companyUsers) {
-        if (!cu.userId) continue
         await prisma.notification.create({
           data: {
             userId: cu.userId,
