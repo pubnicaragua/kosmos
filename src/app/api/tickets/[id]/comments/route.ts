@@ -14,7 +14,7 @@ export async function GET(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const ticket = await prisma.ticket.findUnique({
@@ -33,11 +33,17 @@ export async function GET(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
+        archivedUser: {
+          select: { id: true, name: true, email: true, avatar: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
     })
 
-    return apiSuccess(comments)
+    return apiSuccess(comments.map((comment) => ({
+      ...comment,
+      user: comment.user || comment.archivedUser,
+    })))
   } catch (error: any) {
     console.error('Error fetching ticket comments:', error)
     return apiError('Error al obtener comentarios', 500)
@@ -52,7 +58,7 @@ export async function POST(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -83,6 +89,9 @@ export async function POST(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
+        archivedUser: {
+          select: { id: true, name: true, email: true, avatar: true },
+        },
       },
     })
 
@@ -91,7 +100,7 @@ export async function POST(
       data: { updatedAt: new Date() },
     })
 
-    return apiSuccess(comment, undefined, 201)
+    return apiSuccess({ ...comment, user: comment.user || comment.archivedUser }, undefined, 201)
   } catch (error: any) {
     console.error('Error creating ticket comment:', error)
     return apiError('Error al crear comentario', 500)

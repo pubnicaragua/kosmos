@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
+    const payload = await verifyAccessToken(token)
     if (!payload) {
       return errorResponse('Token invalido o expirado', 401)
     }

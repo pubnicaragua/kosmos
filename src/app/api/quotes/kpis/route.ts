@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getAccessibleCompanies } from '@/lib/company-access'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -81,13 +82,10 @@ export async function GET(request: NextRequest) {
 
     // Obtener nombres de vendedores
     const sellerIds = Object.keys(quotesBySeller)
-    const sellers = await prisma.user.findMany({
-      where: { id: { in: sellerIds } },
-      select: { id: true, name: true }
-    })
+    const sellers = await getUserIdentityMap(sellerIds)
 
     const quotesBySeller_withNames = Object.entries(quotesBySeller).map(([id, count]) => {
-      const seller = sellers.find(s => s.id === id)
+      const seller = sellers.get(id)
       return {
         sellerId: id,
         sellerName: seller?.name || 'Sin asignar',

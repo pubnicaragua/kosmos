@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }

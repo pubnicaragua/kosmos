@@ -109,13 +109,13 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
+    const payload = await verifyAccessToken(token)
     if (!payload) {
       return errorResponse('Token inválido o expirado', 401)
     }
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: payload.userId },
+      where: { userId: payload.userId, endedAt: null },
       select: { companyId: true, role: true },
     })
 
@@ -152,10 +152,12 @@ export async function GET(request: NextRequest) {
         prisma.refreshToken.count({
           where: {
             expiresAt: { gt: now },
+            revokedAt: null,
             user: {
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
+                  endedAt: null,
                 },
               },
             },
@@ -163,10 +165,12 @@ export async function GET(request: NextRequest) {
         }),
         prisma.refreshToken.findMany({
           where: {
+            revokedAt: null,
             user: {
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
+                  endedAt: null,
                 },
               },
             },
@@ -199,6 +203,7 @@ export async function GET(request: NextRequest) {
               userCompanies: {
                 some: {
                   companyId: { in: scopedCompanyIds },
+                  endedAt: null,
                 },
               },
             },
@@ -225,7 +230,7 @@ export async function GET(request: NextRequest) {
       ...loginEvents.map((event) => ({
         timestamp: event.createdAt.getTime(),
         time: event.createdAt.toLocaleTimeString('es-ES'),
-        action: `Inicio de sesión: ${event.user.name || event.user.email}`,
+        action: `Inicio de sesión: ${event.user?.name || event.user?.email || 'Usuario archivado'}`,
         status: 'success' as const,
       })),
       ...activityEvents.map((event) => ({

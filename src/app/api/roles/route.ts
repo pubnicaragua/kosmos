@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -84,10 +84,10 @@ export async function GET(request: NextRequest) {
       console.error('getCompanyAccess error:', accessError?.message, accessError?.code)
       // Si falla por columna faltante, verificar acceso de forma básica
       try {
-        const uc = await prisma.userCompany.findFirst({ where: { userId: decoded.userId, companyId } })
+        const uc = await prisma.userCompany.findFirst({ where: { userId: decoded.userId, companyId, endedAt: null } })
         canAccess = Boolean(uc)
       } catch {
-        canAccess = true // asumir acceso si no podemos verificar
+        canAccess = false
       }
     }
     if (!canAccess) return apiError('Sin acceso a esta empresa', 403)
@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
         include: {
           permissions: true,
           userCompanies: {
+            where: { endedAt: null },
             include: { user: { select: { id: true, name: true, email: true } } },
           },
         },
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()

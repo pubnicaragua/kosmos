@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const quote = await prisma.quote.findUnique({
@@ -41,17 +41,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         client: true,
         items: { include: { product: { select: { name: true } } } },
         company: { select: { name: true } },
+        createdByUser: { select: { id: true, name: true, email: true } },
+        createdByArchivedUser: { select: { id: true, name: true, email: true } },
       },
     })
-    
-    // Obtener datos del usuario creador (asesor)
-    let createdByUser = null
-    if (quote?.createdBy) {
-      createdByUser = await prisma.user.findUnique({
-        where: { id: quote.createdBy },
-        select: { id: true, name: true, email: true },
-      })
-    }
 
     if (!quote) return apiError('Cotización no encontrada', 404)
 
@@ -60,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return apiSuccess({
       ...quote,
-      createdByUser,
+      createdByUser: quote.createdByUser || quote.createdByArchivedUser,
       discountApproval: extractDiscountApproval(quote.internalNotes),
     })
   } catch (error) {
@@ -74,7 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -156,7 +149,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const quote = await prisma.quote.findUnique({ where: { id: params.id } })

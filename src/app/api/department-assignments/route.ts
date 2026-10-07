@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const departmentId = searchParams.get('departmentId')
     const userId = searchParams.get('userId')
 
-    const where: any = { department: { companyId } }
+    const where: any = { department: { companyId }, endedAt: null }
     if (departmentId) where.departmentId = departmentId
     if (userId) where.userId = userId
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     const targetMembership = await prisma.userCompany.findFirst({
-      where: { userId, companyId: department.companyId },
+      where: { userId, companyId: department.companyId, endedAt: null },
     })
     if (!targetMembership) {
       return apiError('El usuario no pertenece a esta empresa', 400)
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Upsert: crear o actualizar si ya existe
     const existing = await prisma.userDepartment.findFirst({
-      where: { userId, departmentId },
+      where: { userId, departmentId, endedAt: null },
     })
 
     let result

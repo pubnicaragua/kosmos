@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -26,12 +26,16 @@ export async function GET(request: NextRequest) {
     if (id) {
       const template = await prisma.template.findUnique({
         where: { id },
+        include: {
+          user: { select: { id: true, name: true, email: true, avatar: true } },
+          archivedUser: { select: { id: true, name: true, email: true, avatar: true } },
+        },
       })
       if (!template) return apiError('Plantilla no encontrada', 404)
       if (!companyIds.includes(template.companyId)) {
         return apiError('No tienes acceso a esta plantilla', 403)
       }
-      return apiSuccess(template)
+      return apiSuccess({ ...template, user: template.user || template.archivedUser })
     }
 
     const where: any = {
@@ -46,11 +50,16 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         company: { select: { name: true } },
+        user: { select: { id: true, name: true, email: true, avatar: true } },
+        archivedUser: { select: { id: true, name: true, email: true, avatar: true } },
       },
       orderBy: { name: 'asc' },
     })
 
-    return apiSuccess(templates)
+    return apiSuccess(templates.map((template) => ({
+      ...template,
+      user: template.user || template.archivedUser,
+    })))
   } catch (error) {
     console.error('Error fetching templates:', error)
     return apiError('Error al obtener plantillas', 500)
@@ -62,7 +71,7 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -99,7 +108,7 @@ export async function PUT(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -137,7 +146,7 @@ export async function DELETE(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)

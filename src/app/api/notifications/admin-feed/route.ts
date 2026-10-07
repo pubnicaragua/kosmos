@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
+    const payload = await verifyAccessToken(token)
     if (!payload) {
       return errorResponse('Token inválido o expirado', 401)
     }
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Only SUPER_ADMIN / ADMIN can access this
     const requestingUser = await prisma.user.findUnique({
       where: { id: payload.userId },
-      include: { userCompanies: { select: { role: true } } },
+      include: { userCompanies: { where: { endedAt: null }, select: { role: true } } },
     })
     const isAdmin = requestingUser?.userCompanies.some(
       (uc) => uc.role === 'SUPER_ADMIN' || uc.role === 'ADMIN'

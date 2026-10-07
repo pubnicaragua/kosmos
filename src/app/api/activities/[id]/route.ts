@@ -17,7 +17,7 @@ export async function GET(
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -52,7 +52,7 @@ export async function PUT(
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -121,7 +121,7 @@ export async function DELETE(
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }

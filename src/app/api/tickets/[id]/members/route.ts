@@ -14,7 +14,7 @@ export async function GET(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const ticket = await prisma.ticket.findUnique({
@@ -33,11 +33,17 @@ export async function GET(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
+        archivedUser: {
+          select: { id: true, name: true, email: true, avatar: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
     })
 
-    return apiSuccess(members)
+    return apiSuccess(members.map((member) => ({
+      ...member,
+      user: member.user || member.archivedUser,
+    })))
   } catch (error: any) {
     console.error('Error fetching ticket members:', error)
     return apiError('Error al obtener miembros', 500)
@@ -52,7 +58,7 @@ export async function POST(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -89,6 +95,9 @@ export async function POST(
         user: {
           select: { id: true, name: true, email: true, avatar: true },
         },
+        archivedUser: {
+          select: { id: true, name: true, email: true, avatar: true },
+        },
       },
     })
 
@@ -103,7 +112,7 @@ export async function POST(
       },
     })
 
-    return apiSuccess(member, undefined, 201)
+    return apiSuccess({ ...member, user: member.user || member.archivedUser }, undefined, 201)
   } catch (error: any) {
     console.error('Error adding ticket member:', error)
     if (error.code === 'P2002') {
@@ -121,7 +130,7 @@ export async function DELETE(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)

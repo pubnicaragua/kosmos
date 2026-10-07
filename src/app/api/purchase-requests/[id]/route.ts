@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { getPurchasePermissions, type PurchasePermissions } from '@/lib/purchase-permissions'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,14 +40,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const departmentId = request.department?.id || request.departmentId
     const perms = await getPurchasePermissions(decoded.userId, request.companyId, departmentId)
 
-    const [requestedByUser, approvedByUser] = await Promise.all([
-      request.requestedBy
-        ? prisma.user.findUnique({ where: { id: request.requestedBy }, select: { id: true, name: true } })
-        : Promise.resolve(null),
-      request.approvedBy
-        ? prisma.user.findUnique({ where: { id: request.approvedBy }, select: { id: true, name: true } })
-        : Promise.resolve(null),
-    ])
+    const userIdentities = await getUserIdentityMap([request.requestedBy, request.approvedBy])
+    const requestedByUser = userIdentities.get(request.requestedBy)
+    const approvedByUser = request.approvedBy ? userIdentities.get(request.approvedBy) : null
 
     return NextResponse.json({
       success: true,
@@ -295,14 +291,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: 'Solicitud no encontrada' }, { status: 404 })
     }
 
-    const [requestedByUser, approvedByUser] = await Promise.all([
-      updated.requestedBy
-        ? prisma.user.findUnique({ where: { id: updated.requestedBy }, select: { id: true, name: true } })
-        : Promise.resolve(null),
-      updated.approvedBy
-        ? prisma.user.findUnique({ where: { id: updated.approvedBy }, select: { id: true, name: true } })
-        : Promise.resolve(null),
-    ])
+    const userIdentities = await getUserIdentityMap([updated.requestedBy, updated.approvedBy])
+    const requestedByUser = userIdentities.get(updated.requestedBy)
+    const approvedByUser = updated.approvedBy ? userIdentities.get(updated.approvedBy) : null
 
     return NextResponse.json({
       success: true,

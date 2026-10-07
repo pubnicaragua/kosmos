@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return errorResponse('Token requerido', 401)
     }
 
-    const payload = verifyAccessToken(authHeader.substring(7))
+    const payload = await verifyAccessToken(authHeader.substring(7))
     if (!payload) return errorResponse('Token inválido', 401)
 
     const access = await getCompanyAccess(payload.userId, params.id)
@@ -40,7 +40,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return errorResponse('Token requerido', 401)
     }
 
-    const payload = verifyAccessToken(authHeader.substring(7))
+    const payload = await verifyAccessToken(authHeader.substring(7))
     if (!payload) return errorResponse('Token inválido', 401)
 
     const access = await getCompanyAccess(payload.userId, params.id)

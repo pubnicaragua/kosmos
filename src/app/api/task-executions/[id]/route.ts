@@ -9,7 +9,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
     const body = await req.json()

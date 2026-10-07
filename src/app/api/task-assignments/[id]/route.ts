@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess } from '@/lib/company-access'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
     const assignment = await prisma.taskAssignment.findUnique({
@@ -46,10 +47,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Get user names
-    const [assignedUser, assignerUser] = await Promise.all([
-      prisma.user.findUnique({ where: { id: assignment.assignedTo }, select: { id: true, name: true } }),
-      prisma.user.findUnique({ where: { id: assignment.assignedBy }, select: { id: true, name: true } })
-    ])
+    const userIdentities = await getUserIdentityMap([assignment.assignedTo, assignment.assignedBy])
+    const assignedUser = userIdentities.get(assignment.assignedTo)
+    const assignerUser = userIdentities.get(assignment.assignedBy)
 
     return NextResponse.json({
       success: true,
@@ -73,7 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const token = req.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 })
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return NextResponse.json({ success: false, error: 'Token inválido' }, { status: 401 })
 
     const body = await req.json()

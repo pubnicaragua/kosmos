@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const decoded = verifyAccessToken(token)
+    const decoded = await verifyAccessToken(token)
     if (!decoded) {
       return errorResponse('Token inválido o expirado', 401)
     }
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: decoded.userId,
         companyId,
+        endedAt: null,
       },
       include: {
         company: true,

@@ -14,7 +14,7 @@ export async function GET(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const employee = await prisma.employee.findUnique({
@@ -25,7 +25,7 @@ export async function GET(
 
     // Verify user has access to company
     const userCompany = await prisma.userCompany.findFirst({
-      where: { userId: decoded.userId, companyId: employee.companyId }
+      where: { userId: decoded.userId, companyId: employee.companyId, endedAt: null }
     })
 
     if (!userCompany) return apiError('No tienes acceso a esta empresa', 403)
@@ -45,7 +45,7 @@ export async function PUT(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const employee = await prisma.employee.findUnique({
@@ -94,7 +94,7 @@ export async function DELETE(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const employee = await prisma.employee.findUnique({

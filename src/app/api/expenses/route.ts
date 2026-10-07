@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: decoded.userId, endedAt: null },
       select: { companyId: true },
     })
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: decoded.userId,
         companyId: companyId,
+        endedAt: null,
       },
     })
 
@@ -181,11 +182,13 @@ export async function POST(request: NextRequest) {
       const companyUsers = await prisma.userCompany.findMany({
         where: {
           companyId: companyId,
-          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+          endedAt: null,
         }
       })
 
       for (const cu of companyUsers) {
+        if (!cu.userId) continue
         await prisma.notification.create({
           data: {
             userId: cu.userId,

@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
-    const decoded = verifyAccessToken(token)
+    const decoded = await verifyAccessToken(token)
     if (!decoded) {
       return errorResponse('Token inválido o expirado', 401)
     }
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: decoded.userId, endedAt: null },
       include: {
         company: true,
       },

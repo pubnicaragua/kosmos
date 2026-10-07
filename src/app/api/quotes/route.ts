@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -51,13 +51,17 @@ export async function GET(request: NextRequest) {
       include: {
         client: { select: { id: true, name: true, email: true, phone: true } },
         company: { select: { id: true, name: true } },
-        createdByUser: { select: { name: true } },
+        createdByUser: { select: { id: true, name: true, email: true } },
+        createdByArchivedUser: { select: { id: true, name: true, email: true } },
         items: { include: { product: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    return apiSuccess(quotes)
+    return apiSuccess(quotes.map((quote) => ({
+      ...quote,
+      createdByUser: quote.createdByUser || quote.createdByArchivedUser,
+    })))
   } catch (error) {
     console.error('Error fetching quotes:', error)
     return apiError('Error al obtener cotizaciones', 500)
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -147,11 +151,13 @@ export async function POST(request: NextRequest) {
       const companyUsers = await prisma.userCompany.findMany({
         where: {
           companyId: validatedData.companyId,
-          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+          endedAt: null,
         }
       })
 
       for (const cu of companyUsers) {
+        if (!cu.userId) continue
         if (cu.userId !== decoded.userId) {
           await prisma.notification.create({
             data: {

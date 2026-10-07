@@ -11,7 +11,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -51,7 +51,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const document = await prisma.document.findUnique({ where: { id: params.id } })
@@ -64,8 +64,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (!moduleAccess.canDelete) return apiError('No tienes permisos para eliminar documentos', 403)
 
     // Check if user is owner or super_admin
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } })
-    if (document.uploadedBy !== decoded.userId && user?.role !== 'SUPER_ADMIN') {
+    if (document.uploadedBy !== decoded.userId && access.effectiveRole !== 'SUPER_ADMIN') {
       return apiError('Solo el propietario del documento puede eliminarlo', 403)
     }
 

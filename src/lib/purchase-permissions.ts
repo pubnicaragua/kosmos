@@ -37,6 +37,7 @@ export async function getPurchasePermissions(
   const assignments = await prisma.userDepartment.findMany({
     where: {
       userId,
+      endedAt: null,
       department: { companyId },
     },
     select: { isApprover: true, isReceiver: true, isBuyer: true, role: true },

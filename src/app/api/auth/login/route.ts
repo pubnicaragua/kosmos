@@ -33,16 +33,18 @@ export async function POST(request: NextRequest) {
       return errorResponse(validation.error.errors[0].message, 400)
     }
 
-    const { email, password, rememberMe = false } = validation.data
+    const email = validation.data.email.trim().toLowerCase()
+    const { password, rememberMe = false } = validation.data
     console.log(`🔍 [LOGIN-API-${requestId}] Buscando usuario en BD...`)
     console.log(`📍 [LOGIN-API-${requestId}] Intentando conectar a Prisma...`)
 
     let user
     try {
-      user = await prisma.user.findUnique({
-        where: { email },
+      user = await prisma.user.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
         include: {
           userCompanies: {
+            where: { endedAt: null },
             include: {
               company: true,
             },

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +15,7 @@ export async function GET(
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const ticket = await prisma.ticket.findUnique({
@@ -33,13 +34,7 @@ export async function GET(
     })
 
     // Enriquecer con información de usuarios
-    const userIds = [...new Set(auditLogs.map(log => log.userId))]
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true, email: true, avatar: true },
-    })
-
-    const userMap = new Map(users.map(u => [u.id, u]))
+    const userMap = await getUserIdentityMap(auditLogs.map((log) => log.userId))
 
     const enrichedLogs = auditLogs.map(log => ({
       ...log,

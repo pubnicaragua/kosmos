@@ -607,9 +607,55 @@ export default function AjustesPage() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
     try {
-      await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo cerrar la membresía')
+        return
+      }
       await fetchRolesData(rolesCompanyId)
     } catch (err) { console.error(err) }
+  }
+
+  const handleGlobalOffboard = async (userId: string) => {
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    try {
+      const previewResponse = await fetch(`/api/users/${userId}/offboard`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const preview = await previewResponse.json()
+      if (!preview.success) {
+        alert(preview.error || 'No se pudo revisar la baja global')
+        return
+      }
+
+      const linkedCompanies = (preview.data.companies || []).map((company: { name: string; active: boolean }) =>
+        `${company.name}${company.active ? '' : ' (membresía ya cerrada)'}`
+      )
+      const companySummary = linkedCompanies.length ? linkedCompanies.join('\n• ') : 'Sin membresías de empresa registradas'
+      const confirmed = window.confirm(
+        `Se dará de baja global a ${preview.data.user.name} (${preview.data.user.email}).\n\nEmpresas vinculadas:\n• ${companySummary}\n\nSe liberará el correo. Cotizaciones, comentarios, notificaciones, membresías y preferencias históricas se conservarán. ¿Continuar?`
+      )
+      if (!confirmed) return
+
+      const response = await fetch(`/api/users/${userId}/offboard`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo ejecutar la baja global')
+        return
+      }
+
+      alert(data.data.message)
+      await fetchRolesData(rolesCompanyId)
+    } catch (err) {
+      console.error('Global user offboarding error:', err)
+      alert('Error de conexión al dar de baja el usuario')
+    }
   }
 
   const handleAssignRole = async (userId: string, customRoleId: string) => {
@@ -1141,8 +1187,17 @@ export default function AjustesPage() {
                               onClick={() => handleRemoveUser(m.userId)}
                               className="text-xs text-red-400 hover:text-red-600 text-center"
                             >
-                              Remover
+                              Remover de empresa
                             </button>
+                            {companyData?.role === 'SUPER_ADMIN' && m.userId !== user?.id && (
+                              <button
+                                onClick={() => handleGlobalOffboard(m.userId)}
+                                className="text-xs text-red-700 hover:text-red-900 text-center font-medium"
+                                title="Archiva el perfil global y libera el correo corporativo"
+                              >
+                                Baja global
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

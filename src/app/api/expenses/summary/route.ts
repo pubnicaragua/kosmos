@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const endDateParam = searchParams.get('endDate')
 
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: decoded.userId, endedAt: null },
       select: { companyId: true },
     })
 

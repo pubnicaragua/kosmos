@@ -17,7 +17,7 @@ export async function PUT(
     }
 
     const token = authHeader.substring(7)
-    const payload = verifyAccessToken(token)
+    const payload = await verifyAccessToken(token)
     if (!payload) {
       return errorResponse('Token inválido o expirado', 401)
     }
@@ -26,7 +26,7 @@ export async function PUT(
     const requestingUser = await prisma.user.findUnique({
       where: { id: payload.userId },
       include: {
-        userCompanies: true,
+        userCompanies: { where: { endedAt: null } },
       },
     })
 

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret'
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
@@ -43,12 +44,26 @@ export function generateRefreshToken(payload: TokenPayload): string {
   return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN } as any)
 }
 
-export function verifyAccessToken(token: string): TokenPayload | null {
+async function verifyActiveAccessToken(token: string): Promise<TokenPayload | null> {
+  let decoded: TokenPayload
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload
+    decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
   } catch {
     return null
   }
+
+  if (!decoded || typeof decoded.userId !== 'string' || !decoded.userId) return null
+
+  const activeUser = await prisma.user.findUnique({
+    where: { id: decoded.userId },
+    select: { id: true },
+  })
+
+  return activeUser ? decoded : null
+}
+
+export async function verifyAccessToken(token: string): Promise<TokenPayload | null> {
+  return verifyActiveAccessToken(token)
 }
 
 export function verifyRefreshToken(token: string): TokenPayload | null {
@@ -72,11 +87,6 @@ export function getRefreshTokenMaxAgeSeconds(): number {
   return parseDurationToSeconds(JWT_REFRESH_EXPIRES_IN, 30 * 24 * 60 * 60)
 }
 
-export function verifyToken(token: string): TokenPayload | null {
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
-    return decoded
-  } catch (error) {
-    return null
-  }
+export async function verifyToken(token: string): Promise<TokenPayload | null> {
+  return verifyActiveAccessToken(token)
 }

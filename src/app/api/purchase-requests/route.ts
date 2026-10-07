@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,19 +52,13 @@ export async function GET(req: Request) {
     const requesterIds = Array.from(
       new Set(requests.map((req) => req.requestedBy).filter(Boolean))
     )
-    const requesters = requesterIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: requesterIds } },
-          select: { id: true, name: true },
-        })
-      : []
-    const requesterMap = new Map(requesters.map((user) => [user.id, user.name]))
+    const requesterMap = await getUserIdentityMap(requesterIds)
 
     // Map to include department name as requestingArea for display
     const mappedRequests = requests.map(req => ({
       ...req,
       requestingArea: req.department?.name || departmentMap.get(req.requestingArea) || req.requestingArea || 'Sin departamento',
-      requestedByName: requesterMap.get(req.requestedBy) || null,
+      requestedByName: requesterMap.get(req.requestedBy)?.name || null,
     }))
 
     return NextResponse.json({ success: true, data: mappedRequests })
@@ -172,20 +167,22 @@ export async function POST(req: Request) {
         const departmentUsers = await prisma.userDepartment.findMany({
           where: {
             departmentId,
-            isApprover: true
+            isApprover: true,
+            endedAt: null,
           }
         })
-        departmentUsers.forEach(du => notifyUserIds.add(du.userId))
+        departmentUsers.forEach((du) => { if (du.userId) notifyUserIds.add(du.userId) })
       }
 
       // Also notify company admins
       const companyAdmins = await prisma.userCompany.findMany({
         where: {
           companyId: companyId,
-          role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+          role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+          endedAt: null,
         }
       })
-      companyAdmins.forEach(ca => notifyUserIds.add(ca.userId))
+      companyAdmins.forEach((ca) => { if (ca.userId) notifyUserIds.add(ca.userId) })
 
       // Create notifications for all unique users
       for (const userId of Array.from(notifyUserIds)) {

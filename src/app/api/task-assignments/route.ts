@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { getUserIdentityMap } from '@/lib/user-identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -49,15 +50,11 @@ export async function GET(request: NextRequest) {
 
     // Get user names for assigned users
     const userIds = [...new Set(assignments.map(a => a.assignedTo))]
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, name: true }
-    })
-    const userMap = new Map(users.map(u => [u.id, u.name]))
+    const userMap = await getUserIdentityMap(userIds)
 
     const enriched = assignments.map(a => ({
       ...a,
-      assignedToName: userMap.get(a.assignedTo) || 'Usuario desconocido',
+      assignedToName: userMap.get(a.assignedTo)?.name || 'Usuario desconocido',
       progress: a.executions.length > 0 
         ? (a.executions.filter(e => e.completed).length / a.executions.length) * 100 
         : 0
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()

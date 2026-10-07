@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const access = await getCompanyAccess(decoded.userId, params.id)
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     let members: any[] = []
     try {
       members = await prisma.userCompany.findMany({
-        where: { companyId: params.id },
+        where: { companyId: params.id, endedAt: null },
         include: {
           user: { select: { id: true, name: true, email: true, avatar: true } },
           customRole: { include: { permissions: true } },
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       // Fallback if custom_roles table doesn't exist yet
       if (err?.code === 'P2021' || err?.message?.includes('custom_roles') || err?.message?.includes('does not exist')) {
         members = await prisma.userCompany.findMany({
-          where: { companyId: params.id },
+          where: { companyId: params.id, endedAt: null },
           include: {
             user: { select: { id: true, name: true, email: true, avatar: true } },
           },
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const access = await getCompanyAccess(decoded.userId, params.id)
@@ -65,9 +65,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (!email) return apiError('email es requerido', 400)
 
-    // Auto-create user if doesn't exist
-    let targetUser = await prisma.user.findUnique({ where: { email } })
+    const normalizedEmail = String(email).trim().toLowerCase()
+    const requestedName = typeof name === 'string' ? name.trim() : ''
+    if (!normalizedEmail) return apiError('email es requerido', 400)
+
+    let targetUser = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    })
     let generatedPassword: string | null = null
+
+    if (targetUser && requestedName && requestedName !== targetUser.name.trim()) {
+      return apiError(
+        `El correo ya pertenece a ${targetUser.name}. No se cambió el nombre del perfil existente.`,
+        409
+      )
+    }
     
     if (!targetUser) {
       const { hashPassword } = await import('@/lib/auth')
@@ -86,8 +98,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       
       targetUser = await prisma.user.create({
         data: {
-          email,
-          name: name || email.split('@')[0],
+          email: normalizedEmail,
+          name: requestedName || normalizedEmail.split('@')[0],
           password: await hashPassword(generatedPassword!),
         },
       })
@@ -98,20 +110,33 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const existing = await prisma.userCompany.findFirst({
       where: { userId: targetUser.id, companyId: params.id },
     })
-    if (existing) return apiError('El usuario ya pertenece a esta empresa', 409)
+    if (existing && !existing.endedAt) return apiError('El usuario ya pertenece a esta empresa', 409)
 
-    const newMember = await prisma.userCompany.create({
-      data: {
-        userId: targetUser.id,
-        companyId: params.id,
-        role: role || 'USER',
-        customRoleId: customRoleId || null,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true, avatar: true } },
-        customRole: { include: { permissions: true } },
-      },
-    })
+    const memberData = {
+      role: role || 'USER',
+      customRoleId: customRoleId || null,
+      endedAt: null,
+    }
+    const newMember = existing
+      ? await prisma.userCompany.update({
+          where: { id: existing.id },
+          data: memberData,
+          include: {
+            user: { select: { id: true, name: true, email: true, avatar: true } },
+            customRole: { include: { permissions: true } },
+          },
+        })
+      : await prisma.userCompany.create({
+          data: {
+            userId: targetUser.id,
+            companyId: params.id,
+            ...memberData,
+          },
+          include: {
+            user: { select: { id: true, name: true, email: true, avatar: true } },
+            customRole: { include: { permissions: true } },
+          },
+        })
 
     // Incluir contraseña generada si es usuario nuevo
     const response = {
@@ -130,7 +155,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const access = await getCompanyAccess(decoded.userId, params.id)
@@ -143,11 +168,34 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     if (userId === decoded.userId) return apiError('No puedes removerte a ti mismo', 400)
 
-    await prisma.userCompany.delete({
-      where: { userId_companyId: { userId, companyId: params.id } },
+    const targetMembership = await prisma.userCompany.findFirst({
+      where: { userId, companyId: params.id, endedAt: null },
+      select: { id: true, role: true },
     })
+    if (!targetMembership) return apiError('La membresía no existe o ya fue cerrada', 404)
 
-    return apiSuccess({ message: 'Usuario removido de la empresa' })
+    if (targetMembership.role === 'SUPER_ADMIN' && access.effectiveRole !== 'SUPER_ADMIN') {
+      return apiError('Solo SUPER_ADMIN puede remover otra membresía SUPER_ADMIN', 403)
+    }
+
+    if (targetMembership.role === 'SUPER_ADMIN') {
+      const otherSuperAdmins = await prisma.userCompany.count({
+        where: {
+          role: 'SUPER_ADMIN',
+          endedAt: null,
+          userId: { notIn: [userId] },
+        },
+      })
+      if (otherSuperAdmins === 0) return apiError('No puedes cerrar la última membresía SUPER_ADMIN activa', 409)
+    }
+
+    const closedMembership = await prisma.userCompany.updateMany({
+      where: { id: targetMembership.id, endedAt: null },
+      data: { endedAt: new Date() },
+    })
+    if (closedMembership.count === 0) return apiError('La membresía no existe o ya fue cerrada', 404)
+
+    return apiSuccess({ message: 'Membresía cerrada; el perfil global y sus datos se conservaron' })
   } catch (error: any) {
     console.error('Error removing user:', error?.message)
     return apiError('Error al remover usuario', 500)

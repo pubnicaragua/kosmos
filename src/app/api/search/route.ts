@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const { searchParams } = new URL(request.url)
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's accessible companies
     const userCompanies = await prisma.userCompany.findMany({
-      where: { userId: decoded.userId },
+      where: { userId: decoded.userId, endedAt: null },
       select: { companyId: true }
     })
     const companyIds = userCompanies.map(uc => uc.companyId)

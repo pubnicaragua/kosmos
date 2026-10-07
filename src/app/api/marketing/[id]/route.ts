@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     let campaign: any
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -154,7 +154,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const existingCampaign = await prisma.marketingCampaign.findUnique({

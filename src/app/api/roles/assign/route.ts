@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
@@ -29,8 +29,14 @@ export async function POST(request: NextRequest) {
       if (!role) return apiError('Rol no pertenece a esta empresa', 400)
     }
 
+    const membership = await prisma.userCompany.findFirst({
+      where: { userId, companyId, endedAt: null },
+      select: { id: true },
+    })
+    if (!membership) return apiError('Usuario sin membresía activa en esta empresa', 404)
+
     const updated = await prisma.userCompany.update({
-      where: { userId_companyId: { userId, companyId } },
+      where: { id: membership.id },
       data: { customRoleId: customRoleId || null },
       include: {
         user: { select: { id: true, name: true, email: true } },

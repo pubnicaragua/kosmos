@@ -15,7 +15,7 @@ export async function PUT(
       return apiError('Token no proporcionado', 401)
     }
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) {
       return apiError('Token inválido', 401)
     }
@@ -37,7 +37,8 @@ export async function PUT(
       where: {
         userId: decoded.userId,
         companyId,
-        role: { in: ['ADMIN', 'SUPER_ADMIN'] }
+        role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+        endedAt: null,
       }
     })
 
@@ -45,14 +46,15 @@ export async function PUT(
       return apiError('No tienes permisos para cambiar roles en esta empresa', 403)
     }
 
+    const targetMembership = await prisma.userCompany.findFirst({
+      where: { userId, companyId, endedAt: null },
+      select: { id: true },
+    })
+    if (!targetMembership) return apiError('El usuario no tiene membresía activa en esta empresa', 404)
+
     // Update user role in company
     const updated = await prisma.userCompany.update({
-      where: {
-        userId_companyId: {
-          userId,
-          companyId
-        }
-      },
+      where: { id: targetMembership.id },
       data: {
         role
       },

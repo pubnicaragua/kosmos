@@ -10,7 +10,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const role = await prisma.customRole.findUnique({ where: { id: params.id } })
@@ -52,6 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       include: {
         permissions: true,
         userCompanies: {
+          where: { endedAt: null },
           include: { user: { select: { id: true, name: true, email: true } } },
         },
       },
@@ -69,7 +70,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (!token) return apiError('Token no proporcionado', 401)
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return apiError('Token inválido', 401)
 
     const role = await prisma.customRole.findUnique({ where: { id: params.id } })
