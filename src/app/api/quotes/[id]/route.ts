@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { resolveHistoricalUserNames } from '@/lib/user-name-history'
+import { stripLegacyQuoteDocumentStatus } from '@/lib/quote-public-view'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,9 +48,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
 
     // Obtener datos del usuario creador (asesor)
-    let createdByUser = null
+    let activeCreator: { id: string; name: string; email: string } | null = null
     if (quote?.createdBy) {
-      createdByUser = await prisma.user.findUnique({
+      activeCreator = await prisma.user.findUnique({
         where: { id: quote.createdBy },
         select: { id: true, name: true, email: true },
       })
@@ -70,9 +71,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     ])
 
     return apiSuccess({
-      ...quote,
-      createdByUser: createdByUser
-        ? { ...createdByUser, name: createdByHistoricalName || createdByUser.name }
+      ...stripLegacyQuoteDocumentStatus(quote),
+      createdByUser: quote.createdBy
+        ? {
+            id: quote.createdBy,
+            name: createdByHistoricalName || activeCreator?.name || 'Usuario desconocido',
+            email: activeCreator?.email || null,
+          }
         : null,
       discountApproval: discountApproval && approvedByHistoricalName
         ? { ...discountApproval, approvedBy: approvedByHistoricalName }
@@ -102,8 +107,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const moduleAccess = await getModuleAccess(decoded.userId, quote.companyId, 'cotizaciones')
     if (!moduleAccess.canEdit) return apiError('No tienes permisos para editar cotizaciones', 403)
 
-    if ('status' in body || 'approvalAction' in body) {
-      return apiError('Usa el endpoint de estado para aprobar/rechazar o cambiar estado', 400)
+    if ('status' in body || 'legacyDocumentStatus' in body || 'pipelineStage' in body) {
+      return apiError('Usa el endpoint de etapa comercial para cambiar el estado', 400)
+    }
+    if ('approvalAction' in body) {
+      return apiError('Usa el endpoint de aprobación de descuento', 400)
     }
 
     if ('companyId' in body || 'createdBy' in body) {
@@ -157,7 +165,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     })
 
     return apiSuccess({
-      ...updated,
+      ...stripLegacyQuoteDocumentStatus(updated),
       discountApproval: extractDiscountApproval(updated.internalNotes),
     })
   } catch (error) {

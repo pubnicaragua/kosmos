@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
+import { QUOTE_PIPELINE_STAGE_LABELS } from '@/lib/quote-pipeline'
 
 export const dynamic = 'force-dynamic'
 
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
           quoteNumber: true,
           client: { select: { name: true } },
           total: true,
-          status: true,
+          pipelineStage: true,
           company: { select: { name: true } }
         },
         take: 5
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest) {
       cotizaciones: quotes.map(q => ({
         id: q.id,
         title: q.quoteNumber,
-        subtitle: `${q.client.name} - $${q.total.toFixed(2)} - ${q.status}`,
+        subtitle: `${q.client.name} - $${q.total.toFixed(2)} - ${QUOTE_PIPELINE_STAGE_LABELS[q.pipelineStage]}`,
         company: q.company.name,
         type: 'cotizacion',
         link: `/clientes/cotizacion/${q.id}`

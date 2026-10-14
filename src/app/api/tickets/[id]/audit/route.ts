@@ -51,7 +51,14 @@ export async function GET(
       const user = userMap.get(log.userId) || null
       return {
         ...log,
-        user: user ? { ...user, name: historicalNames[index] || user.name } : null,
+        user: user
+          ? { ...user, name: historicalNames[index] || user.name }
+          : {
+              id: log.userId,
+              name: historicalNames[index] || 'Usuario desconocido',
+              email: null,
+              avatar: null,
+            },
       }
     })
 

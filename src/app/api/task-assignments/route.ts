@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
 import { resolveHistoricalUserNames } from '@/lib/user-name-history'
+import { HISTORICAL_USER_NAME_UNAVAILABLE } from '@/lib/user-identity-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,16 +56,22 @@ export async function GET(request: NextRequest) {
       select: { id: true, name: true }
     })
     const userMap = new Map(users.map(u => [u.id, u.name]))
-    const assignerNames = await resolveHistoricalUserNames(assignments.map((assignment) => ({
-      userId: assignment.assignedBy,
-      occurredAt: assignment.createdAt,
-    })))
-    const executionNames = await resolveHistoricalUserNames(assignments.flatMap((assignment) =>
-      assignment.executions.map((execution) => ({
-        userId: execution.completedBy,
-        occurredAt: execution.completedAt,
-      }))
-    ))
+    const [assignedToNames, assignerNames, executionNames] = await Promise.all([
+      resolveHistoricalUserNames(assignments.map((assignment) => ({
+        userId: assignment.assignedTo,
+        occurredAt: assignment.createdAt,
+      }))),
+      resolveHistoricalUserNames(assignments.map((assignment) => ({
+        userId: assignment.assignedBy,
+        occurredAt: assignment.createdAt,
+      }))),
+      resolveHistoricalUserNames(assignments.flatMap((assignment) =>
+        assignment.executions.map((execution) => ({
+          userId: execution.completedBy,
+          occurredAt: execution.completedAt,
+        }))
+      )),
+    ])
     const executionNameById = new Map(
       assignments.flatMap((assignment) => assignment.executions).map((execution, index) => [
         execution.id,
@@ -74,7 +81,9 @@ export async function GET(request: NextRequest) {
 
     const enriched = assignments.map((a, index) => ({
       ...a,
-      assignedToName: userMap.get(a.assignedTo) || 'Usuario desconocido',
+      assignedToName: assignedToNames[index] && assignedToNames[index] !== HISTORICAL_USER_NAME_UNAVAILABLE
+        ? assignedToNames[index]
+        : userMap.get(a.assignedTo) || 'Usuario desconocido',
       assignedByName: assignerNames[index] || 'Usuario desconocido',
       executions: a.executions.map((execution) => ({
         ...execution,

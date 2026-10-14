@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess, getModuleAccess } from '@/lib/company-access'
+import { stripLegacyQuoteDocumentStatus } from '@/lib/quote-public-view'
 import {
   isQuotePipelineTransitionAllowed,
   QUOTE_PIPELINE_STAGES,
@@ -71,7 +72,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       })
     })
 
-    return apiSuccess(updated)
+    if (!updated) return apiError('No se pudo actualizar la cotización', 500)
+    return apiSuccess(stripLegacyQuoteDocumentStatus(updated))
   } catch (error: any) {
     if (error?.message === 'QUOTE_STAGE_CONFLICT') {
       return apiError('La etapa cambió en otra sesión; actualiza la cotización e intenta de nuevo', 409)

@@ -8,6 +8,7 @@ import { formatCedula, formatRuc, validateCedula, validateRuc } from '@/lib/nica
 import { Card } from '@/components/ui-kit/Card'
 import { Button } from '@/components/ui-kit/Button'
 import { Badge } from '@/components/ui-kit/Badge'
+import { QUOTE_PIPELINE_STAGE_LABELS, type QuotePipelineStage } from '@/lib/quote-pipeline'
 
 interface Client {
   id: string
@@ -40,7 +41,7 @@ const CLIENT_STATUS_LABELS: Record<string, string> = {
 interface Quote {
   id: string
   quoteNumber: string
-  status: string
+  pipelineStage: QuotePipelineStage
   total: number
   createdAt: string
   expiresAt: string | null
@@ -606,8 +607,8 @@ export default function ClientDetailPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <p className="text-lg font-semibold text-gray-900">${quote.total.toLocaleString()}</p>
-                  <Badge variant={quote.status === 'APPROVED' ? 'success' : quote.status === 'REJECTED' ? 'default' : 'warning'}>
-                    {quote.status === 'APPROVED' ? 'Aprobada' : quote.status === 'REJECTED' ? 'Rechazada' : quote.status === 'PENDING' ? 'Pendiente' : quote.status === 'DRAFT' ? 'Borrador' : quote.status === 'SENT' ? 'Enviada' : quote.status}
+                  <Badge variant={quote.pipelineStage === 'REALIZADA' ? 'success' : quote.pipelineStage === 'RECHAZADA' ? 'default' : 'warning'}>
+                    {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
                   </Badge>
                 </div>
               </div>

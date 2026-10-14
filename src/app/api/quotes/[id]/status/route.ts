@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server'
-import { QuoteStatus } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getCompanyAccess } from '@/lib/company-access'
+import { stripLegacyQuoteDocumentStatus } from '@/lib/quote-public-view'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,13 +49,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!decoded) return apiError('Token inválido', 401)
 
     const body = await request.json()
-    const status = body.status as QuoteStatus | undefined
     const approvalAction: string | undefined = body.approvalAction
     const comment = typeof body.comment === 'string' ? body.comment.trim() : ''
 
-    const validStatuses: QuoteStatus[] = ['DRAFT', 'SENT', 'APPROVED', 'REJECTED', 'EXPIRED']
-    if (status && !validStatuses.includes(status)) {
-      return apiError('Estado inválido', 400)
+    if ('status' in body || 'legacyDocumentStatus' in body) {
+      return apiError('El estado vigente se cambia mediante la etapa comercial', 400)
     }
 
     if (approvalAction && !['APPROVE_DISCOUNT', 'REJECT_DISCOUNT'].includes(approvalAction)) {
@@ -70,11 +68,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const effectiveRole = access.effectiveRole
 
-    const isDiscountAction =
-      approvalAction === 'APPROVE_DISCOUNT' ||
-      approvalAction === 'REJECT_DISCOUNT' ||
-      status === 'APPROVED' ||
-      status === 'REJECTED'
+    const isDiscountAction = approvalAction === 'APPROVE_DISCOUNT' || approvalAction === 'REJECT_DISCOUNT'
 
     if (isDiscountAction) {
       if (!effectiveRole || !['SUPER_ADMIN', 'ADMIN', 'MANAGER'].includes(effectiveRole)) {
@@ -86,19 +80,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    const nextStatus: QuoteStatus | undefined = approvalAction === 'APPROVE_DISCOUNT'
+    const discountDecision = approvalAction === 'APPROVE_DISCOUNT'
       ? 'APPROVED'
       : approvalAction === 'REJECT_DISCOUNT'
         ? 'REJECTED'
-        : status
+        : undefined
 
-    if (!nextStatus) {
-      return apiError('Debes enviar un estado o una acción de aprobación', 400)
+    if (!discountDecision) {
+      return apiError('Debes enviar una acción de aprobación de descuento', 400)
     }
 
     const approvalPayload = isDiscountAction
       ? {
-          status: nextStatus,
+          status: discountDecision,
           approvedBy: decoded.userId,
           approvedRole: effectiveRole,
           approvedAt: new Date().toISOString(),
@@ -110,7 +104,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updated = await prisma.quote.update({
       where: { id: params.id },
       data: {
-        status: nextStatus,
         internalNotes: approvalPayload
           ? mergeDiscountApprovalAudit(quote.internalNotes, approvalPayload)
           : quote.internalNotes,
@@ -122,11 +115,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     })
 
     return apiSuccess({
-      ...updated,
+      ...stripLegacyQuoteDocumentStatus(updated),
       discountApproval: extractDiscountApproval(updated.internalNotes),
     })
   } catch (error) {
-    console.error('Error updating quote status:', error)
-    return apiError('Error al actualizar estado', 500)
+    console.error('Error updating quote discount approval:', error)
+    return apiError('Error al actualizar aprobación de descuento', 500)
   }
 }

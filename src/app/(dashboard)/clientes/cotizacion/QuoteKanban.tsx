@@ -15,7 +15,6 @@ interface QuoteCard {
   company: { id: string; name: string }
   currency: string
   total: number
-  status: string
   validUntil: string
   createdAt: string
   pipelineStage: QuotePipelineStage
@@ -42,17 +41,6 @@ const COLUMN_STYLES: Record<QuotePipelineStage, { dot: string; heading: string; 
   NEGOCIACION: { dot: 'bg-amber-500', heading: 'text-amber-700', drop: 'border-amber-300 bg-amber-50' },
   REALIZADA: { dot: 'bg-emerald-500', heading: 'text-emerald-700', drop: 'border-emerald-300 bg-emerald-50' },
   RECHAZADA: { dot: 'bg-rose-500', heading: 'text-rose-700', drop: 'border-rose-300 bg-rose-50' },
-}
-
-function documentStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    DRAFT: 'Borrador',
-    SENT: 'Enviada',
-    APPROVED: 'Aprobada',
-    REJECTED: 'Rechazada',
-    EXPIRED: 'Vencida',
-  }
-  return labels[status] || status
 }
 
 function formatCurrency(currency: string, total: number) {
@@ -165,9 +153,6 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                     </div>
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                        {documentStatusLabel(quote.status)}
-                      </span>
                       <span className="text-xs text-gray-500">
                         Vence {new Date(quote.validUntil).toLocaleDateString('es-NI')}
                       </span>

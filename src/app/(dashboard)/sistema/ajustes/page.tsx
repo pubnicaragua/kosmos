@@ -178,6 +178,7 @@ export default function AjustesPage() {
   const [savingUserName, setSavingUserName] = useState(false)
   const [userNameMsg, setUserNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
   const [templateTab, setTemplateTab] = useState<'quote' | 'invoice'>('quote')
 
@@ -730,6 +731,38 @@ export default function AjustesPage() {
       alert('Error de conexión al desactivar la cuenta')
     } finally {
       setDeactivatingUserId(null)
+    }
+  }
+
+  const handleGlobalDelete = async (member: CompanyMember) => {
+    const confirmed = window.confirm(
+      `Eliminar permanentemente a ${member.user.name} (${member.user.email}) de todas las empresas?\n\nLa cuenta y sus credenciales se borrarán, el correo quedará libre y no podrá deshacerse. Cotizaciones, comentarios, asignaciones y auditorías conservarán el nombre histórico de quien los realizó.`
+    )
+    if (!confirmed) return
+
+    const token = localStorage.getItem('accessToken')
+    if (!token) return
+
+    setDeletingUserId(member.userId)
+    try {
+      const response = await fetch(`/api/users/${member.userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (!data.success) {
+        alert(data.error || 'No se pudo eliminar la cuenta')
+        return
+      }
+
+      alert(data.data.message)
+      await fetchRolesData(rolesCompanyId)
+      clearPermissionsCache()
+    } catch (err) {
+      console.error('Global user deletion error:', err)
+      alert('Error de conexión al eliminar la cuenta')
+    } finally {
+      setDeletingUserId(null)
     }
   }
 
@@ -1327,14 +1360,25 @@ export default function AjustesPage() {
                               Remover de empresa
                             </button>
                             {isSuperAdmin && m.userId !== user?.id && (
-                              <button
-                                type="button"
-                                onClick={() => handleGlobalDeactivate(m.userId)}
-                                disabled={deactivatingUserId === m.userId}
-                                className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
-                              >
-                                {deactivatingUserId === m.userId ? 'Desactivando...' : 'Desactivar globalmente'}
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleGlobalDeactivate(m.userId)}
+                                  disabled={deactivatingUserId === m.userId || deletingUserId === m.userId}
+                                  className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
+                                >
+                                  {deactivatingUserId === m.userId ? 'Desactivando...' : 'Desactivar globalmente'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleGlobalDelete(m)}
+                                  disabled={deactivatingUserId === m.userId || deletingUserId === m.userId}
+                                  className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
+                                  title="Eliminar la cuenta de todas las empresas y liberar su correo"
+                                >
+                                  {deletingUserId === m.userId ? 'Eliminando...' : 'Eliminar globalmente'}
+                                </button>
+                              </>
                             )}
                           </div>
                         )}

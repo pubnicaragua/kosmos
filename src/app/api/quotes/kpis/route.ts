@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { apiSuccess, apiError } from '@/lib/api-response'
 import { getAccessibleCompanies } from '@/lib/company-access'
+import { QUOTE_PIPELINE_STAGES } from '@/lib/quote-pipeline'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,8 +58,12 @@ export async function GET(request: NextRequest) {
 
     // 1. Tasa de cierre (%)
     const totalQuotes = quotes.length
-    const approvedQuotes = quotes.filter(q => q.status === 'APPROVED').length
-    const closeRate = totalQuotes > 0 ? (approvedQuotes / totalQuotes * 100).toFixed(2) : '0.00'
+    const realizedQuotes = quotes.filter(q => q.pipelineStage === 'REALIZADA').length
+    const rejectedQuotes = quotes.filter(q => q.pipelineStage === 'RECHAZADA').length
+    const activeQuotes = quotes.filter(q =>
+      q.pipelineStage === 'PROSPECTO' || q.pipelineStage === 'PROPUESTA' || q.pipelineStage === 'NEGOCIACION'
+    )
+    const closeRate = totalQuotes > 0 ? (realizedQuotes / totalQuotes * 100).toFixed(2) : '0.00'
 
     // 2. Tiempo promedio de cierre (días)
     const closedQuotes = quotes.filter(q => q.closedAt && q.issueDate)
@@ -92,9 +97,9 @@ export async function GET(request: NextRequest) {
         sellerId: id,
         sellerName: seller?.name || 'Sin asignar',
         count,
-        approvedCount: quotes.filter(q => q.assignedTo === id && q.status === 'APPROVED').length,
+        realizedCount: quotes.filter(q => q.assignedTo === id && q.pipelineStage === 'REALIZADA').length,
         totalAmount: quotes
-          .filter(q => q.assignedTo === id && q.status === 'APPROVED')
+          .filter(q => q.assignedTo === id && q.pipelineStage === 'REALIZADA')
           .reduce((sum, q) => sum + q.total, 0)
       }
     }).sort((a, b) => b.count - a.count)
@@ -136,7 +141,7 @@ export async function GET(request: NextRequest) {
     // 6. Motivos de rechazo más frecuentes
     const rejectionReasons: { [key: string]: number } = {}
     quotes
-      .filter(q => q.status === 'REJECTED' && q.rejectionReason)
+      .filter(q => q.pipelineStage === 'RECHAZADA' && q.rejectionReason)
       .forEach(q => {
         const reason = q.rejectionReason!
         rejectionReasons[reason] = (rejectionReasons[reason] || 0) + 1
@@ -148,9 +153,11 @@ export async function GET(request: NextRequest) {
       .slice(0, 10)
 
     // 7. Distribución por estado
-    const quotesByStatus: { [key: string]: number } = {}
+    const quotesByStage: { [key: string]: number } = Object.fromEntries(
+      QUOTE_PIPELINE_STAGES.map(stage => [stage, 0])
+    )
     quotes.forEach(q => {
-      quotesByStatus[q.status] = (quotesByStatus[q.status] || 0) + 1
+      quotesByStage[q.pipelineStage] = (quotesByStage[q.pipelineStage] || 0) + 1
     })
 
     // 8. Distribución por tipo de cliente
@@ -167,8 +174,8 @@ export async function GET(request: NextRequest) {
 
     // 10. Cotizaciones vencidas
     const now = new Date()
-    const expiredQuotes = quotes.filter(q => 
-      q.status === 'SENT' && q.validUntil < now
+    const expiredQuotes = activeQuotes.filter(q =>
+      q.validUntil < now
     ).length
 
     // 11. Tiempo promedio de respuesta (días desde emisión hasta envío)
@@ -188,17 +195,17 @@ export async function GET(request: NextRequest) {
       avgResponseTime: Math.round(avgResponseTime * 10) / 10,
       avgCloseProbability: Math.round(avgCloseProbability * 10) / 10,
       totalQuotes,
-      approvedQuotes,
-      rejectedQuotes: quotes.filter(q => q.status === 'REJECTED').length,
+      realizedQuotes,
+      rejectedQuotes,
       expiredQuotes,
-      pendingQuotes: quotes.filter(q => q.status === 'DRAFT' || q.status === 'SENT').length,
+      activeQuotes: activeQuotes.length,
       totalQuotedAmount: quotes.reduce((sum, q) => sum + q.total, 0),
-      totalApprovedAmount: quotes.filter(q => q.status === 'APPROVED').reduce((sum, q) => sum + q.total, 0),
+      totalRealizedAmount: quotes.filter(q => q.pipelineStage === 'REALIZADA').reduce((sum, q) => sum + q.total, 0),
       quotesBySeller: quotesBySeller_withNames,
       topProducts,
       monthlyQuotedAmounts,
       topRejectionReasons,
-      quotesByStatus: Object.entries(quotesByStatus).map(([status, count]) => ({ status, count })),
+      quotesByStage: Object.entries(quotesByStage).map(([stage, count]) => ({ stage, count })),
       quotesByClientType: Object.entries(quotesByClientType).map(([type, count]) => ({ type, count })),
     }
 

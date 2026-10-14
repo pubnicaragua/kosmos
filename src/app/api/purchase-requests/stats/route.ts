@@ -25,12 +25,12 @@ export async function GET(req: Request) {
       }
     })
 
-    // 2. Top 20 Vendidos (Basado en QuoteItems de cotizaciones aprobadas)
-    const approvedQuotes = await prisma.quote.findMany({
-      where: { companyId, status: 'APPROVED' },
+    // 2. Top 20 vendidos (basado en cotizaciones realizadas)
+    const realizedQuotes = await prisma.quote.findMany({
+      where: { companyId, pipelineStage: 'REALIZADA' },
       select: { id: true }
     })
-    const quoteIds = approvedQuotes.map(q => q.id)
+    const quoteIds = realizedQuotes.map(q => q.id)
 
     const topProductsRaw = await prisma.quoteItem.groupBy({
       by: ['productId'],

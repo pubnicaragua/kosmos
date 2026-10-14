@@ -386,7 +386,7 @@ useEffect(() => {
   const totalTax = taxApplies ? taxableAmount * 0.15 : 0
   const total = taxableAmount + totalTax
 
-  const handleSave = async (isDraft: boolean) => {
+  const handleSave = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token || selectedCompany === 'all' || !selectedClient) {
       alert('Complete todos los campos requeridos')
@@ -426,7 +426,7 @@ useEffect(() => {
 
       const data = await response.json()
       if (data.success) {
-        alert(isDraft ? 'Borrador guardado' : 'Cotización creada exitosamente')
+        alert('Cotización creada en etapa Prospecto')
         router.push(`/clientes/cotizacion/${data.data.id}`)
       } else {
         alert('Error al crear cotización')
@@ -478,17 +478,11 @@ useEffect(() => {
             </svg>
             CANCELAR
           </Button>
-          <Button variant="outline" onClick={() => handleSave(true)}>
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-            </svg>
-            GUARDAR BORRADOR
-          </Button>
-          <Button onClick={() => handleSave(false)}>
+          <Button onClick={handleSave}>
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            FINALIZAR
+            CREAR COTIZACIÓN
           </Button>
         </div>
       </div>

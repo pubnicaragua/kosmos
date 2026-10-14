@@ -6,6 +6,7 @@ import { quoteSchema } from '@/lib/validations'
 import { getAccessibleCompanies, getCompanyAccess, getModuleAccess } from '@/lib/company-access'
 import { resolveHistoricalUserNames } from '@/lib/user-name-history'
 import { parseQuotePagination, QUOTE_PIPELINE_STAGES } from '@/lib/quote-pipeline'
+import { stripLegacyQuoteDocumentStatus } from '@/lib/quote-public-view'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,13 +21,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const companyId = searchParams.get('companyId')
     const clientId = searchParams.get('clientId')
-    const status = searchParams.get('status')
     const search = searchParams.get('search')?.trim()
+    const pipelineStage = searchParams.get('pipelineStage')
+    const statusAlias = searchParams.get('status')
+    if (pipelineStage && statusAlias && pipelineStage !== statusAlias) {
+      return apiError('Usa un solo filtro de etapa', 400)
+    }
+    const requestedStage = pipelineStage || statusAlias
     let pagination
     try {
       pagination = parseQuotePagination(searchParams.get('page'), searchParams.get('pageSize'))
     } catch (error) {
       return apiError(error instanceof Error ? error.message : 'Paginación inválida', 400)
+    }
+    if (requestedStage && !QUOTE_PIPELINE_STAGES.includes(requestedStage as (typeof QUOTE_PIPELINE_STAGES)[number])) {
+      return apiError('Etapa comercial inválida', 400)
     }
 
     const { companyIds } = await getAccessibleCompanies(decoded.userId)
@@ -55,7 +64,7 @@ export async function GET(request: NextRequest) {
       where.companyId = { in: allowedCompanyIds }
     }
     if (clientId) where.clientId = clientId
-    if (status) where.status = status
+    if (requestedStage) where.pipelineStage = requestedStage
     if (search) {
       where.OR = [
         { quoteNumber: { contains: search, mode: 'insensitive' } },
@@ -69,7 +78,6 @@ export async function GET(request: NextRequest) {
       include: {
         client: { select: { id: true, name: true, email: true, phone: true } },
         company: { select: { id: true, name: true } },
-        createdByUser: { select: { name: true } },
         items: { include: { product: { select: { name: true } } } },
         stageHistory: {
           orderBy: { changedAt: 'desc' as const },
@@ -107,9 +115,9 @@ export async function GET(request: NextRequest) {
     })))
 
     const items = quotes.map((quote, index) => ({
-      ...quote,
-      createdByUser: quote.createdByUser
-        ? { ...quote.createdByUser, name: creatorNames[index] || quote.createdByUser.name }
+      ...stripLegacyQuoteDocumentStatus(quote),
+      createdByUser: quote.createdBy
+        ? { name: creatorNames[index] || 'Usuario desconocido' }
         : null,
     }))
 
@@ -260,7 +268,7 @@ export async function POST(request: NextRequest) {
       console.error('Error creating notifications:', notifError)
     }
 
-    return apiSuccess(quote, undefined, 201)
+    return apiSuccess(stripLegacyQuoteDocumentStatus(quote), undefined, 201)
   } catch (error: any) {
     console.error('Error creating quote:', error)
     if (error?.name === 'ZodError') {

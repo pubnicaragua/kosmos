@@ -23,7 +23,7 @@ interface QuotePipelineTransaction {
   quote: {
     updateMany: (args: {
       where: { id: string; pipelineStage: QuotePipelineStage }
-      data: { pipelineStage: QuotePipelineStage }
+      data: { pipelineStage: QuotePipelineStage; closedAt: Date | null }
     }) => Promise<{ count: number }>
   }
   quoteStageHistory: {
@@ -84,9 +84,10 @@ export async function recordQuotePipelineTransition(
     throw new Error('QUOTE_STAGE_TRANSITION_NOT_ALLOWED')
   }
 
+  const isClosed = input.toStage === 'REALIZADA' || input.toStage === 'RECHAZADA'
   const update = await tx.quote.updateMany({
     where: { id: input.quoteId, pipelineStage: input.fromStage },
-    data: { pipelineStage: input.toStage },
+    data: { pipelineStage: input.toStage, closedAt: isClosed ? new Date() : null },
   })
   if (update.count !== 1) throw new Error('QUOTE_STAGE_CONFLICT')
 

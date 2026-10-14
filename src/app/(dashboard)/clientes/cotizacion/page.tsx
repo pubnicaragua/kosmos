@@ -9,6 +9,7 @@ import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import QuoteKanban from './QuoteKanban'
 import {
   QUOTE_PAGE_SIZES,
+  QUOTE_PIPELINE_STAGES,
   QUOTE_PIPELINE_STAGE_LABELS,
   type QuotePageSize,
   type QuotePipelineStage,
@@ -21,7 +22,6 @@ interface Quote {
   company: { id: string; name: string }
   currency: string
   total: number
-  status: string
   pipelineStage: QuotePipelineStage
   validUntil: string
   createdAt: string
@@ -55,14 +55,6 @@ const ZERO_STAGE_COUNTS: Record<QuotePipelineStage, number> = {
   RECHAZADA: 0,
 }
 
-const DOCUMENT_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Borrador',
-  SENT: 'Enviada',
-  APPROVED: 'Aprobada',
-  REJECTED: 'Rechazada',
-  EXPIRED: 'Vencida',
-}
-
 export default function CotizacionesList() {
   const router = useRouter()
   const permissions = useModulePermissions('cotizaciones')
@@ -74,7 +66,7 @@ export default function CotizacionesList() {
   const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list')
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedStage, setSelectedStage] = useState<QuotePipelineStage | 'all'>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<QuotePageSize>(25)
   const [pagination, setPagination] = useState<QuotePagination>({
@@ -88,7 +80,9 @@ export default function CotizacionesList() {
   const [loadError, setLoadError] = useState('')
   const [moveError, setMoveError] = useState('')
   const quoteRequestSequence = useRef(0)
-  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${selectedStatus}`
+  const hasLoadedQuotes = useRef(false)
+  const activeStageFilter = activeTab === 'list' ? selectedStage : 'all'
+  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${activeStageFilter}:${activeTab}`
   const currentQueryKeyRef = useRef(currentQueryKey)
   currentQueryKeyRef.current = currentQueryKey
 
@@ -133,10 +127,13 @@ export default function CotizacionesList() {
 
   const loadQuotes = useCallback(async (showLoading = true) => {
     const requestSequence = ++quoteRequestSequence.current
-    const queryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${selectedStatus}`
+    const queryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${activeStageFilter}:${activeTab}`
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      if (requestSequence === quoteRequestSequence.current) setIsLoading(false)
+      if (requestSequence === quoteRequestSequence.current) {
+        hasLoadedQuotes.current = true
+        setIsLoading(false)
+      }
       return
     }
 
@@ -147,7 +144,7 @@ export default function CotizacionesList() {
       const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
       if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
       if (search) params.set('search', search)
-      if (selectedStatus !== 'all') params.set('status', selectedStatus)
+      if (activeStageFilter !== 'all') params.set('pipelineStage', activeStageFilter)
 
       const response = await fetch(`/api/quotes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -167,14 +164,15 @@ export default function CotizacionesList() {
       console.error('Error fetching quotes:', error)
       setLoadError(error instanceof Error ? error.message : 'No se pudieron cargar las cotizaciones')
     } finally {
-      if (showLoading && requestSequence === quoteRequestSequence.current && currentQueryKeyRef.current === queryKey) {
+      if (requestSequence === quoteRequestSequence.current && currentQueryKeyRef.current === queryKey) {
+        hasLoadedQuotes.current = true
         setIsLoading(false)
       }
     }
-  }, [page, pageSize, search, selectedCompany, selectedStatus])
+  }, [activeStageFilter, activeTab, page, pageSize, search, selectedCompany])
 
   useEffect(() => {
-    void loadQuotes()
+    void loadQuotes(!hasLoadedQuotes.current)
   }, [loadQuotes])
 
   const handleMoveQuote = async (quoteId: string, pipelineStage: QuotePipelineStage, reopen = false) => {
@@ -227,15 +225,6 @@ export default function CotizacionesList() {
   const handleViewQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}`)
   const handleEditQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}/editar`)
 
-  const documentStatus = (status: string) => DOCUMENT_STATUS_LABELS[status] || status
-  const documentStatusClass = (status: string) => {
-    if (status === 'APPROVED') return 'bg-green-100 text-green-800'
-    if (status === 'REJECTED') return 'bg-red-100 text-red-800'
-    if (status === 'SENT') return 'bg-blue-100 text-blue-800'
-    if (status === 'EXPIRED') return 'bg-orange-100 text-orange-800'
-    return 'bg-gray-100 text-gray-800'
-  }
-
   const lastPage = Math.max(1, pagination.totalPages)
 
   if (isLoading) return <SkeletonTable />
@@ -250,7 +239,7 @@ export default function CotizacionesList() {
             <span className="font-medium text-primary">COTIZACIONES</span>
           </div>
           <h1 className="text-2xl font-semibold text-gray-900">Cotizaciones</h1>
-          <p className="mt-1 text-sm text-gray-500">Consulta y gestiona las etapas comerciales de tus cotizaciones</p>
+          <p className="mt-1 text-sm text-gray-500">Consulta y gestiona el estado de tus cotizaciones</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {(userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') && (
@@ -278,7 +267,7 @@ export default function CotizacionesList() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4" role="search" aria-label="Buscar y filtrar cotizaciones">
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4" role="search" aria-label="Buscar cotizaciones">
         <label className="flex min-w-[240px] flex-1 flex-col gap-1 text-sm font-medium text-gray-700">
           Buscar cotizaciones
           <input
@@ -289,19 +278,24 @@ export default function CotizacionesList() {
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </label>
-        <Select
-          label="Estado documental"
-          options={[
-            { value: 'all', label: 'Todos los estados' },
-            ...Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
-          ]}
-          value={selectedStatus}
-          onChange={(event) => {
-            setSelectedStatus(event.target.value)
-            setPage(1)
-          }}
-          className="w-full sm:w-52"
-        />
+        {activeTab === 'list' && (
+          <Select
+            label="Estado"
+            options={[
+              { value: 'all', label: 'Todos los estados' },
+              ...QUOTE_PIPELINE_STAGES.map((stage) => ({
+                value: stage,
+                label: QUOTE_PIPELINE_STAGE_LABELS[stage],
+              })),
+            ]}
+            value={selectedStage}
+            onChange={(event) => {
+              setSelectedStage(event.target.value as QuotePipelineStage | 'all')
+              setPage(1)
+            }}
+            className="w-full sm:w-52"
+          />
+        )}
       </div>
 
       <div className="flex border-b border-gray-200" role="tablist" aria-label="Vistas de cotizaciones">
@@ -333,15 +327,15 @@ export default function CotizacionesList() {
           <table className="w-full">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                {['Número', 'Cliente', 'Empresa', 'Total', 'Etapa comercial', 'Estado documental', 'Válida hasta', 'Creado por', 'Acciones'].map((label) => (
+                {['Número', 'Cliente', 'Empresa', 'Total', 'Estado', 'Válida hasta', 'Creado por', 'Acciones'].map((label) => (
                   <th key={label} className="whitespace-nowrap px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {quotes.length === 0 ? (
-                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">
-                  {search || selectedStatus !== 'all'
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  {search || activeStageFilter !== 'all'
                     ? 'No hay cotizaciones que coincidan con los filtros'
                     : 'No hay cotizaciones en esta página'}
                 </td></tr>
@@ -353,12 +347,9 @@ export default function CotizacionesList() {
                   <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">
                     {quote.currency === 'NIO' ? 'C$' : '$'}{quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900">
-                    {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
-                  </td>
                   <td className="whitespace-nowrap px-4 py-4">
-                    <span className={`rounded-full px-2 py-1 text-xs font-medium ${documentStatusClass(quote.status)}`}>
-                      {documentStatus(quote.status)}
+                    <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                      {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{new Date(quote.validUntil).toLocaleDateString('es-NI')}</td>

@@ -30,24 +30,29 @@ export async function GET(
 
     const comments = await prisma.ticketComment.findMany({
       where: { ticketId: params.id },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-      },
       orderBy: { createdAt: 'asc' },
     })
 
-    const historicalNames = await resolveHistoricalUserNames(comments.map((comment) => ({
-      userId: comment.userId,
-      occurredAt: comment.createdAt,
-    })))
+    const [activeUsers, historicalNames] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: [...new Set(comments.map((comment) => comment.userId))] } },
+        select: { id: true, name: true, email: true, avatar: true },
+      }),
+      resolveHistoricalUserNames(comments.map((comment) => ({
+        userId: comment.userId,
+        occurredAt: comment.createdAt,
+      }))),
+    ])
+    const activeUsersById = new Map(activeUsers.map((activeUser) => [activeUser.id, activeUser]))
 
     return apiSuccess(comments.map((comment, index) => ({
       ...comment,
-      user: comment.user
-        ? { ...comment.user, name: historicalNames[index] || comment.user.name }
-        : null,
+      user: {
+        id: comment.userId,
+        name: historicalNames[index] || activeUsersById.get(comment.userId)?.name || 'Usuario desconocido',
+        email: activeUsersById.get(comment.userId)?.email || null,
+        avatar: activeUsersById.get(comment.userId)?.avatar || null,
+      },
     })))
   } catch (error: any) {
     console.error('Error fetching ticket comments:', error)
@@ -90,19 +95,32 @@ export async function POST(
         content: content.trim(),
         attachmentUrl: attachmentUrl || null,
       },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, avatar: true },
-        },
-      },
     })
+
+    const [activeUser, historicalName] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, name: true, email: true, avatar: true },
+      }),
+      resolveHistoricalUserNames([{ userId: decoded.userId, occurredAt: comment.createdAt }]),
+    ])
 
     await prisma.ticket.update({
       where: { id: params.id },
       data: { updatedAt: new Date() },
     })
 
-    return apiSuccess(comment, undefined, 201)
+    return apiSuccess({
+      ...comment,
+      user: activeUser
+        ? { ...activeUser, name: historicalName[0] || activeUser.name }
+        : {
+            id: decoded.userId,
+            name: historicalName[0] || 'Usuario desconocido',
+            email: null,
+            avatar: null,
+          },
+    }, undefined, 201)
   } catch (error: any) {
     console.error('Error creating ticket comment:', error)
     return apiError('Error al crear comentario', 500)

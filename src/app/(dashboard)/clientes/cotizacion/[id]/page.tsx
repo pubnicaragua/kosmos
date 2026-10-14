@@ -12,7 +12,6 @@ import { QUOTE_PIPELINE_STAGE_LABELS, type QuotePipelineStage } from '@/lib/quot
 interface Quote {
   id: string
   quoteNumber: string
-  status: string
   pipelineStage: QuotePipelineStage
   currency: string
   paymentMethod: 'CONTADO' | 'CREDITO'
@@ -487,7 +486,9 @@ export default function DetalleCotizacionPage() {
             </div>
             <div className="p-2 space-y-0.5 text-xs">
               <div><span className="font-semibold">Asesor:</span> {(quote as any).createdByUser?.name || 'N/A'}</div>
-              <div><span className="font-semibold">Email:</span> {(quote as any).createdByUser?.email || companyDetails?.email || ''}</div>
+              {(quote as any).createdByUser?.email && (
+                <div><span className="font-semibold">Email:</span> {(quote as any).createdByUser.email}</div>
+              )}
               <div><span className="font-semibold">Teléfono:</span> {companyDetails?.phone || '22235600'}</div>
               <div><span className="font-semibold">Empresa:</span> {companyDetails?.name || quote.company?.name || ''}</div>
               <div><span className="font-semibold">RUC:</span> {companyDetails?.ruc || 'J0310000368457'}</div>
@@ -641,7 +642,7 @@ export default function DetalleCotizacionPage() {
             Creada el {new Date(quote.createdAt).toLocaleDateString()} • Vence en {Math.ceil((new Date(quote.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días
           </p>
           <p className="mt-2 text-sm font-medium text-primary">
-            Etapa comercial: {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
+            Estado: {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -841,7 +842,7 @@ export default function DetalleCotizacionPage() {
 
               {quote.discountApproval && (
                 <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-                  <div><strong>Estado:</strong> {quote.discountApproval.status}</div>
+                  <div><strong>Decisión de descuento:</strong> {quote.discountApproval.status}</div>
                   <div><strong>Aprobado/Rechazado por:</strong> {quote.discountApproval.approvedBy}</div>
                   <div><strong>Rol:</strong> {quote.discountApproval.approvedRole}</div>
                   <div><strong>Fecha:</strong> {new Date(quote.discountApproval.approvedAt).toLocaleString('es-ES')}</div>

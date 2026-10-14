@@ -19,16 +19,22 @@ model User {
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
   notifications   Notification[]
-  quotesCreated   Quote[]          @relation("QuoteCreatedBy")
   refreshTokens   RefreshToken[]
-  templates       Template[]
-  ticketComments  TicketComment[]
   ticketMembers   TicketMember[]
   userCompanies   UserCompany[]
   userDepartments UserDepartment[] @relation("UserDepartmentUser")
   preferences     UserPreferences?
 
   @@map("users")
+}
+
+model ArchivedUser {
+  id          String   @id
+  name        String
+  deletedAt   DateTime @map("deleted_at")
+  deletedById String   @map("deleted_by_id")
+
+  @@map("archived_users")
 }
 
 model UserNameHistory {
@@ -288,7 +294,8 @@ model Quote {
   contactPhone     String?       @map("contact_phone")
   assignedTo       String?       @map("assigned_to")
   clientType       ClientType    @default(NUEVO) @map("client_type")
-  status           QuoteStatus   @default(DRAFT)
+  /// Historical document value only; pipelineStage is the active quote state.
+  legacyDocumentStatus LegacyQuoteDocumentStatus? @map("legacy_document_status")
   pipelineStage    QuotePipelineStage @default(PROSPECTO) @map("pipeline_stage")
   closeProbability Int?          @default(50) @map("close_probability")
   currency         String        @default("USD")
@@ -315,11 +322,10 @@ model Quote {
   stageHistory     QuoteStageHistory[]
   client           Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   company          Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdByUser    User          @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
 
   @@index([companyId])
   @@index([clientId])
-  @@index([status])
+  @@index([legacyDocumentStatus])
   @@index([pipelineStage])
   @@index([assignedTo])
   @@index([clientType])
@@ -473,7 +479,6 @@ model TicketComment {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@index([userId])
@@ -814,7 +819,6 @@ model Template {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   company   Company      @relation(fields: [companyId], references: [id])
-  user      User         @relation(fields: [createdBy], references: [id])
 
   @@map("templates")
 }
@@ -1051,7 +1055,7 @@ enum ClientStatus {
   INACTIVO
 }
 
-enum QuoteStatus {
+enum LegacyQuoteDocumentStatus {
   DRAFT
   SENT
   APPROVED

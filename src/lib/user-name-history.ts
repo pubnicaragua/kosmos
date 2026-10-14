@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
+  HISTORICAL_USER_NAME_UNAVAILABLE,
   buildUserNameHistoryTransition,
   resolveNameForAttribution,
   type UserNameVersion,
@@ -85,11 +86,17 @@ export async function resolveHistoricalUserNames(attributions: readonly UserName
   const userIds = [...new Set(attributions.map((item) => item.userId).filter((id): id is string => Boolean(id)))]
   if (userIds.length === 0) return attributions.map(() => null)
 
-  const versions = await prisma.userNameHistory.findMany({
-    where: { userId: { in: userIds } },
-    select: { userId: true, name: true, validFrom: true, validTo: true },
-    orderBy: { validFrom: 'asc' },
-  })
+  const [versions, archivedUsers] = await Promise.all([
+    prisma.userNameHistory.findMany({
+      where: { userId: { in: userIds } },
+      select: { userId: true, name: true, validFrom: true, validTo: true },
+      orderBy: { validFrom: 'asc' },
+    }),
+    prisma.archivedUser.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true },
+    }),
+  ])
 
   const versionsByUser = new Map<string, UserNameVersion[]>()
   for (const version of versions) {
@@ -97,8 +104,13 @@ export async function resolveHistoricalUserNames(attributions: readonly UserName
     userVersions.push(version)
     versionsByUser.set(version.userId, userVersions)
   }
+  const archivedNamesByUserId = new Map(archivedUsers.map((archivedUser) => [archivedUser.id, archivedUser.name]))
+
   return attributions.map(({ userId, occurredAt }) => {
     if (!userId) return null
-    return resolveNameForAttribution(versionsByUser.get(userId) || [], occurredAt)
+    const historicalName = resolveNameForAttribution(versionsByUser.get(userId) || [], occurredAt)
+    return historicalName === HISTORICAL_USER_NAME_UNAVAILABLE
+      ? archivedNamesByUserId.get(userId) || historicalName
+      : historicalName
   })
 }

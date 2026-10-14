@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getCompanyAccess } from '@/lib/company-access'
 import { resolveHistoricalUserNames } from '@/lib/user-name-history'
+import { HISTORICAL_USER_NAME_UNAVAILABLE } from '@/lib/user-identity-history'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,8 +48,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
 
     // Get user names
-    const [assignedUser, assignedByNames, executionNames] = await Promise.all([
+    const [assignedUser, assignedToNames, assignedByNames, executionNames] = await Promise.all([
       prisma.user.findUnique({ where: { id: assignment.assignedTo }, select: { id: true, name: true } }),
+      resolveHistoricalUserNames([{
+        userId: assignment.assignedTo,
+        occurredAt: assignment.createdAt,
+      }]),
       resolveHistoricalUserNames([{
         userId: assignment.assignedBy,
         occurredAt: assignment.createdAt,
@@ -68,7 +73,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       data: {
         ...assignment,
         executions,
-        assignedToName: assignedUser?.name || 'Usuario desconocido',
+        assignedToName: assignedToNames[0] && assignedToNames[0] !== HISTORICAL_USER_NAME_UNAVAILABLE
+          ? assignedToNames[0]
+          : assignedUser?.name || 'Usuario desconocido',
         assignedByName: assignedByNames[0] || 'Usuario desconocido',
         progress: assignment.executions.length > 0
           ? (assignment.executions.filter(e => e.completed).length / assignment.executions.length) * 100
