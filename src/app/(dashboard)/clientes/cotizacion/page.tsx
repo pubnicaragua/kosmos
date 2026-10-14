@@ -72,9 +72,11 @@ export default function CotizacionesList() {
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState('')
   const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<QuotePageSize>(25)
-  const [quoteRefreshVersion, setQuoteRefreshVersion] = useState(0)
   const [pagination, setPagination] = useState<QuotePagination>({
     page: 1,
     pageSize: 25,
@@ -86,7 +88,7 @@ export default function CotizacionesList() {
   const [loadError, setLoadError] = useState('')
   const [moveError, setMoveError] = useState('')
   const quoteRequestSequence = useRef(0)
-  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}`
+  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${selectedStatus}`
   const currentQueryKeyRef = useRef(currentQueryKey)
   currentQueryKeyRef.current = currentQueryKey
 
@@ -120,9 +122,18 @@ export default function CotizacionesList() {
     void loadMetadata()
   }, [])
 
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim())
+      setPage(1)
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [searchInput])
+
   const loadQuotes = useCallback(async (showLoading = true) => {
     const requestSequence = ++quoteRequestSequence.current
-    const queryKey = `${page}:${pageSize}:${selectedCompany}`
+    const queryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${selectedStatus}`
     const token = localStorage.getItem('accessToken')
     if (!token) {
       if (requestSequence === quoteRequestSequence.current) setIsLoading(false)
@@ -135,6 +146,8 @@ export default function CotizacionesList() {
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
       if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
+      if (search) params.set('search', search)
+      if (selectedStatus !== 'all') params.set('status', selectedStatus)
 
       const response = await fetch(`/api/quotes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -158,16 +171,17 @@ export default function CotizacionesList() {
         setIsLoading(false)
       }
     }
-  }, [page, pageSize, selectedCompany])
+  }, [page, pageSize, search, selectedCompany, selectedStatus])
 
   useEffect(() => {
     void loadQuotes()
-  }, [loadQuotes, quoteRefreshVersion])
+  }, [loadQuotes])
 
   const handleMoveQuote = async (quoteId: string, pipelineStage: QuotePipelineStage, reopen = false) => {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
+    const currentQuote = quotes.find((quote) => quote.id === quoteId)
     setMoveError('')
     try {
       const response = await fetch(`/api/quotes/${quoteId}/pipeline-stage`, {
@@ -182,8 +196,28 @@ export default function CotizacionesList() {
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'No se pudo mover la cotización')
       }
+
+      const updatedQuote = result.data as Quote | null
+      if (!updatedQuote) throw new Error('No se pudo actualizar la cotización')
+
       quoteRequestSequence.current += 1
-      setQuoteRefreshVersion((version) => version + 1)
+      setQuotes((currentQuotes) => currentQuotes.map((quote) =>
+        quote.id === quoteId
+          ? {
+              ...quote,
+              pipelineStage: updatedQuote.pipelineStage,
+              stageHistory: updatedQuote.stageHistory,
+            }
+          : quote
+      ))
+
+      if (currentQuote && currentQuote.pipelineStage !== updatedQuote.pipelineStage) {
+        setStageCounts((currentCounts) => ({
+          ...currentCounts,
+          [currentQuote.pipelineStage]: Math.max(0, currentCounts[currentQuote.pipelineStage] - 1),
+          [updatedQuote.pipelineStage]: currentCounts[updatedQuote.pipelineStage] + 1,
+        }))
+      }
     } catch (error) {
       console.error('Error moving quote:', error)
       setMoveError(error instanceof Error ? error.message : 'No se pudo mover la cotización')
@@ -244,6 +278,32 @@ export default function CotizacionesList() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4" role="search" aria-label="Buscar y filtrar cotizaciones">
+        <label className="flex min-w-[240px] flex-1 flex-col gap-1 text-sm font-medium text-gray-700">
+          Buscar cotizaciones
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Número, cliente o empresa"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </label>
+        <Select
+          label="Estado documental"
+          options={[
+            { value: 'all', label: 'Todos los estados' },
+            ...Object.entries(DOCUMENT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+          ]}
+          value={selectedStatus}
+          onChange={(event) => {
+            setSelectedStatus(event.target.value)
+            setPage(1)
+          }}
+          className="w-full sm:w-52"
+        />
+      </div>
+
       <div className="flex border-b border-gray-200" role="tablist" aria-label="Vistas de cotizaciones">
         <button
           type="button"
@@ -280,7 +340,11 @@ export default function CotizacionesList() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {quotes.length === 0 ? (
-                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">No hay cotizaciones en esta página</td></tr>
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  {search || selectedStatus !== 'all'
+                    ? 'No hay cotizaciones que coincidan con los filtros'
+                    : 'No hay cotizaciones en esta página'}
+                </td></tr>
               ) : quotes.map((quote) => (
                 <tr key={quote.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-gray-900">{quote.quoteNumber}</td>

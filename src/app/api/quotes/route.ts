@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const companyId = searchParams.get('companyId')
     const clientId = searchParams.get('clientId')
     const status = searchParams.get('status')
+    const search = searchParams.get('search')?.trim()
     let pagination
     try {
       pagination = parseQuotePagination(searchParams.get('page'), searchParams.get('pageSize'))
@@ -55,6 +56,13 @@ export async function GET(request: NextRequest) {
     }
     if (clientId) where.clientId = clientId
     if (status) where.status = status
+    if (search) {
+      where.OR = [
+        { quoteNumber: { contains: search, mode: 'insensitive' } },
+        { client: { name: { contains: search, mode: 'insensitive' } } },
+        { company: { name: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
 
     const quoteQuery = {
       where,
