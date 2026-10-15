@@ -64,6 +64,7 @@ export default function CotizacionesList() {
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState('')
   const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list')
+  const [isSearchVisible, setIsSearchVisible] = useState(true)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [selectedStage, setSelectedStage] = useState<QuotePipelineStage | 'all'>('all')
@@ -257,8 +258,8 @@ export default function CotizacionesList() {
   if (isLoading) return <SkeletonTable />
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className={activeTab === 'kanban' ? 'flex h-full min-h-0 flex-col gap-4' : 'space-y-6'}>
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-2 flex items-center gap-2 text-sm text-gray-500">
             <button onClick={() => router.push('/clientes/cotizacion')} className="hover:text-primary">COTIZACIONES</button>
@@ -294,7 +295,12 @@ export default function CotizacionesList() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4" role="search" aria-label="Buscar cotizaciones">
+      <div
+        id="quote-search-panel"
+        className={`${activeTab === 'list' || isSearchVisible ? 'flex' : 'hidden'} shrink-0 flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4`}
+        role="search"
+        aria-label="Buscar cotizaciones"
+      >
         <label className="flex min-w-[240px] flex-1 flex-col gap-1 text-sm font-medium text-gray-700">
           Buscar cotizaciones
           <input
@@ -325,25 +331,43 @@ export default function CotizacionesList() {
         )}
       </div>
 
-      <div className="flex border-b border-gray-200" role="tablist" aria-label="Vistas de cotizaciones">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'list'}
-          onClick={() => setActiveTab('list')}
-          className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'list' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Lista
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'kanban'}
-          onClick={() => setActiveTab('kanban')}
-          className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Kanban
-        </button>
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-200">
+        <div className="flex" role="tablist" aria-label="Vistas de cotizaciones">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'list'}
+            onClick={() => setActiveTab('list')}
+            className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'list' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'kanban'}
+            onClick={() => setActiveTab('kanban')}
+            className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          >
+            Kanban
+          </button>
+        </div>
+        {activeTab === 'kanban' && (
+          <div className="flex items-center gap-3">
+            {!isSearchVisible && search && (
+              <span className="hidden text-xs text-gray-500 sm:inline">Filtro activo</span>
+            )}
+            <button
+              type="button"
+              aria-controls="quote-search-panel"
+              aria-expanded={isSearchVisible}
+              onClick={() => setIsSearchVisible((visible) => !visible)}
+              className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            >
+              {isSearchVisible ? 'Ocultar buscador' : 'Mostrar buscador'}
+            </button>
+          </div>
+        )}
       </div>
 
       {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{loadError}</p>}
@@ -391,16 +415,18 @@ export default function CotizacionesList() {
           </table>
         </div>
       ) : (
-        <QuoteKanban
-          quotes={quotes}
-          stageCounts={stageCounts}
-          canEditByCompany={canEditByCompany}
-          onOpen={handleViewQuote}
-          onMove={handleMoveQuote}
-        />
+        <div className="min-h-0 flex-1">
+          <QuoteKanban
+            quotes={quotes}
+            stageCounts={stageCounts}
+            canEditByCompany={canEditByCompany}
+            onOpen={handleViewQuote}
+            onMove={handleMoveQuote}
+          />
+        </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+      <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 ${activeTab === 'kanban' ? 'mt-auto' : ''}`}>
         <div className="text-sm text-gray-600">
           {pagination.total === 0
             ? '0 cotizaciones'
