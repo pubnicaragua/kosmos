@@ -64,13 +64,23 @@ export default function CotizacionesList() {
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState('')
   const [activeTab, setActiveTab] = useState<'list' | 'kanban'>('list')
-  const [isSearchVisible, setIsSearchVisible] = useState(true)
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
+  const [isSearchVisible, setIsSearchVisible] = useState(false)
+  const [listSearchInput, setListSearchInput] = useState('')
+  const [listSearch, setListSearch] = useState('')
+  const [kanbanSearchInput, setKanbanSearchInput] = useState('')
+  const [kanbanSearch, setKanbanSearch] = useState('')
   const [selectedStage, setSelectedStage] = useState<QuotePipelineStage | 'all'>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<QuotePageSize>(25)
+  const [kanbanPage, setKanbanPage] = useState(1)
+  const [kanbanPageSize, setKanbanPageSize] = useState<QuotePageSize>(25)
   const [pagination, setPagination] = useState<QuotePagination>({
+    page: 1,
+    pageSize: 25,
+    total: 0,
+    totalPages: 0,
+  })
+  const [kanbanPagination, setKanbanPagination] = useState<QuotePagination>({
     page: 1,
     pageSize: 25,
     total: 0,
@@ -82,8 +92,11 @@ export default function CotizacionesList() {
   const [moveError, setMoveError] = useState('')
   const quoteRequestSequence = useRef(0)
   const hasLoadedQuotes = useRef(false)
+  const activePage = activeTab === 'list' ? page : kanbanPage
+  const activePageSize = activeTab === 'list' ? pageSize : kanbanPageSize
+  const activeSearch = activeTab === 'list' ? listSearch : kanbanSearch
   const activeStageFilter = activeTab === 'list' ? selectedStage : 'all'
-  const currentQueryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${activeStageFilter}:${activeTab}`
+  const currentQueryKey = `${activePage}:${activePageSize}:${selectedCompany}:${activeSearch}:${activeStageFilter}:${activeTab}`
   const currentQueryKeyRef = useRef(currentQueryKey)
   currentQueryKeyRef.current = currentQueryKey
 
@@ -119,16 +132,25 @@ export default function CotizacionesList() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      setSearch(searchInput.trim())
+      setListSearch(listSearchInput.trim())
       setPage(1)
     }, 300)
 
     return () => window.clearTimeout(timeout)
-  }, [searchInput])
+  }, [listSearchInput])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setKanbanSearch(kanbanSearchInput.trim())
+      setKanbanPage(1)
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [kanbanSearchInput])
 
   const loadQuotes = useCallback(async (showLoading = true) => {
     const requestSequence = ++quoteRequestSequence.current
-    const queryKey = `${page}:${pageSize}:${selectedCompany}:${search}:${activeStageFilter}:${activeTab}`
+    const queryKey = `${activePage}:${activePageSize}:${selectedCompany}:${activeSearch}:${activeStageFilter}:${activeTab}`
     const token = localStorage.getItem('accessToken')
     if (!token) {
       if (requestSequence === quoteRequestSequence.current) {
@@ -142,9 +164,10 @@ export default function CotizacionesList() {
     setLoadError('')
 
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+      const params = new URLSearchParams({ page: String(activePage), pageSize: String(activePageSize) })
+      if (activeTab === 'kanban') params.set('view', 'kanban')
       if (selectedCompany !== 'all') params.set('companyId', selectedCompany)
-      if (search) params.set('search', search)
+      if (activeSearch) params.set('search', activeSearch)
       if (activeStageFilter !== 'all') params.set('pipelineStage', activeStageFilter)
 
       const response = await fetch(`/api/quotes?${params.toString()}`, {
@@ -157,7 +180,8 @@ export default function CotizacionesList() {
 
       if (requestSequence !== quoteRequestSequence.current || currentQueryKeyRef.current !== queryKey) return
       setQuotes(result.data.items)
-      setPagination(result.data.pagination)
+      if (activeTab === 'list') setPagination(result.data.pagination)
+      else setKanbanPagination(result.data.pagination)
       setStageCounts({ ...ZERO_STAGE_COUNTS, ...result.data.stageCounts })
       setCanEditByCompany(result.data.canEditByCompany || {})
     } catch (error) {
@@ -170,7 +194,7 @@ export default function CotizacionesList() {
         setIsLoading(false)
       }
     }
-  }, [activeStageFilter, activeTab, page, pageSize, search, selectedCompany])
+  }, [activePage, activePageSize, activeSearch, activeStageFilter, activeTab, selectedCompany])
 
   useEffect(() => {
     void loadQuotes(!hasLoadedQuotes.current)
@@ -253,7 +277,8 @@ export default function CotizacionesList() {
   const handleViewQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}`)
   const handleEditQuote = (quoteId: string) => router.push(`/clientes/cotizacion/${quoteId}/editar`)
 
-  const lastPage = Math.max(1, pagination.totalPages)
+  const activePagination = activeTab === 'list' ? pagination : kanbanPagination
+  const lastPage = Math.max(1, activePagination.totalPages)
 
   if (isLoading) return <SkeletonTable />
 
@@ -280,6 +305,7 @@ export default function CotizacionesList() {
               onChange={(event) => {
                 setSelectedCompany(event.target.value)
                 setPage(1)
+                setKanbanPage(1)
               }}
               className="w-64"
             />
@@ -305,8 +331,11 @@ export default function CotizacionesList() {
           Buscar cotizaciones
           <input
             type="search"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
+            value={activeTab === 'list' ? listSearchInput : kanbanSearchInput}
+            onChange={(event) => {
+              if (activeTab === 'list') setListSearchInput(event.target.value)
+              else setKanbanSearchInput(event.target.value)
+            }}
             placeholder="Número, cliente o empresa"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
@@ -337,7 +366,10 @@ export default function CotizacionesList() {
             type="button"
             role="tab"
             aria-selected={activeTab === 'list'}
-            onClick={() => setActiveTab('list')}
+            onClick={() => {
+              if (activeTab !== 'list') setIsLoading(true)
+              setActiveTab('list')
+            }}
             className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'list' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             Lista
@@ -346,7 +378,10 @@ export default function CotizacionesList() {
             type="button"
             role="tab"
             aria-selected={activeTab === 'kanban'}
-            onClick={() => setActiveTab('kanban')}
+            onClick={() => {
+              if (activeTab !== 'kanban') setIsLoading(true)
+              setActiveTab('kanban')
+            }}
             className={`border-b-2 px-4 py-3 text-sm font-medium ${activeTab === 'kanban' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             Kanban
@@ -354,7 +389,7 @@ export default function CotizacionesList() {
         </div>
         {activeTab === 'kanban' && (
           <div className="flex items-center gap-3">
-            {!isSearchVisible && search && (
+            {!isSearchVisible && kanbanSearch && (
               <span className="hidden text-xs text-gray-500 sm:inline">Filtro activo</span>
             )}
             <button
@@ -386,7 +421,7 @@ export default function CotizacionesList() {
             <tbody className="divide-y divide-gray-200">
               {quotes.length === 0 ? (
                 <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                  {search || activeStageFilter !== 'all'
+                  {activeSearch || activeStageFilter !== 'all'
                     ? 'No hay cotizaciones que coincidan con los filtros'
                     : 'No hay cotizaciones en esta página'}
                 </td></tr>
@@ -428,18 +463,24 @@ export default function CotizacionesList() {
 
       <div className={`flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 ${activeTab === 'kanban' ? 'mt-auto' : ''}`}>
         <div className="text-sm text-gray-600">
-          {pagination.total === 0
+          {activePagination.total === 0
             ? '0 cotizaciones'
-            : `Página ${page} de ${lastPage} · ${pagination.total} cotizaciones`}
+            : `Página ${activePage} de ${lastPage} · ${activePagination.total} cotizaciones`}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-gray-600">
-            Por página
+            {activeTab === 'kanban' ? 'Por estado' : 'Por página'}
             <select
-              value={pageSize}
+              value={activePageSize}
               onChange={(event) => {
-                setPageSize(Number(event.target.value) as QuotePageSize)
-                setPage(1)
+                const nextPageSize = Number(event.target.value) as QuotePageSize
+                if (activeTab === 'list') {
+                  setPageSize(nextPageSize)
+                  setPage(1)
+                } else {
+                  setKanbanPageSize(nextPageSize)
+                  setKanbanPage(1)
+                }
               }}
               className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
             >
@@ -448,16 +489,22 @@ export default function CotizacionesList() {
           </label>
           <button
             type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={activePage <= 1}
+            onClick={() => {
+              if (activeTab === 'list') setPage((current) => Math.max(1, current - 1))
+              else setKanbanPage((current) => Math.max(1, current - 1))
+            }}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           >
             Anterior
           </button>
           <button
             type="button"
-            disabled={pagination.totalPages === 0 || page >= pagination.totalPages}
-            onClick={() => setPage((current) => current + 1)}
+            disabled={activePagination.totalPages === 0 || activePage >= activePagination.totalPages}
+            onClick={() => {
+              if (activeTab === 'list') setPage((current) => current + 1)
+              else setKanbanPage((current) => current + 1)
+            }}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
           >
             Siguiente

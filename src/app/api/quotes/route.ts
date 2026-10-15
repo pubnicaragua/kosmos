@@ -24,6 +24,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')?.trim()
     const pipelineStage = searchParams.get('pipelineStage')
     const statusAlias = searchParams.get('status')
+    const view = searchParams.get('view')
+    if (view && view !== 'kanban') {
+      return apiError('Vista de cotizaciones inválida', 400)
+    }
     if (pipelineStage && statusAlias && pipelineStage !== statusAlias) {
       return apiError('Usa un solo filtro de etapa', 400)
     }
@@ -33,6 +37,12 @@ export async function GET(request: NextRequest) {
       pagination = parseQuotePagination(searchParams.get('page'), searchParams.get('pageSize'))
     } catch (error) {
       return apiError(error instanceof Error ? error.message : 'Paginación inválida', 400)
+    }
+    if (view === 'kanban' && !pagination) {
+      return apiError('Kanban requiere paginación', 400)
+    }
+    if (view === 'kanban' && requestedStage) {
+      return apiError('Kanban carga todas las etapas', 400)
     }
     if (requestedStage && !QUOTE_PIPELINE_STAGES.includes(requestedStage as (typeof QUOTE_PIPELINE_STAGES)[number])) {
       return apiError('Etapa comercial inválida', 400)
@@ -91,7 +101,28 @@ export async function GET(request: NextRequest) {
     let total = 0
     let groupedStages: Array<{ pipelineStage: (typeof QUOTE_PIPELINE_STAGES)[number]; _count: { _all: number } }> = []
 
-    if (pagination) {
+    if (pagination && view === 'kanban') {
+      const result = await prisma.$transaction(async (tx) => {
+        const [quotesByStage, stageGroups] = await Promise.all([
+          Promise.all(QUOTE_PIPELINE_STAGES.map((stage) => tx.quote.findMany({
+            ...quoteQuery,
+            where: { ...where, pipelineStage: stage },
+            skip: pagination.skip,
+            take: pagination.pageSize,
+          }))),
+          tx.quote.groupBy({
+            by: ['pipelineStage'],
+            where,
+            _count: { _all: true },
+          }),
+        ])
+        return { quotesByStage, stageGroups }
+      }, { isolationLevel: 'RepeatableRead' })
+
+      quotes = result.quotesByStage.flat()
+      groupedStages = result.stageGroups
+      total = result.stageGroups.reduce((sum, group) => sum + group._count._all, 0)
+    } else if (pagination) {
       [quotes, total, groupedStages] = await prisma.$transaction(async (tx) => Promise.all([
         tx.quote.findMany({
           ...quoteQuery,
@@ -127,6 +158,9 @@ export async function GET(request: NextRequest) {
     for (const group of groupedStages) {
       stageCounts[group.pipelineStage] = group._count._all
     }
+    const totalPages = view === 'kanban'
+      ? Math.max(...QUOTE_PIPELINE_STAGES.map((stage) => Math.ceil(stageCounts[stage] / pagination.pageSize)))
+      : Math.ceil(total / pagination.pageSize)
 
     return apiSuccess({
       items,
@@ -134,7 +168,7 @@ export async function GET(request: NextRequest) {
         page: pagination.page,
         pageSize: pagination.pageSize,
         total,
-        totalPages: Math.ceil(total / pagination.pageSize),
+        totalPages,
       },
       stageCounts,
       canEditByCompany,
