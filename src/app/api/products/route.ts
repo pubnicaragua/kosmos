@@ -88,6 +88,21 @@ export async function GET(request: NextRequest) {
       where.sku = sku
     }
 
+    if (searchParams.get('suggestions') === 'true') {
+      const suggestionLimit = Math.min(safeLimit, 12)
+      const products = await prisma.product.findMany({
+        where,
+        include: {
+          category: { select: { name: true } },
+          company: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: suggestionLimit,
+      })
+
+      return apiSuccess(products)
+    }
+
     const [products, total, summaryProducts] = await Promise.all([
       prisma.product.findMany({
         where,

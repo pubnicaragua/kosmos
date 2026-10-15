@@ -55,14 +55,14 @@ export function ProductAutocomplete({
 
   useEffect(() => {
     const query = search.trim()
-    if (!isOpen || !companyId || companyId === 'all' || !query) {
+    if (!isOpen || !companyId || companyId === 'all') {
       setProducts([])
       setIsLoading(false)
       return
     }
 
     const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
+    const loadProducts = async () => {
       const token = localStorage.getItem('accessToken')
       if (!token) {
         setProducts([])
@@ -71,7 +71,12 @@ export function ProductAutocomplete({
       }
 
       try {
-        const params = new URLSearchParams({ companyId, search: query, limit: '12' })
+        const params = new URLSearchParams({ companyId, limit: '12' })
+        if (query) {
+          params.set('search', query)
+        } else {
+          params.set('suggestions', 'true')
+        }
         const res = await fetch(`/api/products?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
@@ -91,11 +96,14 @@ export function ProductAutocomplete({
       } finally {
         if (!controller.signal.aborted) setIsLoading(false)
       }
-    }, 180)
+    }
 
     setIsLoading(true)
+    const timer = query ? window.setTimeout(loadProducts, 180) : null
+    if (!query) void loadProducts()
+
     return () => {
-      window.clearTimeout(timer)
+      if (timer !== null) window.clearTimeout(timer)
       controller.abort()
     }
   }, [companyId, isOpen, search])
