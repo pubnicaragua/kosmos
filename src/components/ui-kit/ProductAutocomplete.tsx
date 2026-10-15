@@ -38,6 +38,7 @@ export function ProductAutocomplete({
 }: ProductAutocompleteProps) {
   const [products, setProducts] = useState<ProductOption[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState(value)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
@@ -46,25 +47,51 @@ export function ProductAutocomplete({
   }, [value])
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      if (!companyId || companyId === 'all') return
+    const query = search.trim()
+    if (!isOpen || !companyId || companyId === 'all' || !query) {
+      setProducts([])
+      setIsLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
       const token = localStorage.getItem('accessToken')
-      if (!token) return
+      if (!token) {
+        setProducts([])
+        setIsLoading(false)
+        return
+      }
+
       try {
-        const res = await fetch(`/api/products?companyId=${companyId}&limit=10000`, {
+        const params = new URLSearchParams({ companyId, search: query, limit: '12' })
+        const res = await fetch(`/api/products?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         })
         const data = await res.json()
         if (data.success) {
           const list = Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
-          setProducts(list)
+          setProducts(Array.isArray(list) ? list : [])
+        } else {
+          setProducts([])
         }
       } catch (e) {
-        console.error('Error fetching products:', e)
+        if (!controller.signal.aborted) {
+          console.error('Error buscando productos:', e)
+          setProducts([])
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false)
       }
+    }, 180)
+
+    setIsLoading(true)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
     }
-    fetchProducts()
-  }, [companyId])
+  }, [companyId, isOpen, search])
 
   const [dropdownStyle, setDropdownStyle] = useState<{ top: number; left: number; width: number } | null>(null)
 
@@ -90,8 +117,8 @@ export function ProductAutocomplete({
         if (wrapperRef.current) {
           const rect = wrapperRef.current.getBoundingClientRect()
           setDropdownStyle({
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX,
+            top: rect.bottom,
+            left: rect.left,
             width: rect.width
           })
         }
@@ -107,11 +134,7 @@ export function ProductAutocomplete({
   }, [isOpen])
 
   const safeProducts = Array.isArray(products) ? products : []
-  const sortedProducts = [...safeProducts].sort((a, b) => a.name.localeCompare(b.name))
-  const filtered = sortedProducts.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = safeProducts
 
   const handleSelect = (product: ProductOption) => {
     setSearch(product.name)
@@ -120,13 +143,17 @@ export function ProductAutocomplete({
     setIsOpen(false)
   }
 
-  const dropdownContent = isOpen && filtered.length > 0 && dropdownStyle ? (
+  const dropdownContent = isOpen && (isLoading || filtered.length > 0 || search.trim()) && dropdownStyle ? (
     <div 
       id="product-autocomplete-dropdown"
-      className={`absolute z-[9999] mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-72 overflow-y-auto ${dropdownClassName}`}
+      className={`fixed z-[9999] mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-72 overflow-y-auto ${dropdownClassName}`}
       style={{ top: dropdownStyle.top, left: dropdownStyle.left, width: dropdownStyle.width }}
     >
-      {filtered.map((p) => (
+      {isLoading ? (
+        <div className="px-4 py-3 text-sm text-slate-500">Buscando productos...</div>
+      ) : filtered.length === 0 ? (
+        <div className="px-4 py-3 text-sm text-slate-500">No se encontraron productos.</div>
+      ) : filtered.map((p) => (
         <button
           key={p.id}
           type="button"
@@ -149,7 +176,7 @@ export function ProductAutocomplete({
   ) : null;
 
   return (
-    <div ref={wrapperRef} className={`relative ${className}`}>
+    <div ref={wrapperRef} className={`relative min-w-0 ${className}`}>
       <input
         type="text"
         value={search}

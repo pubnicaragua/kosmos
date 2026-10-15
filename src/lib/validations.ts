@@ -140,7 +140,7 @@ export const clientSchema = z.object({
 export const quoteItemSchema = z.object({
   productId: z.string().optional(),
   description: z.string().min(1, 'Descripción requerida'),
-  quantity: z.number().min(1, 'Cantidad debe ser mayor a 0'),
+  quantity: z.number().int('La cantidad debe ser un número entero').min(1, 'Cantidad debe ser mayor a 0'),
   unitPrice: z.number().min(0, 'Precio debe ser mayor o igual a 0'),
   discount: z.number().min(0).max(100).optional(),
   tax: z.number().min(0).optional(),

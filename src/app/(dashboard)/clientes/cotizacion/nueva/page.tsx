@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
+import { quoteItemSchema } from '@/lib/validations'
 
 interface QuoteItem {
   tempId: number
@@ -11,7 +12,7 @@ interface QuoteItem {
   description: string
   sku?: string
   stock?: number | null
-  quantity: number
+  quantity: number | ''
   unitPrice: number | string
   discount: number | string
   tax: number
@@ -33,31 +34,15 @@ interface ClientOption {
   name: string
 }
 
-interface InventoryProduct {
-  id: string
-  name: string
-  sku: string
-  price?: number
-  publicPrice?: number
-  minPrice?: number
-  distributorPrice?: number
-  cost?: number
-  stock: number
-  category?: { name: string }
-}
-
 function NuevaCotizacionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const permissions = useModulePermissions('cotizaciones')
-  const inventarioPermissions = useModulePermissions('inventario')
   const prefillClientId = searchParams.get('clientId') || ''
   const prefillCompanyId = searchParams.get('companyId') || ''
   const [companies, setCompanies] = useState<Company[]>([])
   const [clients, setClients] = useState<ClientOption[]>([])
-  const [products, setProducts] = useState<InventoryProduct[]>([])
   const [isLoadingClients, setIsLoadingClients] = useState(true)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const [selectedCompany, setSelectedCompany] = useState('all')
   const [selectedClient, setSelectedClient] = useState('')
   const [currency, setCurrency] = useState('USD')
@@ -74,17 +59,16 @@ function NuevaCotizacionContent() {
   const [customMargin, setCustomMargin] = useState<number>(0)
   const [terms, setTerms] = useState('')
   const [items, setItems] = useState<QuoteItem[]>([
-    { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '' as any, unitPrice: '', discount: '', tax: 15, total: 0 }
+    { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '', unitPrice: '', discount: '', tax: 15, total: 0 }
   ])
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
-    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '' as any, unitPrice: '', discount: '', tax: 15, total: 0 }]
+    if (!items || !Array.isArray(items)) return [{ tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '' as const, unitPrice: '', discount: '', tax: 15, total: 0 }]
     return items
   }, [items])
 
   const safeClients = Array.isArray(clients) ? clients : []
-  const safeProducts = Array.isArray(products) ? products : []
   const [globalDiscount, setGlobalDiscount] = useState(0)
 
   const recalculateItemTotal = (item: QuoteItem, applyTax: boolean) => {
@@ -208,54 +192,6 @@ useEffect(() => {
     }
   }, [prefillClientId, safeClients, selectedClient])
 
-  // Cargar productos del inventario cuando cambia la empresa
-  useEffect(() => {
-    if (selectedCompany === 'all') {
-      setProducts([])
-      return
-    }
-
-    // Solo cargar productos si el usuario tiene permisos de inventario
-    if (inventarioPermissions.loading) {
-      return
-    }
-    if (!inventarioPermissions.canView) {
-      setProducts([])
-      setIsLoadingProducts(false)
-      return
-    }
-
-    const fetchProducts = async () => {
-      const token = localStorage.getItem('accessToken')
-      if (!token) {
-        setIsLoadingProducts(false)
-        return
-      }
-
-      try {
-        const params = new URLSearchParams({ companyId: selectedCompany, limit: '10000' })
-        const response = await fetch(`/api/products?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-
-        const data = await response.json()
-        if (data.success) {
-          const list = Array.isArray(data.data) ? data.data : (data.data?.data ?? [])
-          setProducts(Array.isArray(list) ? list : [])
-        } else {
-          setProducts([])
-        }
-      } catch (error) {
-        console.error('Error fetching products:', error)
-        setProducts([])
-      } finally {
-        setIsLoadingProducts(false)
-      }
-    }
-
-    fetchProducts()
-  }, [selectedCompany, inventarioPermissions.loading, inventarioPermissions.canView])
-
   useEffect(() => {
     setItems((prev) => {
       const arr = Array.isArray(prev) ? prev : []
@@ -287,7 +223,7 @@ useEffect(() => {
       description: '',
       sku: '',
       stock: null,
-      quantity: '' as any,
+      quantity: '' as const,
       unitPrice: '',
       discount: '',
       tax: 15,
@@ -299,10 +235,10 @@ useEffect(() => {
     const updated = [...itemsArray]
     
     // Validate stock when updating quantity
-    if (field === 'quantity' && updated[index].productId) {
-      const product = safeProducts.find((p: any) => p.id === updated[index].productId)
-      if (product && product.stock !== undefined && product.stock < value) {
-        alert(`Stock insuficiente. Disponible: ${product.stock}`)
+    if (field === 'quantity' && updated[index].productId && typeof updated[index].stock === 'number') {
+      const quantity = Number(value)
+      if (Number.isFinite(quantity) && updated[index].stock < quantity) {
+        alert(`Stock insuficiente. Disponible: ${updated[index].stock}`)
         return
       }
     }
@@ -360,7 +296,7 @@ useEffect(() => {
         description: '',
         sku: '',
         stock: null,
-        quantity: '' as any,
+        quantity: '' as const,
         unitPrice: '',
         discount: '',
         tax: 15,
@@ -393,6 +329,24 @@ useEffect(() => {
       return
     }
 
+    const quoteItems = itemsArray.filter((item) => item.description.trim() !== '')
+    const invalidQuantityIndex = quoteItems.findIndex((item) =>
+      !quoteItemSchema.shape.quantity.safeParse(Number(item.quantity)).success
+    )
+    if (invalidQuantityIndex >= 0) {
+      alert(`La cantidad del producto ${invalidQuantityIndex + 1} debe ser un número entero mayor que 0.`)
+      return
+    }
+
+    const outOfStockIndex = quoteItems.findIndex((item) =>
+      Boolean(item.productId) && typeof item.stock === 'number' && Number(item.quantity) > item.stock
+    )
+    if (outOfStockIndex >= 0) {
+      const item = quoteItems[outOfStockIndex]
+      alert(`Stock insuficiente para el producto ${outOfStockIndex + 1}. Disponible: ${item.stock}`)
+      return
+    }
+
     try {
       const quoteNumber = `COT-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`
       
@@ -413,7 +367,7 @@ useEffect(() => {
           notes: clientNotes,
           internalNotes,
           terms,
-          items: itemsArray.filter((item: any) => item.description.trim() !== '').map((item: any) => ({
+          items: quoteItems.map((item: any) => ({
             productId: item.productId || undefined,
             description: item.description,
             quantity: typeof item.quantity === 'string' ? parseFloat(item.quantity) || 0 : item.quantity,
@@ -513,11 +467,11 @@ useEffect(() => {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="overflow-x-auto w-full">
-              <table className="w-full table-fixed min-w-[1000px]">
+              <table className="w-full table-fixed min-w-[1100px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[300px]">PRODUCTO/SERVICIO</th>
+                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[320px] min-w-[320px]">PRODUCTO/SERVICIO</th>
                     <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">CANT.</th>
                     <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-40 min-w-[150px]">PRECIO UNIT.</th>
                     <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">DESC. %</th>
@@ -528,21 +482,20 @@ useEffect(() => {
                 </thead>
                 <tbody>
                   {itemsArray.map((item: any, index: number) => {
-                    const selectedProduct = safeProducts.find((product) => product.id === item.productId)
-                    const skuToShow = item.sku || selectedProduct?.sku || ''
-                    const stockToShow = typeof item.stock === 'number' ? item.stock : selectedProduct?.stock
+                    const skuToShow = item.sku || ''
+                    const stockToShow = item.stock
                     return (
                     <tr key={item.tempId} className="border-b border-gray-100">
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 min-w-0">
                         <div className="space-y-2">
                           {item.productId ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
                               <input
                                 type="text"
                                 value={item.description}
                                 readOnly
-                                className="flex-1 px-3 py-2 text-sm font-semibold bg-gray-50 border border-gray-300 rounded-lg cursor-not-allowed text-gray-700"
+                                className="min-w-0 w-full flex-1 px-3 py-2 text-sm font-semibold bg-gray-50 border border-gray-300 rounded-lg cursor-not-allowed text-gray-700"
                                 title="Producto de inventario - no editable"
                               />
                               <button
@@ -558,7 +511,7 @@ useEffect(() => {
                                   }
                                   setItems(updated)
                                 }}
-                                className="px-2 py-2 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
+                                className="shrink-0 px-2 py-2 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
                                 title="Desvincular producto"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,7 +526,7 @@ useEffect(() => {
                               onChange={(val) => updateItem(index, 'description', val)}
                               onSelect={(prod) => selectProduct(index, prod as any)}
                               placeholder="Buscar producto o SKU..."
-                              className="mb-1 w-full"
+                              className="mb-1 w-full min-w-0"
                               inputClassName="text-sm font-semibold"
                               dropdownClassName="w-[min(1100px,95vw)] max-h-[420px]"
                             />
@@ -594,8 +547,10 @@ useEffect(() => {
                       <td className="py-2 px-2">
                         <Input
                           type="number"
+                          min={1}
+                          step={1}
                           value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
+                          onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
                           fullWidth
                         />
                       </td>
