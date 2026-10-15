@@ -317,15 +317,12 @@ export default function DetalleCotizacionPage() {
         x += column.width
       })
       y += rowHeight
-      doc.setDrawColor(203, 213, 225)
-      doc.line(margin, y, pageWidth - margin, y)
       y += 1
     })
 
     const totals: Array<{ label: string; value: string; total?: boolean }> = [
       { label: 'Subtotal', value: formatCurrency(quote.subtotal) },
       ...(hasDiscount ? [{ label: 'Descuento total', value: `-${formatCurrency(quote.discount)}` }] : []),
-      { label: 'Base imponible', value: formatCurrency(quote.subtotal - quote.discount) },
       { label: quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)', value: formatCurrency(quote.tax) },
       { label: 'TOTAL', value: formatCurrency(quote.total), total: true },
     ]
@@ -371,8 +368,6 @@ export default function DetalleCotizacionPage() {
     if (y + 5 > footerTop) doc.addPage()
 
     let footerY = pageHeight - 18 - footerHeight
-    doc.setDrawColor(203, 213, 225)
-    doc.line(margin, footerY, pageWidth - margin, footerY)
     footerY += 4
     footerSections.forEach((section) => {
       if (section.label) {
@@ -651,7 +646,7 @@ export default function DetalleCotizacionPage() {
 
         {/* Info table: Company info left, Client info right */}
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="border border-gray-400">
+          <div>
             <div 
               className="text-white text-center font-bold py-1 text-xs tracking-wider"
               style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
@@ -668,7 +663,7 @@ export default function DetalleCotizacionPage() {
               <div><span className="font-semibold">RUC:</span> {companyDetails?.ruc || 'J0310000368457'}</div>
             </div>
           </div>
-          <div className="border border-gray-400">
+          <div>
             <div 
               className="text-white text-center font-bold py-1 text-xs tracking-wider flex justify-between px-3"
               style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}
@@ -713,31 +708,31 @@ export default function DetalleCotizacionPage() {
           </colgroup>
           <thead>
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
-              <th className="border border-gray-400 px-2 py-1 text-left font-bold">CODIGO</th>
-              <th className="border border-gray-400 px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
-              <th className="border border-gray-400 px-2 py-1 text-center font-bold">CANT.</th>
-              <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO UNIT.</th>
-              {quote.discount > 0 && <th className="border border-gray-400 px-2 py-1 text-right font-bold">DESCUENTO</th>}
-              <th className="border border-gray-400 px-2 py-1 text-center font-bold">IMPUESTO</th>
-              <th className="border border-gray-400 px-2 py-1 text-right font-bold">TOTAL</th>
+              <th className="px-2 py-1 text-left font-bold">CODIGO</th>
+              <th className="px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
+              <th className="px-2 py-1 text-center font-bold">CANT.</th>
+              <th className="px-2 py-1 text-right font-bold">PRECIO UNIT.</th>
+              {quote.discount > 0 && <th className="px-2 py-1 text-right font-bold">DESCUENTO</th>}
+              <th className="px-2 py-1 text-center font-bold">IMPUESTO</th>
+              <th className="px-2 py-1 text-right font-bold">TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {quote.items.map((item, i) => (
               <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="border border-gray-300 px-2 py-1">{`Item ${String(i + 1).padStart(2, '0')}`}</td>
-                <td className="border border-gray-300 px-2 py-1">{item.description}</td>
-                <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="px-2 py-1">{`Item ${String(i + 1).padStart(2, '0')}`}</td>
+                <td className="px-2 py-1">{item.description}</td>
+                <td className="px-2 py-1 text-center">{item.quantity}</td>
+                <td className="px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                 {quote.discount > 0 && (
-                  <td className="border border-gray-300 px-2 py-1 text-right">
+                  <td className="px-2 py-1 text-right">
                     {item.discount > 0
                       ? `${item.discount}% · -${currencySymbol} ${(item.quantity * item.unitPrice * item.discount / 100 * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                       : 'Sin descuento'}
                   </td>
                 )}
-                <td className="border border-gray-300 px-2 py-1 text-center">{quote.taxApplies ? 'IVA 15%' : 'No aplica'}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="px-2 py-1 text-center">{quote.taxApplies ? 'IVA 15%' : 'No aplica'}</td>
+                <td className="px-2 py-1 text-right">{currencySymbol} {(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
@@ -747,22 +742,18 @@ export default function DetalleCotizacionPage() {
         <div className="flex justify-end mb-4">
           <table className="text-xs border-collapse">
             <tr>
-              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">SUBTOTAL</td>
-              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-1 font-semibold bg-gray-100">SUBTOTAL</td>
+              <td className="px-3 py-1 text-right">{currencySymbol} {(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
             {quote.discount > 0 && (
               <tr>
-                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO TOTAL</td>
-                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td className="px-3 py-1 font-semibold bg-gray-100">DESCUENTO TOTAL</td>
+                <td className="px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
             )}
             <tr>
-              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">BASE IMPONIBLE</td>
-              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {((quote.subtotal - quote.discount) * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">{quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</td>
-              <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-1 font-semibold bg-gray-100">{quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)'}</td>
+              <td className="px-3 py-1 text-right">{currencySymbol} {(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
               <td className="border px-3 py-1.5 font-extrabold text-sm" style={{ borderColor: companyDetails?.quotePrimaryColor || '#1e3a8a' }}>TOTAL</td>
@@ -774,7 +765,7 @@ export default function DetalleCotizacionPage() {
         {/* Notes, terms and footer */}
         <div className="proforma-print-footer space-y-4">
           {quote.notes && (
-            <div className="text-xs border-t pt-2">
+            <div className="text-xs pt-2">
               <span className="font-semibold">Notas: </span>{quote.notes}
             </div>
           )}
@@ -794,12 +785,12 @@ export default function DetalleCotizacionPage() {
 
           {stripKosmosBranding(companyDetails?.quoteFooterHtml) && (
             <div 
-              className="text-[10px] text-center text-gray-500 border-t pt-2"
+              className="text-[10px] text-center text-gray-500 pt-2"
               dangerouslySetInnerHTML={{ __html: stripKosmosBranding(companyDetails?.quoteFooterHtml) }}
             />
           )}
 
-          <div className="text-[9px] text-center text-gray-400 border-t pt-2 mt-4">
+          <div className="text-[9px] text-center text-gray-400 pt-2 mt-4">
             Generado el {new Date().toLocaleDateString('es-NI', { day: '2-digit', month: '2-digit', year: 'numeric' })} a las {new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
