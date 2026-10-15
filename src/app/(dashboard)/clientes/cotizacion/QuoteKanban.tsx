@@ -50,11 +50,13 @@ function formatCurrency(currency: string, total: number) {
 
 export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onOpen, onMove }: QuoteKanbanProps) {
   const [dragOverStage, setDragOverStage] = useState<QuotePipelineStage | null>(null)
+  const [moveOptionsQuoteId, setMoveOptionsQuoteId] = useState<string | null>(null)
   const [movingQuoteId, setMovingQuoteId] = useState<string | null>(null)
   const [movingTargetStage, setMovingTargetStage] = useState<QuotePipelineStage | ''>('')
 
   const moveQuote = async (quoteId: string, stage: QuotePipelineStage, reopen = false) => {
     if (movingQuoteId !== null) return
+    setMoveOptionsQuoteId(null)
     setMovingQuoteId(quoteId)
     setMovingTargetStage(stage)
     try {
@@ -129,18 +131,41 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                     <article
                       key={quote.id}
                       draggable={canEditQuote && !isClosed && movingQuoteId === null}
+                      tabIndex={canEditQuote ? 0 : undefined}
+                      role={canEditQuote ? 'group' : undefined}
+                      aria-label={canEditQuote ? `Opciones de etapa para ${quote.quoteNumber}` : undefined}
+                      aria-expanded={canEditQuote ? moveOptionsQuoteId === quote.id : undefined}
+                      aria-controls={canEditQuote ? `quote-move-options-${quote.id}` : undefined}
+                      onClick={() => {
+                        if (canEditQuote) {
+                          setMoveOptionsQuoteId((current) => current === quote.id ? null : quote.id)
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          canEditQuote &&
+                          event.target === event.currentTarget &&
+                          (event.key === 'Enter' || event.key === ' ')
+                        ) {
+                          event.preventDefault()
+                          setMoveOptionsQuoteId((current) => current === quote.id ? null : quote.id)
+                        }
+                      }}
                       onDragStart={(event) => {
                         event.dataTransfer.setData('text/plain', quote.id)
                         event.dataTransfer.effectAllowed = 'move'
                       }}
                       className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${
-                        canEditQuote && !isClosed ? 'cursor-grab active:cursor-grabbing' : ''
+                        canEditQuote ? 'cursor-pointer hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-primary/30' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <button
-                            onClick={() => onOpen(quote.id)}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onOpen(quote.id)
+                            }}
                             className="text-left text-sm font-semibold text-gray-900 hover:text-primary"
                           >
                             {quote.quoteNumber}
@@ -169,37 +194,46 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                         </p>
                       )}
 
-                      {canEditQuote && isClosed && (
-                        <button
-                          type="button"
-                          disabled={movingQuoteId !== null}
-                          onClick={() => void moveQuote(quote.id, 'NEGOCIACION', true)}
-                          className="mt-3 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      {canEditQuote && (
+                        <div
+                          id={`quote-move-options-${quote.id}`}
+                          className={moveOptionsQuoteId === quote.id ? 'mt-3 border-t border-gray-100 pt-3' : 'hidden'}
+                          hidden={moveOptionsQuoteId !== quote.id}
+                          onClick={(event) => event.stopPropagation()}
                         >
-                          Reabrir en Negociación
-                        </button>
-                      )}
-                      {canEditQuote && !isClosed && (
-                        <label className="mt-3 block">
-                          <span className="sr-only">Mover {quote.quoteNumber} a otra etapa</span>
-                          <select
-                            value={movingQuoteId === quote.id ? movingTargetStage : ''}
-                            disabled={movingQuoteId !== null}
-                            onChange={(event) => {
-                              if (event.target.value) {
-                                void moveQuote(quote.id, event.target.value as QuotePipelineStage)
-                              }
-                            }}
-                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs text-gray-700 disabled:opacity-50"
-                          >
-                            <option value="">Mover a otra etapa…</option>
-                            {QUOTE_PIPELINE_STAGES.filter((target) =>
+                          <p className="mb-2 text-xs font-medium text-gray-600">Mover a otra etapa</p>
+                          <div className="flex flex-wrap gap-2">
+                            {isClosed ? (
+                              <button
+                                type="button"
+                                disabled={movingQuoteId !== null}
+                                onClick={() => void moveQuote(quote.id, 'NEGOCIACION', true)}
+                                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                Reabrir en Negociación
+                              </button>
+                            ) : QUOTE_PIPELINE_STAGES.filter((target) =>
                               isQuotePipelineTransitionAllowed(quote.pipelineStage, target)
                             ).map((target) => (
-                              <option key={target} value={target}>{QUOTE_PIPELINE_STAGE_LABELS[target]}</option>
+                              <button
+                                key={target}
+                                type="button"
+                                disabled={movingQuoteId !== null}
+                                onClick={() => void moveQuote(quote.id, target)}
+                                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-primary hover:bg-blue-50 disabled:opacity-50"
+                              >
+                                {QUOTE_PIPELINE_STAGE_LABELS[target]}
+                              </button>
                             ))}
-                          </select>
-                        </label>
+                            <button
+                              type="button"
+                              onClick={() => setMoveOptionsQuoteId(null)}
+                              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-100"
+                            >
+                              Cerrar
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </article>
                   )

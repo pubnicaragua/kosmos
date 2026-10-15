@@ -402,13 +402,38 @@ export default function DetalleCotizacionPage() {
           body > div:first-child > aside,
           body > div:first-child > header,
           body > div:first-child > nav { display: none !important; }
+          html,
+          body,
+          body > div:first-child { background-color: #fff !important; }
+          body > div:first-child {
+            position: static !important;
+            inset: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+          }
+          body > div:first-child > div:last-child {
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background-color: #fff !important;
+          }
+          body > div:first-child > div:last-child > main {
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background-color: #fff !important;
+          }
           #proforma-print {
             display: block !important;
             position: static !important;
             width: 100% !important;
             background: white !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 10mm 0 0 !important;
           }
           #proforma-print table {
             page-break-inside: auto;
@@ -421,7 +446,19 @@ export default function DetalleCotizacionPage() {
             page-break-after: auto;
           }
           @page {
-            margin: 10mm;
+            margin: 0 10mm 5mm;
+            @top-left { content: ""; }
+            @top-center { content: ""; }
+            @top-right { content: ""; }
+            @bottom-left { content: ""; }
+            @bottom-center { content: ""; }
+            @bottom-right {
+              content: "Página " counter(page) " de " counter(pages);
+              font-family: Arial, sans-serif;
+              font-size: 7pt;
+              line-height: 1;
+              color: #64748b;
+            }
           }
           body {
             margin: 0 !important;
