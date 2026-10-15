@@ -11,6 +11,7 @@ test('allows only the agreed forward and return transitions', () => {
   const allowed: Array<[string, string]> = [
     ['PROSPECTO', 'PROPUESTA'],
     ['PROSPECTO', 'NEGOCIACION'],
+    ['PROSPECTO', 'RECHAZADA'],
     ['PROPUESTA', 'NEGOCIACION'],
     ['PROPUESTA', 'REALIZADA'],
     ['PROPUESTA', 'RECHAZADA'],
@@ -20,7 +21,6 @@ test('allows only the agreed forward and return transitions', () => {
   ]
   const denied: Array<[string, string]> = [
     ['PROSPECTO', 'REALIZADA'],
-    ['PROSPECTO', 'RECHAZADA'],
     ['PROPUESTA', 'PROSPECTO'],
     ['REALIZADA', 'RECHAZADA'],
     ['RECHAZADA', 'REALIZADA'],

@@ -41,7 +41,7 @@ interface QuotePipelineTransaction {
 }
 
 const NORMAL_TRANSITIONS: Record<QuotePipelineStage, readonly QuotePipelineStage[]> = {
-  PROSPECTO: ['PROPUESTA', 'NEGOCIACION'],
+  PROSPECTO: ['PROPUESTA', 'NEGOCIACION', 'RECHAZADA'],
   PROPUESTA: ['NEGOCIACION', 'REALIZADA', 'RECHAZADA'],
   NEGOCIACION: ['PROPUESTA', 'REALIZADA', 'RECHAZADA'],
   REALIZADA: [],
