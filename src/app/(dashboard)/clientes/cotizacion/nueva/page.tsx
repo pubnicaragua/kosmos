@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Input, Select, Button, ClientAutocomplete, ProductAutocomplete, UserAutocomplete } from '@/components/ui-kit'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { quoteItemSchema } from '@/lib/validations'
+import { clearQuoteItemProductSelection } from '@/lib/quote-item-selection'
 
 interface QuoteItem {
   tempId: number
@@ -61,6 +62,7 @@ function NuevaCotizacionContent() {
   const [items, setItems] = useState<QuoteItem[]>([
     { tempId: 1, productId: '', description: '', sku: '', stock: null, quantity: '', unitPrice: '', discount: '', tax: 15, total: 0 }
   ])
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
 
   // Safe array - always use this instead of items directly
   const itemsArray = useMemo(() => {
@@ -255,6 +257,7 @@ useEffect(() => {
 
   const selectProduct = (index: number, product: any) => {
     if (!product) return
+    setEditingProductId(null)
     const updated = [...itemsArray]
     const baseCost = product.cost || 0
     const basePublic = product.publicPrice || product.price || 0
@@ -466,18 +469,18 @@ useEffect(() => {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <div className="overflow-x-auto w-full">
-              <table className="w-full table-fixed min-w-[1100px]">
+            <div className="w-full min-w-0">
+              <table className="w-full table-fixed min-w-0">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                    <th className="text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-[320px] min-w-[320px]">PRODUCTO/SERVICIO</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">CANT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-40 min-w-[150px]">PRECIO UNIT.</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-32 min-w-[120px]">DESC. %</th>
-                    <th className="text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-28">IMPUESTO</th>
-                    <th className="text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest w-40 min-w-[150px]">TOTAL</th>
-                    <th className="w-10"></th>
+                    <th className="w-[4%] text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">#</th>
+                    <th className="w-[29%] text-left py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">PRODUCTO/SERVICIO</th>
+                    <th className="w-[11%] text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">CANT.</th>
+                    <th className="w-[14%] text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">PRECIO UNIT.</th>
+                    <th className="w-[10%] text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">DESC. %</th>
+                    <th className="w-[12%] text-center py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">IMPUESTO</th>
+                    <th className="w-[15%] text-right py-3 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL</th>
+                    <th className="w-[5%]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -489,36 +492,21 @@ useEffect(() => {
                       <td className="py-2 px-2 text-sm text-gray-600">{index + 1}</td>
                       <td className="py-3 px-2 min-w-0">
                         <div className="space-y-2">
-                          {item.productId ? (
-                            <div className="flex min-w-0 items-center gap-2">
-                              <input
-                                type="text"
-                                value={item.description}
-                                readOnly
-                                className="min-w-0 w-full flex-1 px-3 py-2 text-sm font-semibold bg-gray-50 border border-gray-300 rounded-lg cursor-not-allowed text-gray-700"
-                                title="Producto de inventario - no editable"
-                              />
-                              <button
-                                onClick={() => {
-                                  const updated = [...itemsArray]
-                                  updated[index] = {
-                                    ...updated[index],
-                                    productId: '',
-                                    description: '',
-                                    sku: '',
-                                    stock: null,
-                                    unitPrice: '',
-                                  }
-                                  setItems(updated)
-                                }}
-                                className="shrink-0 px-2 py-2 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
-                                title="Desvincular producto"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            </div>
+                          {item.productId && editingProductId !== item.tempId ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setItems(itemsArray.map((row, rowIndex) =>
+                                  rowIndex === index ? clearQuoteItemProductSelection(row) : row
+                                ))
+                                setEditingProductId(item.tempId)
+                              }}
+                              className="block w-full min-w-0 cursor-pointer truncate rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-left text-sm font-semibold text-gray-700 hover:border-primary hover:bg-white"
+                              aria-label={`Cambiar producto: ${item.description}`}
+                              title="Haz clic para buscar otro producto"
+                            >
+                              {item.description}
+                            </button>
                           ) : (
                             <ProductAutocomplete
                               companyId={selectedCompany}
@@ -529,14 +517,15 @@ useEffect(() => {
                               className="mb-1 w-full min-w-0"
                               inputClassName="text-sm font-semibold"
                               dropdownClassName="w-[min(1100px,95vw)] max-h-[420px]"
+                              autoFocus={editingProductId === item.tempId}
                             />
                           )}
                           {skuToShow ? (
-                            <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2 overflow-hidden text-[11px] font-semibold text-slate-500">
                               <span className="uppercase tracking-wide">SKU:</span>
-                              <span className="font-mono text-slate-700">{skuToShow}</span>
+                              <span className="min-w-0 truncate font-mono text-slate-700">{skuToShow}</span>
                               {typeof stockToShow === 'number' && (
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${stockToShow > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${stockToShow > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                                   Stock {stockToShow}
                                 </span>
                               )}

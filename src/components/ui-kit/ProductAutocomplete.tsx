@@ -24,6 +24,7 @@ interface ProductAutocompleteProps {
   className?: string
   inputClassName?: string
   dropdownClassName?: string
+  autoFocus?: boolean
 }
 
 export function ProductAutocomplete({
@@ -35,16 +36,22 @@ export function ProductAutocomplete({
   className = '',
   inputClassName = '',
   dropdownClassName = '',
+  autoFocus = false,
 }: ProductAutocompleteProps) {
   const [products, setProducts] = useState<ProductOption[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState(value)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setSearch(value)
   }, [value])
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus()
+  }, [autoFocus])
 
   useEffect(() => {
     const query = search.trim()
@@ -178,6 +185,7 @@ export function ProductAutocomplete({
   return (
     <div ref={wrapperRef} className={`relative min-w-0 ${className}`}>
       <input
+        ref={inputRef}
         type="text"
         value={search}
         onChange={(e) => {
