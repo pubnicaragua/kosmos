@@ -77,7 +77,7 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
           <section
             key={stage}
             aria-label={`${QUOTE_PIPELINE_STAGE_LABELS[stage]}: ${stageCounts[stage]} cotizaciones`}
-            className={`w-[290px] min-w-[290px] rounded-xl border p-3 transition-colors ${
+            className={`flex w-[290px] min-w-[290px] flex-col rounded-xl border p-3 transition-colors ${
               isDropTarget ? style.drop : 'border-gray-200 bg-gray-50'
             }`}
             onDragOver={(event) => {
@@ -112,7 +112,7 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
               </span>
             </header>
 
-            <div className="min-h-32 space-y-3">
+            <div className="min-h-32 max-h-[max(8rem,calc(100dvh-620px))] space-y-3 overflow-y-auto pr-1">
               {stageQuotes.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-3 py-6 text-center text-sm text-gray-500">
                   {stageCounts[stage] > 0
@@ -158,7 +158,11 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                       </span>
                     </div>
 
-                    {latestEvent && (
+                    {movingQuoteId === quote.id ? (
+                      <p role="status" className="mt-3 border-t border-gray-100 pt-2 text-xs text-blue-600">
+                        Actualizando etapa…
+                      </p>
+                    ) : latestEvent && (
                       <p className="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500">
                         {latestEvent.actorName} · {new Date(latestEvent.changedAt).toLocaleString('es-NI')}
                       </p>

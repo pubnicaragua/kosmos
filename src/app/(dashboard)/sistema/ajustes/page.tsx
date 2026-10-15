@@ -7,6 +7,7 @@ import { Button } from '@/components/ui-kit/Button'
 import { Input } from '@/components/ui-kit/Input'
 import { Select } from '@/components/ui-kit/Select'
 import { Badge } from '@/components/ui-kit/Badge'
+import { Modal } from '@/components/ui-kit/Modal'
 import { SimpleRichTextEditor } from '@/components/ui-kit/SimpleRichTextEditor'
 import { DepartamentosManager } from '@/components/departamentos/DepartamentosManager'
 import { clearPermissionsCache } from '@/hooks/useModulePermissions'
@@ -179,6 +180,7 @@ export default function AjustesPage() {
   const [userNameMsg, setUserNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null)
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [deactivationTarget, setDeactivationTarget] = useState<CompanyMember | null>(null)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
   const [templateTab, setTemplateTab] = useState<'quote' | 'invoice'>('quote')
 
@@ -664,10 +666,12 @@ export default function AjustesPage() {
     }
   }
 
-  const handleRemoveUser = async (userId: string) => {
-    if (!confirm('¿Remover este usuario de la empresa?')) return
+  const handleDeactivateFromCompany = async (userId: string) => {
+    const companyName = companies.find((company) => company.id === rolesCompanyId)?.name || 'esta empresa'
+    if (!confirm(`¿Desactivar a este usuario solo de ${companyName}? Su cuenta seguirá activa en las demás empresas.`)) return
     const token = localStorage.getItem('accessToken')
     if (!token) return
+    setDeactivatingUserId(userId)
     try {
       const response = await fetch(`/api/companies/${rolesCompanyId}/users?userId=${userId}`, {
         method: 'DELETE',
@@ -675,13 +679,15 @@ export default function AjustesPage() {
       })
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo remover el usuario de la empresa')
+        alert(data.error || 'No se pudo desactivar el usuario de esta empresa')
         return
       }
       await fetchRolesData(rolesCompanyId)
     } catch (err) {
       console.error(err)
-      alert('Error de conexión al remover el usuario')
+      alert('Error de conexión al desactivar el usuario')
+    } finally {
+      setDeactivatingUserId(null)
     }
   }
 
@@ -1353,30 +1359,26 @@ export default function AjustesPage() {
                                 Contraseña
                               </button>
                             )}
-                            <button
-                              onClick={() => handleRemoveUser(m.userId)}
-                              className="text-xs text-red-400 hover:text-red-600 text-center"
-                            >
-                              Remover de empresa
-                            </button>
+                            {m.userId !== user?.id && (
+                              <button
+                                type="button"
+                                onClick={() => setDeactivationTarget(m)}
+                                disabled={deactivatingUserId === m.userId || deletingUserId === m.userId}
+                                className="text-xs text-red-400 hover:text-red-600 text-center disabled:opacity-50"
+                              >
+                                {deactivatingUserId === m.userId ? 'Desactivando...' : 'Desactivar'}
+                              </button>
+                            )}
                             {isSuperAdmin && m.userId !== user?.id && (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleGlobalDeactivate(m.userId)}
-                                  disabled={deactivatingUserId === m.userId || deletingUserId === m.userId}
-                                  className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
-                                >
-                                  {deactivatingUserId === m.userId ? 'Desactivando...' : 'Desactivar globalmente'}
-                                </button>
                                 <button
                                   type="button"
                                   onClick={() => handleGlobalDelete(m)}
                                   disabled={deactivatingUserId === m.userId || deletingUserId === m.userId}
                                   className="text-xs text-red-700 hover:text-red-900 text-center disabled:opacity-50"
-                                  title="Eliminar la cuenta de todas las empresas y liberar su correo"
+                                  title="Eliminar permanentemente la cuenta de todas las empresas y liberar su correo"
                                 >
-                                  {deletingUserId === m.userId ? 'Eliminando...' : 'Eliminar globalmente'}
+                                  {deletingUserId === m.userId ? 'Eliminando...' : 'Eliminar'}
                                 </button>
                               </>
                             )}
@@ -1426,6 +1428,62 @@ export default function AjustesPage() {
           )}
         </div>
       )}
+
+      <Modal
+        isOpen={Boolean(deactivationTarget)}
+        onClose={() => setDeactivationTarget(null)}
+        title="¿Dónde desactivar?"
+        size="sm"
+      >
+        {deactivationTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Selecciona el alcance para <strong className="text-gray-900">{deactivationTarget.user.name}</strong>.
+            </p>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const userId = deactivationTarget.userId
+                  setDeactivationTarget(null)
+                  void handleDeactivateFromCompany(userId)
+                }}
+                className="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-primary/50 hover:bg-gray-50"
+              >
+                <span className="block text-sm font-semibold text-gray-900">Solo de esta empresa</span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  Perderá acceso a esta empresa, pero su cuenta seguirá activa en las demás.
+                </span>
+              </button>
+              {isSuperAdmin && deactivationTarget.userId !== user?.id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const userId = deactivationTarget.userId
+                    setDeactivationTarget(null)
+                    void handleGlobalDeactivate(userId)
+                  }}
+                  className="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-amber-300 hover:bg-amber-50"
+                >
+                  <span className="block text-sm font-semibold text-gray-900">De todas las empresas</span>
+                  <span className="mt-1 block text-xs text-gray-500">
+                    Desactiva la cuenta y revoca sus sesiones; sus registros históricos se conservan.
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDeactivationTarget(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* MODAL: Crear/Editar Rol */}
       {showRoleModal && (

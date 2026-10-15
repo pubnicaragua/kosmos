@@ -180,7 +180,23 @@ export default function CotizacionesList() {
     if (!token) return
 
     const currentQuote = quotes.find((quote) => quote.id === quoteId)
+    if (!currentQuote) return
+
+    const previousStage = currentQuote.pipelineStage
     setMoveError('')
+    quoteRequestSequence.current += 1
+
+    if (previousStage !== pipelineStage) {
+      setQuotes((currentQuotes) => currentQuotes.map((quote) =>
+        quote.id === quoteId ? { ...quote, pipelineStage } : quote
+      ))
+      setStageCounts((currentCounts) => ({
+        ...currentCounts,
+        [previousStage]: Math.max(0, currentCounts[previousStage] - 1),
+        [pipelineStage]: currentCounts[pipelineStage] + 1,
+      }))
+    }
+
     try {
       const response = await fetch(`/api/quotes/${quoteId}/pipeline-stage`, {
         method: 'PUT',
@@ -209,14 +225,25 @@ export default function CotizacionesList() {
           : quote
       ))
 
-      if (currentQuote && currentQuote.pipelineStage !== updatedQuote.pipelineStage) {
+      if (pipelineStage !== updatedQuote.pipelineStage) {
         setStageCounts((currentCounts) => ({
           ...currentCounts,
-          [currentQuote.pipelineStage]: Math.max(0, currentCounts[currentQuote.pipelineStage] - 1),
+          [pipelineStage]: Math.max(0, currentCounts[pipelineStage] - 1),
           [updatedQuote.pipelineStage]: currentCounts[updatedQuote.pipelineStage] + 1,
         }))
       }
     } catch (error) {
+      quoteRequestSequence.current += 1
+      if (previousStage !== pipelineStage) {
+        setQuotes((currentQuotes) => currentQuotes.map((quote) =>
+          quote.id === quoteId ? { ...quote, pipelineStage: previousStage } : quote
+        ))
+        setStageCounts((currentCounts) => ({
+          ...currentCounts,
+          [pipelineStage]: Math.max(0, currentCounts[pipelineStage] - 1),
+          [previousStage]: currentCounts[previousStage] + 1,
+        }))
+      }
       console.error('Error moving quote:', error)
       setMoveError(error instanceof Error ? error.message : 'No se pudo mover la cotización')
     }
