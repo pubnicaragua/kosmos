@@ -428,12 +428,23 @@ export default function DetalleCotizacionPage() {
             background-color: #fff !important;
           }
           #proforma-print {
-            display: block !important;
+            display: flex !important;
+            flex-direction: column !important;
             position: static !important;
             width: 100% !important;
+            min-height: calc(100vh - 10mm) !important;
+            box-sizing: border-box !important;
             background: white !important;
             margin: 0 !important;
             padding: 10mm 0 0 !important;
+          }
+          #proforma-print > * {
+            flex-shrink: 0;
+          }
+          #proforma-print .proforma-print-footer {
+            margin-top: auto !important;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           #proforma-print table {
             page-break-inside: auto;
@@ -567,12 +578,12 @@ export default function DetalleCotizacionPage() {
         <table className="w-full table-fixed border-collapse text-[10px] mb-4">
           <colgroup>
             <col style={{ width: '8%' }} />
-            <col style={{ width: '29%' }} />
+            <col style={{ width: quote.discount > 0 ? '29%' : '43%' }} />
             <col style={{ width: '7%' }} />
-            <col style={{ width: '14%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '12%' }} />
+            <col style={{ width: quote.discount > 0 ? '14%' : '17%' }} />
+            {quote.discount > 0 && <col style={{ width: '20%' }} />}
+            <col style={{ width: quote.discount > 0 ? '10%' : '11%' }} />
+            <col style={{ width: quote.discount > 0 ? '12%' : '14%' }} />
           </colgroup>
           <thead>
             <tr className="text-white" style={{ backgroundColor: companyDetails?.quotePrimaryColor || '#1d4ed8' }}>
@@ -580,7 +591,7 @@ export default function DetalleCotizacionPage() {
               <th className="border border-gray-400 px-2 py-1 text-left font-bold">DESCRIPCIÓN</th>
               <th className="border border-gray-400 px-2 py-1 text-center font-bold">CANT.</th>
               <th className="border border-gray-400 px-2 py-1 text-right font-bold">PRECIO UNIT.</th>
-              <th className="border border-gray-400 px-2 py-1 text-right font-bold">DESCUENTO</th>
+              {quote.discount > 0 && <th className="border border-gray-400 px-2 py-1 text-right font-bold">DESCUENTO</th>}
               <th className="border border-gray-400 px-2 py-1 text-center font-bold">IMPUESTO</th>
               <th className="border border-gray-400 px-2 py-1 text-right font-bold">TOTAL</th>
             </tr>
@@ -592,11 +603,13 @@ export default function DetalleCotizacionPage() {
                 <td className="border border-gray-300 px-2 py-1">{item.description}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td className="border border-gray-300 px-2 py-1 text-right">
-                  {item.discount > 0
-                    ? `${item.discount}% · -${currencySymbol} ${(item.quantity * item.unitPrice * item.discount / 100 * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                    : 'Sin descuento'}
-                </td>
+                {quote.discount > 0 && (
+                  <td className="border border-gray-300 px-2 py-1 text-right">
+                    {item.discount > 0
+                      ? `${item.discount}% · -${currencySymbol} ${(item.quantity * item.unitPrice * item.discount / 100 * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                      : 'Sin descuento'}
+                  </td>
+                )}
                 <td className="border border-gray-300 px-2 py-1 text-center">{quote.taxApplies ? 'IVA 15%' : 'No aplica'}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
@@ -611,10 +624,12 @@ export default function DetalleCotizacionPage() {
               <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">SUBTOTAL</td>
               <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
-            <tr>
-              <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO TOTAL</td>
-              <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            </tr>
+            {quote.discount > 0 && (
+              <tr>
+                <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">DESCUENTO TOTAL</td>
+                <td className="border border-gray-300 px-3 py-1 text-right">-{currencySymbol} {(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            )}
             <tr>
               <td className="border border-gray-300 px-3 py-1 font-semibold bg-gray-100">BASE IMPONIBLE</td>
               <td className="border border-gray-300 px-3 py-1 text-right">{currencySymbol} {((quote.subtotal - quote.discount) * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
@@ -631,7 +646,7 @@ export default function DetalleCotizacionPage() {
         </div>
 
         {/* Notes, terms and footer */}
-        <div className="space-y-4">
+        <div className="proforma-print-footer space-y-4">
           {quote.notes && (
             <div className="text-xs border-t pt-2">
               <span className="font-semibold">Notas: </span>{quote.notes}
