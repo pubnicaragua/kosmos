@@ -14,7 +14,8 @@ import { clearPermissionsCache } from '@/hooks/useModulePermissions'
 import { 
   LayoutDashboard, Users, DollarSign, Receipt, CheckSquare, Target, 
   FileText, FileSignature, Package, Ticket, Megaphone, FolderOpen,
-  Settings, Shield, Upload, Key, Info, ShoppingCart, Building2
+  Settings, Shield, Upload, Key, Info, ShoppingCart, Building2,
+  AlertTriangle, CheckCircle2, X, XCircle
 } from 'lucide-react'
 
 interface UserProfile {
@@ -120,6 +121,23 @@ const QUOTE_TEMPLATE_BASE = `<b>Nuestros Servicios Incluyen:</b><br>- Asesoría 
 const INVOICE_TEMPLATE_BASE = `<b>Datos de Pago Bancario:</b><br><b>BAC Credomatic:</b> 123-45678-9 (Dólares)<br><b>BANPRO:</b> 987-65432-1 (Córdobas)<br><b>A nombre de:</b> Kosmos Solutions S.A.`
 
 type Tab = 'perfil' | 'empresa' | 'usuarios' | 'roles' | 'plantillas' | 'departamentos'
+type SettingsNoticeTone = 'success' | 'error' | 'warning' | 'info'
+
+interface SettingsNotice {
+  tone: SettingsNoticeTone
+  title: string
+  message: string
+}
+
+interface SettingsConfirmation {
+  title: string
+  description: string
+  tone: 'danger' | 'warning'
+  confirmLabel: string
+  detailTitle?: string
+  details?: string[]
+  warning?: string
+}
 
 export default function AjustesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
@@ -181,8 +199,33 @@ export default function AjustesPage() {
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null)
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [deactivationTarget, setDeactivationTarget] = useState<CompanyMember | null>(null)
+  const [systemNotice, setSystemNotice] = useState<SettingsNotice | null>(null)
+  const [systemConfirmation, setSystemConfirmation] = useState<
+    (SettingsConfirmation & { resolve: (confirmed: boolean) => void }) | null
+  >(null)
   const [hasCustomRolePermission, setHasCustomRolePermission] = useState(false)
   const [templateTab, setTemplateTab] = useState<'quote' | 'invoice'>('quote')
+
+  useEffect(() => {
+    if (!systemNotice) return
+    const timeoutId = window.setTimeout(() => setSystemNotice(null), 4500)
+    return () => window.clearTimeout(timeoutId)
+  }, [systemNotice])
+
+  const showSystemNotice = (tone: SettingsNoticeTone, title: string, message: string) => {
+    setSystemNotice({ tone, title, message })
+  }
+
+  const requestSystemConfirmation = (confirmation: SettingsConfirmation) =>
+    new Promise<boolean>((resolve) => {
+      setSystemConfirmation({ ...confirmation, resolve })
+    })
+
+  const resolveSystemConfirmation = (confirmed: boolean) => {
+    const resolve = systemConfirmation?.resolve
+    setSystemConfirmation(null)
+    resolve?.(confirmed)
+  }
 
   const handleUploadFile = async (file: File, type: 'avatar' | 'logo') => {
     const token = localStorage.getItem('accessToken')
@@ -550,7 +593,14 @@ export default function AjustesPage() {
   }
 
   const handleDeleteRole = async (roleId: string) => {
-    if (!confirm('¿Eliminar este rol? Los usuarios asignados perderán el rol personalizado.')) return
+    const confirmed = await requestSystemConfirmation({
+      title: 'Eliminar rol',
+      description: '¿Eliminar este rol?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar rol',
+      warning: 'Los usuarios asignados perderán el rol personalizado.',
+    })
+    if (!confirmed) return
     const token = localStorage.getItem('accessToken')
     if (!token) return
     try {
@@ -595,15 +645,15 @@ export default function AjustesPage() {
   const handleChangePassword = async (userId: string) => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      alert('Inicia sesión nuevamente para cambiar la contraseña')
+      showSystemNotice('warning', 'Sesión requerida', 'Inicia sesión nuevamente para cambiar la contraseña.')
       return
     }
     if (!rolesCompanyId) {
-      alert('Selecciona una empresa antes de cambiar la contraseña')
+      showSystemNotice('warning', 'Selecciona una empresa', 'Selecciona una empresa antes de cambiar la contraseña.')
       return
     }
     if (!newPassword || newPassword.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres')
+      showSystemNotice('warning', 'Contraseña inválida', 'La contraseña debe tener al menos 6 caracteres.')
       return
     }
     setChangingPassword(true)
@@ -615,15 +665,15 @@ export default function AjustesPage() {
       })
       const data = await res.json()
       if (data.success) {
-        alert('Contraseña actualizada exitosamente')
+        showSystemNotice('success', 'Contraseña actualizada', 'La contraseña se actualizó exitosamente.')
         setEditingPasswordUserId(null)
         setNewPassword('')
       } else {
-        alert(data.error || 'Error al cambiar contraseña')
+        showSystemNotice('error', 'No se pudo cambiar la contraseña', data.error || 'Inténtalo nuevamente.')
       }
     } catch (err) {
       console.error(err)
-      alert('Error de conexión')
+      showSystemNotice('error', 'Error de conexión', 'No se pudo cambiar la contraseña.')
     } finally {
       setChangingPassword(false)
     }
@@ -668,7 +718,14 @@ export default function AjustesPage() {
 
   const handleDeactivateFromCompany = async (userId: string) => {
     const companyName = companies.find((company) => company.id === rolesCompanyId)?.name || 'esta empresa'
-    if (!confirm(`¿Desactivar a este usuario solo de ${companyName}? Su cuenta seguirá activa en las demás empresas.`)) return
+    const confirmed = await requestSystemConfirmation({
+      title: 'Desactivar de esta empresa',
+      description: '¿Desactivar a este usuario solo de ' + companyName + '?',
+      tone: 'warning',
+      confirmLabel: 'Desactivar usuario',
+      warning: 'Su cuenta seguirá activa en las demás empresas.',
+    })
+    if (!confirmed) return
     const token = localStorage.getItem('accessToken')
     if (!token) return
     setDeactivatingUserId(userId)
@@ -679,13 +736,14 @@ export default function AjustesPage() {
       })
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo desactivar el usuario de esta empresa')
+        showSystemNotice('error', 'No se pudo desactivar', data.error || 'No se pudo desactivar el usuario de esta empresa.')
         return
       }
       await fetchRolesData(rolesCompanyId)
+      showSystemNotice('success', 'Usuario desactivado', 'Se quitó el acceso a ' + companyName + '.')
     } catch (err) {
       console.error(err)
-      alert('Error de conexión al desactivar el usuario')
+      showSystemNotice('error', 'Error de conexión', 'No se pudo desactivar el usuario de esta empresa.')
     } finally {
       setDeactivatingUserId(null)
     }
@@ -702,21 +760,26 @@ export default function AjustesPage() {
       })
       const preview = await previewResponse.json()
       if (!preview.success) {
-        alert(preview.error || 'No se pudo revisar la desactivación')
+        showSystemNotice('error', 'No se pudo revisar la cuenta', preview.error || 'No se pudo revisar la desactivación.')
         return
       }
       if (!preview.data.user.isActive) {
-        alert('Esta cuenta ya está desactivada')
+        showSystemNotice('info', 'Cuenta ya desactivada', 'Esta cuenta ya está desactivada.')
         return
       }
 
       const linkedCompanies = (preview.data.companies || []).map((company: { name: string; active: boolean }) =>
-        `${company.name}${company.active ? '' : ' (membresía ya cerrada)'}`
+        company.name + (company.active ? '' : ' (membresía ya cerrada)')
       )
-      const companySummary = linkedCompanies.length ? linkedCompanies.join('\n• ') : 'Sin membresías de empresa registradas'
-      const confirmed = window.confirm(
-        `Se desactivará globalmente a ${preview.data.user.name} (${preview.data.user.email}).\n\nEmpresas vinculadas:\n• ${companySummary}\n\nSe revocarán sus sesiones y perderá acceso a todas las empresas. El correo seguirá reservado; cotizaciones, historial y relaciones se conservarán. ¿Continuar?`
-      )
+      const confirmed = await requestSystemConfirmation({
+        title: 'Desactivar cuenta globalmente',
+        description: 'Se desactivará globalmente a ' + preview.data.user.name + ' (' + preview.data.user.email + ').',
+        tone: 'warning',
+        confirmLabel: 'Desactivar en todas',
+        detailTitle: 'Empresas vinculadas',
+        details: linkedCompanies.length ? linkedCompanies : ['Sin membresías de empresa registradas'],
+        warning: 'Se revocarán sus sesiones y perderá acceso a todas las empresas. El correo seguirá reservado; cotizaciones, historial y relaciones se conservarán.',
+      })
       if (!confirmed) return
 
       const response = await fetch(`/api/users/${userId}/offboard`, {
@@ -725,25 +788,29 @@ export default function AjustesPage() {
       })
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo desactivar la cuenta')
+        showSystemNotice('error', 'No se pudo desactivar la cuenta', data.error || 'Inténtalo nuevamente.')
         return
       }
 
-      alert(data.data.message)
+      showSystemNotice('success', 'Cuenta desactivada', data.data.message)
       await fetchRolesData(rolesCompanyId)
       clearPermissionsCache()
     } catch (err) {
       console.error('Global user deactivation error:', err)
-      alert('Error de conexión al desactivar la cuenta')
+      showSystemNotice('error', 'Error de conexión', 'No se pudo desactivar la cuenta.')
     } finally {
       setDeactivatingUserId(null)
     }
   }
 
   const handleGlobalDelete = async (member: CompanyMember) => {
-    const confirmed = window.confirm(
-      `Eliminar permanentemente a ${member.user.name} (${member.user.email}) de todas las empresas?\n\nLa cuenta y sus credenciales se borrarán, el correo quedará libre y no podrá deshacerse. Cotizaciones, comentarios, asignaciones y auditorías conservarán el nombre histórico de quien los realizó.`
-    )
+    const confirmed = await requestSystemConfirmation({
+      title: 'Eliminar cuenta permanentemente',
+      description: 'Eliminar permanentemente a ' + member.user.name + ' (' + member.user.email + ') de todas las empresas?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar permanentemente',
+      warning: 'La cuenta y sus credenciales se borrarán, el correo quedará libre y no podrá deshacerse. Cotizaciones, comentarios, asignaciones y auditorías conservarán el nombre histórico de quien los realizó.',
+    })
     if (!confirmed) return
 
     const token = localStorage.getItem('accessToken')
@@ -757,16 +824,16 @@ export default function AjustesPage() {
       })
       const data = await response.json()
       if (!data.success) {
-        alert(data.error || 'No se pudo eliminar la cuenta')
+        showSystemNotice('error', 'No se pudo eliminar la cuenta', data.error || 'Inténtalo nuevamente.')
         return
       }
 
-      alert(data.data.message)
+      showSystemNotice('success', 'Cuenta eliminada', data.data.message)
       await fetchRolesData(rolesCompanyId)
       clearPermissionsCache()
     } catch (err) {
       console.error('Global user deletion error:', err)
-      alert('Error de conexión al eliminar la cuenta')
+      showSystemNotice('error', 'Error de conexión', 'No se pudo eliminar la cuenta.')
     } finally {
       setDeletingUserId(null)
     }
@@ -800,11 +867,11 @@ export default function AjustesPage() {
         await fetchRolesData(rolesCompanyId)
         clearPermissionsCache()
       } else {
-        alert(data.error || 'Error al cambiar rol')
+        showSystemNotice('error', 'No se pudo cambiar el rol', data.error || 'Inténtalo nuevamente.')
       }
     } catch (err) {
       console.error(err)
-      alert('Error al cambiar rol')
+      showSystemNotice('error', 'Error al cambiar rol', 'No se pudo guardar el cambio.')
     }
   }
 
@@ -2036,6 +2103,117 @@ export default function AjustesPage() {
           </div>
         </Card>
       )}
+
+      {systemNotice && (
+        <div
+          role={systemNotice.tone === 'error' ? 'alert' : 'status'}
+          aria-live={systemNotice.tone === 'error' ? 'assertive' : 'polite'}
+          className={'fixed left-4 right-4 top-20 z-[10000] flex items-start gap-3 rounded-xl border bg-white p-4 shadow-xl sm:left-auto sm:right-5 sm:top-5 sm:w-full sm:max-w-md ' + (
+            systemNotice.tone === 'success' ? 'border-emerald-200' :
+            systemNotice.tone === 'error' ? 'border-red-200' :
+            systemNotice.tone === 'warning' ? 'border-amber-200' : 'border-blue-200'
+          )}
+        >
+          <div className={'mt-0.5 shrink-0 ' + (
+            systemNotice.tone === 'success' ? 'text-emerald-600' :
+            systemNotice.tone === 'error' ? 'text-red-600' :
+            systemNotice.tone === 'warning' ? 'text-amber-600' : 'text-blue-600'
+          )}>
+            {systemNotice.tone === 'success' ? <CheckCircle2 className="h-5 w-5" /> :
+              systemNotice.tone === 'error' ? <XCircle className="h-5 w-5" /> :
+                systemNotice.tone === 'info' ? <Info className="h-5 w-5" /> :
+                  <AlertTriangle className="h-5 w-5" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-900">{systemNotice.title}</p>
+            <p className="mt-1 whitespace-pre-line text-sm text-gray-600">{systemNotice.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSystemNotice(null)}
+            aria-label="Cerrar aviso"
+            className="shrink-0 rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <Modal
+        isOpen={Boolean(systemConfirmation)}
+        onClose={() => resolveSystemConfirmation(false)}
+        title={systemConfirmation?.title || ''}
+        size="md"
+      >
+        {systemConfirmation && (
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label={systemConfirmation.title}
+            aria-describedby="settings-confirmation-description"
+            className="space-y-5"
+          >
+            <div className="flex items-start gap-3">
+              <div className={'flex h-10 w-10 shrink-0 items-center justify-center rounded-full ' + (
+                systemConfirmation.tone === 'danger' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
+              )}>
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 id="settings-confirmation-description" className="text-sm font-semibold text-gray-900">
+                  {systemConfirmation.description}
+                </h3>
+                {systemConfirmation.details && (
+                  <div className="mt-4">
+                    {systemConfirmation.detailTitle && (
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {systemConfirmation.detailTitle}
+                      </p>
+                    )}
+                    <ul className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                      {systemConfirmation.details.map((detail) => (
+                        <li key={detail} className="flex items-start gap-2">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gray-400" />
+                          <span>{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+            {systemConfirmation.warning && (
+              <div className={'rounded-lg border px-3.5 py-3 text-sm ' + (
+                systemConfirmation.tone === 'danger'
+                  ? 'border-red-200 bg-red-50 text-red-800'
+                  : 'border-amber-200 bg-amber-50 text-amber-900'
+              )}>
+                {systemConfirmation.warning}
+              </div>
+            )}
+            <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                onClick={() => resolveSystemConfirmation(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => resolveSystemConfirmation(true)}
+                className={'rounded-lg px-4 py-2 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-offset-2 ' + (
+                  systemConfirmation.tone === 'danger'
+                    ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                    : 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500'
+                )}
+              >
+                {systemConfirmation.confirmLabel}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
     </div>
   )
