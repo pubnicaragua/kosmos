@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { useModulePermissions } from '@/hooks/useModulePermissions'
 import { Button } from '@/components/ui-kit/Button'
 import { Select } from '@/components/ui-kit/Select'
@@ -54,6 +55,142 @@ const ZERO_STAGE_COUNTS: Record<QuotePipelineStage, number> = {
   NEGOCIACION: 0,
   REALIZADA: 0,
   RECHAZADA: 0,
+}
+
+interface QuoteStagePickerProps {
+  quote: Pick<Quote, 'id' | 'quoteNumber' | 'pipelineStage'>
+  disabled: boolean
+  onMove: (quoteId: string, stage: QuotePipelineStage, reopen?: boolean) => Promise<void>
+}
+
+function QuoteStagePicker({ quote, disabled, onMove }: QuoteStagePickerProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const isClosed = quote.pipelineStage === 'REALIZADA' || quote.pipelineStage === 'RECHAZADA'
+  const options: Array<{ stage: QuotePipelineStage; label: string; reopen?: boolean }> = isClosed
+    ? [{ stage: 'NEGOCIACION', label: 'Reabrir en Negociación', reopen: true }]
+    : QUOTE_PIPELINE_STAGES
+      .filter((stage) => isQuotePipelineTransitionAllowed(quote.pipelineStage, stage))
+      .map((stage) => ({ stage, label: QUOTE_PIPELINE_STAGE_LABELS[stage] }))
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const maxHeight = Math.max(96, Math.min(192, window.innerHeight - 16))
+    const width = Math.min(Math.max(rect.width, 152), Math.max(120, window.innerWidth - 16))
+    const top = window.innerHeight - rect.bottom >= maxHeight + 8
+      ? rect.bottom + 4
+      : Math.max(8, rect.top - maxHeight - 4)
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))
+
+    setMenuPosition({ top, left, width, maxHeight })
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const closeOnPointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (
+        target instanceof Node &&
+        (triggerRef.current?.contains(target) || menuRef.current?.contains(target))
+      ) return
+      setIsOpen(false)
+    }
+    const closeOnScroll = (event: Event) => {
+      const target = event.target
+      if (target instanceof Node && menuRef.current?.contains(target)) return
+      setIsOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsOpen(false)
+      triggerRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', closeOnPointerDown)
+    document.addEventListener('keydown', closeOnEscape)
+    window.addEventListener('scroll', closeOnScroll, true)
+    window.addEventListener('resize', updateMenuPosition)
+    menuRef.current?.querySelector<HTMLButtonElement>('[data-stage-option]')?.focus()
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnPointerDown)
+      document.removeEventListener('keydown', closeOnEscape)
+      window.removeEventListener('scroll', closeOnScroll, true)
+      window.removeEventListener('resize', updateMenuPosition)
+    }
+  }, [isOpen, updateMenuPosition])
+
+  const menuId = `quote-stage-options-${quote.id}`
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`Cambiar etapa de ${quote.quoteNumber}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-controls={menuId}
+        title="Cambiar etapa comercial"
+        disabled={disabled}
+        onClick={() => {
+          if (isOpen) {
+            setIsOpen(false)
+            return
+          }
+          updateMenuPosition()
+          setIsOpen(true)
+        }}
+        className="group relative inline-flex w-max cursor-pointer items-center rounded-full border border-transparent bg-transparent py-1 pl-2 pr-5 text-left text-xs font-medium text-blue-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 focus-visible:border-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-wait disabled:opacity-70"
+      >
+        {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute right-1.5 h-3 w-3 text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          fill="none"
+          viewBox="0 0 20 20"
+        >
+          <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" />
+        </svg>
+      </button>
+
+      {isOpen && menuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label={`Etapas disponibles para ${quote.quoteNumber}`}
+          className="fixed z-[100] w-max max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl ring-1 ring-black/5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent"
+          style={{ top: menuPosition.top, left: menuPosition.left, minWidth: menuPosition.width, maxHeight: menuPosition.maxHeight }}
+        >
+          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Mover a</p>
+          {options.map((option) => (
+            <button
+              key={option.stage}
+              type="button"
+              role="menuitem"
+              data-stage-option
+              onClick={() => {
+                setIsOpen(false)
+                triggerRef.current?.focus()
+                void onMove(quote.id, option.stage, option.reopen)
+              }}
+              className="block w-full whitespace-nowrap rounded-md px-3 py-2 text-left text-xs font-medium text-gray-700 transition-colors hover:bg-blue-50 hover:text-primary focus:bg-blue-50 focus:text-primary focus:outline-none"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  )
 }
 
 export default function CotizacionesList() {
@@ -446,33 +583,11 @@ export default function CotizacionesList() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-4">
                     {canEditByCompany[quote.company.id] ? (
-                      <select
-                        aria-label={`Cambiar etapa de ${quote.quoteNumber}`}
-                        title="Cambiar etapa comercial"
-                        value={quote.pipelineStage}
+                      <QuoteStagePicker
+                        quote={quote}
                         disabled={movingQuoteId !== null}
-                        onChange={(event) => {
-                          const nextStage = event.target.value as QuotePipelineStage
-                          const isReopen =
-                            (quote.pipelineStage === 'REALIZADA' || quote.pipelineStage === 'RECHAZADA') &&
-                            nextStage === 'NEGOCIACION'
-                          void handleMoveQuote(quote.id, nextStage, isReopen)
-                        }}
-                        className="max-w-44 cursor-pointer rounded-full border border-blue-100 bg-blue-50 py-1 pl-2 pr-6 text-xs font-medium text-blue-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-70"
-                      >
-                        <option value={quote.pipelineStage} disabled>
-                          {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
-                        </option>
-                        {quote.pipelineStage === 'REALIZADA' || quote.pipelineStage === 'RECHAZADA' ? (
-                          <option value="NEGOCIACION">Reabrir en Negociación</option>
-                        ) : QUOTE_PIPELINE_STAGES.filter((target) =>
-                          isQuotePipelineTransitionAllowed(quote.pipelineStage, target)
-                        ).map((target) => (
-                          <option key={target} value={target}>
-                            {QUOTE_PIPELINE_STAGE_LABELS[target]}
-                          </option>
-                        ))}
-                      </select>
+                        onMove={handleMoveQuote}
+                      />
                     ) : (
                       <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                         {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
