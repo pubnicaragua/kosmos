@@ -168,109 +168,235 @@ export default function DetalleCotizacionPage() {
       return
     }
 
-    // Generate PDF with jsPDF
     const doc = new jsPDF()
     const sym = displayCurrency === 'NIO' ? 'C$' : '$'
     const displayExchangeMultiplier = displayCurrency === 'NIO' ? exchangeRate : 1
     const companyName = companyDetails?.name || quote.company?.name || ''
     const safeCompanyName = stripKosmosBranding(companyName)
-    
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    const margin = 20
+    const contentWidth = pageWidth - margin * 2
+    const hasDiscount = quote.discount > 0
+    const formatCurrency = (amount: number) =>
+      `${sym}${(amount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+
+    const colorMatch = /^#?([0-9a-f]{6})$/i.exec(companyDetails?.quotePrimaryColor || '')
+    const primaryColor = colorMatch
+      ? [
+          Number.parseInt(colorMatch[1].slice(0, 2), 16),
+          Number.parseInt(colorMatch[1].slice(2, 4), 16),
+          Number.parseInt(colorMatch[1].slice(4, 6), 16),
+        ]
+      : [29, 78, 216]
+
+    const htmlToText = (value?: string | null) => {
+      if (!value) return ''
+      const normalizedHtml = value.replace(/<br\b[^>]*>|<\/(p|div|li|tr|h[1-6])\s*>/gi, '\n')
+      const parsed = new DOMParser().parseFromString(normalizedHtml, 'text/html')
+      parsed.querySelectorAll('script, style').forEach((element) => element.remove())
+      return stripKosmosBranding(parsed.body.textContent || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/ *\n */g, '\n')
+        .trim()
+    }
+
+    const termsText = htmlToText(companyDetails?.quoteTerms || quote.terms)
+    const customFooterText = htmlToText(companyDetails?.quoteFooterHtml)
     let y = 20
-    
-    // Header
-    if (safeCompanyName) {
-      doc.setFontSize(20)
-      doc.text(safeCompanyName, 20, y)
+
+    const ensureSpace = (height: number) => {
+      if (y + height <= pageHeight - 18) return false
+      doc.addPage()
+      y = 20
+      return true
+    }
+
+    const addDetail = (label: string, value: string) => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      const lines = doc.splitTextToSize(`${label}: ${value}`, contentWidth)
+      ensureSpace(lines.length * 4.5)
+      doc.text(lines, margin, y)
+      y += lines.length * 4.5
+    }
+
+    const drawItemsHeader = (columns: Array<{ title: string; width: number; align: 'left' | 'center' | 'right' }>) => {
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+      doc.rect(margin, y, contentWidth, 8, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+
+      let x = margin
+      columns.forEach((column) => {
+        const textX = column.align === 'left'
+          ? x + 2
+          : column.align === 'center'
+            ? x + column.width / 2
+            : x + column.width - 2
+        doc.text(column.title, textX, y + 5.2, { align: column.align })
+        x += column.width
+      })
+
+      doc.setTextColor(33, 37, 41)
       y += 8
-      doc.setFontSize(10)
-      doc.text(`RUC: ${companyDetails?.ruc || 'J0310000368457'}  |  Tel: ${companyDetails?.phone || '22235600'}`, 20, y)
-      y += 10
-    } else {
-      doc.setFontSize(10)
-      doc.text(`RUC: ${companyDetails?.ruc || 'J0310000368457'}  |  Tel: ${companyDetails?.phone || '22235600'}`, 20, y)
-      y += 10
     }
+
+    const columns = hasDiscount
+      ? [
+          { title: 'Descripción', key: 'description', width: 62, align: 'left' as const },
+          { title: 'Cant.', key: 'quantity', width: 14, align: 'center' as const },
+          { title: 'Precio', key: 'unitPrice', width: 28, align: 'right' as const },
+          { title: 'Descuento', key: 'discount', width: 35, align: 'right' as const },
+          { title: 'Total', key: 'total', width: 31, align: 'right' as const },
+        ]
+      : [
+          { title: 'Descripción', key: 'description', width: 83, align: 'left' as const },
+          { title: 'Cant.', key: 'quantity', width: 18, align: 'center' as const },
+          { title: 'Precio', key: 'unitPrice', width: 34, align: 'right' as const },
+          { title: 'Total', key: 'total', width: 35, align: 'right' as const },
+        ]
+
+    // Header and client details
+    if (safeCompanyName) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(18)
+      const companyLines = doc.splitTextToSize(safeCompanyName, contentWidth)
+      doc.text(companyLines, margin, y)
+      y += companyLines.length * 7
+      doc.setFontSize(10)
+    }
+    addDetail('RUC', companyDetails?.ruc || 'J0310000368457')
+    addDetail('Teléfono', companyDetails?.phone || '22235600')
+
+    y += 4
+    doc.setFont('helvetica', 'bold')
     doc.setFontSize(16)
-    doc.text(`PROFORMA ${quote.quoteNumber}`, 20, y)
-    y += 15
-    
-    // Client info
-    doc.setFontSize(12)
-    doc.text(`Cliente: ${quote.client.name}`, 20, y)
-    y += 7
-    if (quote.client.ruc) {
-      doc.text(`Ruc: ${quote.client.ruc}`, 20, y)
-      y += 7
-    }
-    if (quote.client.cedula) {
-      doc.text(`Cédula: ${quote.client.cedula}`, 20, y)
-      y += 7
-    }
-    if (quote.client.email) {
-      doc.text(`Email: ${quote.client.email}`, 20, y)
-      y += 7
-    }
-    if (quote.client.phone) {
-      doc.text(`Teléfono: ${quote.client.phone}`, 20, y)
-      y += 7
-    }
-    if (quote.client.address) {
-      doc.setFontSize(10)
-      doc.text(`Dirección: ${quote.client.address}`, 20, y)
-      doc.setFontSize(12)
-      y += 7
-    }
-    doc.text(`Fecha: ${new Date(quote.createdAt).toLocaleDateString('es-NI')}`, 20, y)
-    y += 7
-    doc.text(`Válida hasta: ${new Date(quote.validUntil).toLocaleDateString('es-NI')}`, 20, y)
-    y += 15
-    
-    // Items table
-    doc.setFontSize(10)
-    doc.text('Descripción', 20, y)
-    doc.text('Cant.', 100, y)
-    doc.text('Precio', 130, y)
-    doc.text('Total', 170, y)
-    y += 5
-    doc.line(20, y, 190, y)
-    y += 8
-    
+    doc.text(`PROFORMA ${quote.quoteNumber}`, margin, y)
+    y += 9
+    addDetail('Cliente', quote.client.name)
+    if (quote.client.ruc) addDetail('RUC', quote.client.ruc)
+    if (quote.client.cedula) addDetail('Cédula', quote.client.cedula)
+    if (quote.client.email) addDetail('Email', quote.client.email)
+    if (quote.client.phone) addDetail('Teléfono', quote.client.phone)
+    if (quote.client.address) addDetail('Dirección', quote.client.address)
+    addDetail('Fecha', new Date(quote.createdAt).toLocaleDateString('es-NI'))
+    addDetail('Válido hasta', new Date(quote.validUntil).toLocaleDateString('es-NI'))
+    y += 6
+
+    drawItemsHeader(columns)
     quote.items.forEach((item) => {
-      const desc = item.description.substring(0, 40)
-      doc.text(desc, 20, y)
-      doc.text(String(item.quantity), 100, y)
-      doc.text(`${sym}${(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-      doc.text(`${sym}${(item.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 170, y)
+      const itemDiscountAmount = item.quantity * item.unitPrice * item.discount / 100
+      const values: Record<string, string> = {
+        description: item.description,
+        quantity: String(item.quantity),
+        unitPrice: formatCurrency(item.unitPrice),
+        discount: item.discount > 0
+          ? `${item.discount}% · -${formatCurrency(itemDiscountAmount)}`
+          : 'Sin descuento',
+        total: formatCurrency(item.total),
+      }
+      const rowLines = columns.map((column) =>
+        doc.splitTextToSize(values[column.key], column.width - 4).length
+      )
+      const rowHeight = Math.max(1, ...rowLines) * 3.5 + 4
+      if (ensureSpace(rowHeight + 2)) drawItemsHeader(columns)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      let x = margin
+      columns.forEach((column) => {
+        const lines = doc.splitTextToSize(values[column.key], column.width - 4)
+        const textX = column.align === 'left'
+          ? x + 2
+          : column.align === 'center'
+            ? x + column.width / 2
+            : x + column.width - 2
+        doc.text(lines, textX, y + 3.5, { align: column.align })
+        x += column.width
+      })
+      y += rowHeight
+      doc.setDrawColor(203, 213, 225)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 1
+    })
+
+    const totals: Array<{ label: string; value: string; total?: boolean }> = [
+      { label: 'Subtotal', value: formatCurrency(quote.subtotal) },
+      ...(hasDiscount ? [{ label: 'Descuento total', value: `-${formatCurrency(quote.discount)}` }] : []),
+      { label: 'Base imponible', value: formatCurrency(quote.subtotal - quote.discount) },
+      { label: quote.taxApplies ? 'IVA (15%)' : 'IVA (NO APLICA)', value: formatCurrency(quote.tax) },
+      { label: 'TOTAL', value: formatCurrency(quote.total), total: true },
+    ]
+    ensureSpace(totals.length * 7 + 8)
+
+    const totalsX = pageWidth - margin - 82
+    y += 5
+    totals.forEach((row) => {
+      if (row.total) {
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+        doc.rect(totalsX, y - 4.5, 82, 7, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFont('helvetica', 'bold')
+      } else {
+        doc.setTextColor(33, 37, 41)
+        doc.setFont('helvetica', 'normal')
+      }
+      doc.setFontSize(9)
+      doc.text(row.label, totalsX + 2, y)
+      doc.text(row.value, pageWidth - margin - 2, y, { align: 'right' })
       y += 7
     })
-    
-    y += 5
-    doc.line(20, y, 190, y)
-    y += 10
-    
-    // Totals
-    doc.text(`Subtotal: ${sym}${(quote.subtotal * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-    y += 7
-    if (quote.discount > 0) {
-      doc.text(`Descuento: -${sym}${(quote.discount * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-      y += 7
-    }
-    if (quote.taxApplies) {
-      doc.text(`IVA (15%): ${sym}${(quote.tax * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-      y += 7
-    }
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`TOTAL: ${sym}${(quote.total * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 130, y)
-    y += 15
-    
-    // Notes
-    if (quote.notes) {
-      doc.setFontSize(10)
+    doc.setTextColor(33, 37, 41)
+
+    const footerSections = [
+      ...(quote.notes ? [{ label: 'Notas', body: quote.notes }] : []),
+      ...(termsText ? [{ label: 'Términos y condiciones', body: termsText }] : []),
+      { label: 'Forma de pago', body: quote.paymentMethod === 'CREDITO' ? 'Crédito' : 'Contado' },
+      ...(customFooterText ? [{ label: '', body: customFooterText }] : []),
+      {
+        label: '',
+        body: `Generado el ${new Date().toLocaleDateString('es-NI', { day: '2-digit', month: '2-digit', year: 'numeric' })} a las ${new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}`,
+      },
+    ].map((section) => ({
+      ...section,
+      lines: doc.splitTextToSize(section.body, contentWidth),
+    }))
+    const footerHeight = 5 + footerSections.reduce(
+      (height, section) => height + (section.label ? 3.5 : 0) + section.lines.length * 3.2 + 2,
+      0
+    )
+    const footerTop = pageHeight - 18 - footerHeight
+    if (y + 5 > footerTop) doc.addPage()
+
+    let footerY = pageHeight - 18 - footerHeight
+    doc.setDrawColor(203, 213, 225)
+    doc.line(margin, footerY, pageWidth - margin, footerY)
+    footerY += 4
+    footerSections.forEach((section) => {
+      if (section.label) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7)
+        doc.text(section.label, margin, footerY)
+        footerY += 3.5
+      }
       doc.setFont('helvetica', 'normal')
-      doc.text(`Notas: ${quote.notes}`, 20, y)
+      doc.setFontSize(8)
+      doc.setTextColor(71, 85, 105)
+      doc.text(section.lines, margin, footerY)
+      footerY += section.lines.length * 3.2 + 2
+    })
+
+    const pageCount = doc.getNumberOfPages()
+    for (let page = 1; page <= pageCount; page += 1) {
+      doc.setPage(page)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(100, 116, 139)
+      doc.text(`Página ${page} de ${pageCount}`, pageWidth - margin, pageHeight - 8, { align: 'right' })
     }
-    
+
     // Download PDF
     const pdfFileName = `Proforma_${quote.quoteNumber}.pdf`
     doc.save(pdfFileName)
