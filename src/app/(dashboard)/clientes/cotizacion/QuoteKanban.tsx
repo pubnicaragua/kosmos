@@ -69,8 +69,8 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
   const canEditAnyCompany = Object.values(canEditByCompany).some(Boolean)
 
   return (
-    <div className="h-full min-h-0 overflow-x-auto overflow-y-auto overscroll-contain pb-2 pr-2">
-      <div className="flex h-full min-w-max items-stretch gap-4">
+    <div className="h-full min-h-[320px] overflow-x-auto overflow-y-hidden overscroll-x-contain pb-2 pr-2">
+      <div className="flex h-full min-h-[320px] min-w-max items-stretch gap-4">
         {QUOTE_PIPELINE_STAGES.map((stage) => {
           const stageQuotes = quotes.filter((quote) => quote.pipelineStage === stage)
           const style = COLUMN_STYLES[stage]
@@ -80,7 +80,7 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
             <section
               key={stage}
               aria-label={`${QUOTE_PIPELINE_STAGE_LABELS[stage]}: ${stageCounts[stage]} cotizaciones`}
-              className={`flex h-full w-[290px] min-w-[290px] flex-col rounded-xl border p-3 transition-colors ${
+              className={`flex h-full min-h-0 w-[290px] min-w-[290px] flex-col rounded-xl border p-3 transition-colors ${
                 isDropTarget ? style.drop : 'border-gray-200 bg-gray-50'
               }`}
               onDragOver={(event) => {
@@ -105,7 +105,7 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                 }
               }}
             >
-              <header className="mb-3 flex items-center justify-between gap-2 px-1">
+              <header className="z-10 mb-3 flex shrink-0 items-center justify-between gap-2 bg-inherit px-1 py-1">
                 <h2 className={`flex items-center gap-2 font-semibold ${style.heading}`}>
                   <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
                   {QUOTE_PIPELINE_STAGE_LABELS[stage]}
@@ -115,7 +115,7 @@ export default function QuoteKanban({ quotes, stageCounts, canEditByCompany, onO
                 </span>
               </header>
 
-              <div className="min-h-32 space-y-3">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
                 {stageQuotes.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-3 py-6 text-center text-sm text-gray-500">
                     {stageCounts[stage] > 0

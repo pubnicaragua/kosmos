@@ -8,6 +8,7 @@ import { Select } from '@/components/ui-kit/Select'
 import { SkeletonTable } from '@/components/ui-kit/Skeleton'
 import QuoteKanban from './QuoteKanban'
 import {
+  isQuotePipelineTransitionAllowed,
   QUOTE_PAGE_SIZES,
   QUOTE_PIPELINE_STAGES,
   QUOTE_PIPELINE_STAGE_LABELS,
@@ -90,6 +91,7 @@ export default function CotizacionesList() {
   const [canEditByCompany, setCanEditByCompany] = useState<Record<string, boolean>>({})
   const [loadError, setLoadError] = useState('')
   const [moveError, setMoveError] = useState('')
+  const [movingQuoteId, setMovingQuoteId] = useState<string | null>(null)
   const quoteRequestSequence = useRef(0)
   const hasLoadedQuotes = useRef(false)
   const activePage = activeTab === 'list' ? page : kanbanPage
@@ -201,6 +203,8 @@ export default function CotizacionesList() {
   }, [loadQuotes])
 
   const handleMoveQuote = async (quoteId: string, pipelineStage: QuotePipelineStage, reopen = false) => {
+    if (movingQuoteId !== null) return
+
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
@@ -209,6 +213,7 @@ export default function CotizacionesList() {
 
     const previousStage = currentQuote.pipelineStage
     setMoveError('')
+    setMovingQuoteId(quoteId)
     quoteRequestSequence.current += 1
 
     if (previousStage !== pipelineStage) {
@@ -257,6 +262,10 @@ export default function CotizacionesList() {
           [updatedQuote.pipelineStage]: currentCounts[updatedQuote.pipelineStage] + 1,
         }))
       }
+
+      if (activeTab === 'list' && selectedStage !== 'all' && selectedStage !== updatedQuote.pipelineStage) {
+        void loadQuotes(false)
+      }
     } catch (error) {
       quoteRequestSequence.current += 1
       if (previousStage !== pipelineStage) {
@@ -271,6 +280,8 @@ export default function CotizacionesList() {
       }
       console.error('Error moving quote:', error)
       setMoveError(error instanceof Error ? error.message : 'No se pudo mover la cotización')
+    } finally {
+      setMovingQuoteId(null)
     }
   }
 
@@ -434,9 +445,39 @@ export default function CotizacionesList() {
                     {quote.currency === 'NIO' ? 'C$' : '$'}{quote.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4">
-                    <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                      {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
-                    </span>
+                    {canEditByCompany[quote.company.id] ? (
+                      <select
+                        aria-label={`Cambiar etapa de ${quote.quoteNumber}`}
+                        title="Cambiar etapa comercial"
+                        value={quote.pipelineStage}
+                        disabled={movingQuoteId !== null}
+                        onChange={(event) => {
+                          const nextStage = event.target.value as QuotePipelineStage
+                          const isReopen =
+                            (quote.pipelineStage === 'REALIZADA' || quote.pipelineStage === 'RECHAZADA') &&
+                            nextStage === 'NEGOCIACION'
+                          void handleMoveQuote(quote.id, nextStage, isReopen)
+                        }}
+                        className="max-w-44 cursor-pointer rounded-full border border-blue-100 bg-blue-50 py-1 pl-2 pr-6 text-xs font-medium text-blue-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-70"
+                      >
+                        <option value={quote.pipelineStage} disabled>
+                          {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
+                        </option>
+                        {quote.pipelineStage === 'REALIZADA' || quote.pipelineStage === 'RECHAZADA' ? (
+                          <option value="NEGOCIACION">Reabrir en Negociación</option>
+                        ) : QUOTE_PIPELINE_STAGES.filter((target) =>
+                          isQuotePipelineTransitionAllowed(quote.pipelineStage, target)
+                        ).map((target) => (
+                          <option key={target} value={target}>
+                            {QUOTE_PIPELINE_STAGE_LABELS[target]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                        {QUOTE_PIPELINE_STAGE_LABELS[quote.pipelineStage]}
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{new Date(quote.validUntil).toLocaleDateString('es-NI')}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">{quote.createdByUser?.name || 'N/A'}</td>

@@ -639,7 +639,7 @@ export default function DetalleCotizacionPage() {
                 <span>{new Date(quote.createdAt).toLocaleDateString('es-NI')}</span>
               </div>
               <div 
-                className="flex justify-end gap-4 mt-1 border px-2 py-0.5 rounded"
+                className="flex justify-end gap-4 mt-1 border pl-2 pr-4 py-0.5 rounded"
                 style={{ borderColor: companyDetails?.quotePrimaryColor || '#16a34a' }}
               >
                 <span className="font-semibold">VALIDO HASTA</span>
