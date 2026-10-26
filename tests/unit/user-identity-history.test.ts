@@ -135,9 +135,9 @@ test('keeps consecutive versions ordered when two changes share a millisecond', 
   }
 })
 
-test('requires a SUPER_ADMIN and an active target membership in selected company', () => {
+test('requires an admin and an active target membership in selected company', () => {
   assert.equal(isAllowedToRenameUser('SUPER_ADMIN', true), true)
-  assert.equal(isAllowedToRenameUser('ADMIN', true), false)
+  assert.equal(isAllowedToRenameUser('ADMIN', true), true)
   assert.equal(isAllowedToRenameUser('SUPER_ADMIN', false), false)
 })
 

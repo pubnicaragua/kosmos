@@ -887,8 +887,8 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
-  const isSelectedCompanySuperAdmin = members.some((member) =>
-    member.userId === user?.id && member.role === 'SUPER_ADMIN'
+  const canRenameCompanyUsers = members.some((member) =>
+    member.userId === user?.id && ['ADMIN', 'SUPER_ADMIN'].includes(member.role)
   )
   const canManageRoles = isSuperAdmin || hasCustomRolePermission || companies.some((c) => c.id === rolesCompanyId && ['ADMIN', 'SUPER_ADMIN'].includes(c.role))
   const canChangeMemberPasswords = members.some((member) =>
@@ -1258,7 +1258,7 @@ export default function AjustesPage() {
               {/* Panel derecho: Usuarios de la empresa */}
               <Card>
                 <h3 className="font-semibold text-gray-900 mb-4">Usuarios <span className="text-gray-400 font-normal text-sm">({members.length})</span></h3>
-                {isSelectedCompanySuperAdmin && (
+                {canRenameCompanyUsers && (
                   <p className="-mt-2 mb-4 text-xs text-slate-500">
                     Cambiar un nombre actualiza el perfil en todas las empresas donde está vinculada esa cuenta.
                   </p>
@@ -1384,7 +1384,7 @@ export default function AjustesPage() {
                         </div>
                         {canManageRoles && (
                           <div className="flex flex-col gap-1 flex-shrink-0">
-                            {isSelectedCompanySuperAdmin && m.userId !== user?.id && editingNameUserId !== m.userId && (
+                            {canRenameCompanyUsers && m.userId !== user?.id && editingNameUserId !== m.userId && (
                               <button
                                 type="button"
                                 onClick={() => {

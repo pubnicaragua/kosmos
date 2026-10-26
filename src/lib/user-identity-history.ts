@@ -58,7 +58,7 @@ export type UserNameHistoryTransition =
     }
 
 export function isAllowedToRenameUser(actorRole: string | null | undefined, targetIsActiveMember: boolean) {
-  return actorRole === 'SUPER_ADMIN' && targetIsActiveMember
+  return (actorRole === 'ADMIN' || actorRole === 'SUPER_ADMIN') && targetIsActiveMember
 }
 
 export function buildUserNameHistoryTransition(

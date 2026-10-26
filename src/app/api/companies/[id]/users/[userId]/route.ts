@@ -53,7 +53,7 @@ export async function PATCH(
 
     return apiSuccess({ id: result.id, name: result.name, changed: result.changed })
   } catch (error: any) {
-    if (error?.message === 'RENAME_FORBIDDEN') return apiError('Solo SUPER_ADMIN de esta empresa puede cambiar el nombre', 403)
+    if (error?.message === 'RENAME_FORBIDDEN') return apiError('Solo ADMIN o SUPER_ADMIN de esta empresa puede cambiar el nombre', 403)
     if (error?.message === 'TARGET_NOT_IN_COMPANY') return apiError('El usuario no pertenece a esta empresa', 404)
     if (error?.message === 'USER_NOT_FOUND') return apiError('Usuario no encontrado', 404)
     if (error?.message === 'USER_INACTIVE') return apiError('La cuenta está desactivada', 409)

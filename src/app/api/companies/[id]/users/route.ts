@@ -95,7 +95,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (targetUser && requestedName && requestedName !== targetUser.name.trim()) {
       return apiError(
-        `El correo ya pertenece a ${targetUser.name}. No se cambió el nombre del perfil existente.`,
+        `El correo ya pertenece a ${targetUser.name}. Si ya está en esta empresa, usa “Editar nombre”; si aún debes agregarlo, deja “Nombre completo” vacío y cámbialo después.`,
         409
       )
     }
