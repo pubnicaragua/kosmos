@@ -61,6 +61,36 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const access = await getCompanyAccess(decoded.userId, quote.companyId)
     if (!access.canAccess) return apiError('No tienes acceso a esta empresa', 403)
 
+    const normalizeProductName = (name: string) => name.toLowerCase()
+    const descriptionsWithoutProduct = Array.from(new Set(
+      quote.items
+        .filter((item) => !item.product)
+        .map((item) => normalizeProductName(item.description))
+        .filter((description) => description.trim().length > 0)
+    ))
+    const matchingProducts = descriptionsWithoutProduct.length > 0
+      ? await prisma.product.findMany({
+          where: {
+            companyId: quote.companyId,
+            name: { in: descriptionsWithoutProduct, mode: 'insensitive' },
+          },
+          select: { name: true, sku: true },
+        })
+      : []
+    const productsByName = new Map<string, Array<{ name: string; sku: string }>>()
+    matchingProducts.forEach((product) => {
+      const name = normalizeProductName(product.name)
+      const matches = productsByName.get(name) || []
+      matches.push(product)
+      productsByName.set(name, matches)
+    })
+    const itemsWithProduct = quote.items.map((item) => {
+      if (item.product) return item
+
+      const matches = productsByName.get(normalizeProductName(item.description))
+      return matches?.length === 1 ? { ...item, product: matches[0] } : item
+    })
+
     const discountApproval = extractDiscountApproval(quote.internalNotes)
     const [createdByHistoricalName, approvedByHistoricalName] = await resolveHistoricalUserNames([
       { userId: quote.createdBy, occurredAt: quote.createdAt },
@@ -72,6 +102,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return apiSuccess({
       ...stripLegacyQuoteDocumentStatus(quote),
+      items: itemsWithProduct,
       createdByUser: quote.createdBy
         ? {
             id: quote.createdBy,
