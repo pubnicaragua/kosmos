@@ -48,6 +48,7 @@ interface Quote {
     discount: number
     tax: number
     total: number
+    product?: { sku: string } | null
   }>
   stageHistory: Array<{
     id: string
@@ -154,7 +155,9 @@ export default function DetalleCotizacionPage() {
       const data = await response.json()
       if (data.success) {
         alert('Descuento aprobado exitosamente')
-        setQuote(data.data)
+        setQuote((currentQuote) => currentQuote
+          ? { ...currentQuote, ...data.data, items: currentQuote.items }
+          : data.data)
         setApprovalComment('')
       }
     } catch (error) {
@@ -725,7 +728,9 @@ export default function DetalleCotizacionPage() {
           <tbody>
             {quote.items.map((item, i) => (
               <tr key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="border border-gray-300 px-2 py-1">{`Item ${String(i + 1).padStart(2, '0')}`}</td>
+                <td className="border border-gray-300 px-2 py-1" style={{ overflowWrap: 'anywhere' }}>
+                  {item.product?.sku || `Item ${String(i + 1).padStart(2, '0')}`}
+                </td>
                 <td className="border border-gray-300 px-2 py-1">{item.description}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center">{item.quantity}</td>
                 <td className="border border-gray-300 px-2 py-1 text-right">{currencySymbol} {(item.unitPrice * displayExchangeMultiplier).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>

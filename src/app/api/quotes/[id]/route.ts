@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       where: { id: params.id },
       include: {
         client: true,
-        items: { include: { product: { select: { name: true } } } },
+        items: { include: { product: { select: { name: true, sku: true } } } },
         company: { select: { name: true } },
         stageHistory: { orderBy: { changedAt: 'asc' } },
       },
