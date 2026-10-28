@@ -36,4 +36,4 @@ When adding a user fails, a SUPER_ADMIN also searches the submitted email throug
 - `src/app/(dashboard)/sistema/ajustes/page.tsx`
 - `src/app/api/companies/[id]/users/route.ts`
 
-No migration is required; permanent deletion already uses `ArchivedUser` and existing lifecycle code.
+This feature adds no migration. Permanent deletion requires the existing `20261007120000_user_name_history` and `20261014160000_archive_deleted_users` migrations. Check status against the intended database with `npx prisma migrate status`, then apply pending migrations with `npx prisma migrate deploy`. The Vercel build command does not run migrations; do not add migration execution to the build.

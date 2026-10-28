@@ -33,6 +33,7 @@ export async function DELETE(
       emailReleased: true,
     })
   } catch (error: any) {
+    const prismaCode = typeof error?.code === 'string' ? error.code : undefined
     if (error?.message === 'GLOBAL_PERMISSION_REQUIRED') {
       return apiError('Solo un SUPER_ADMIN activo puede eliminar usuarios globalmente', 403)
     }
@@ -52,8 +53,24 @@ export async function DELETE(
     if (error?.code === 'P2002') {
       return apiError('La identidad archivada ya existe; no se borró ningún dato', 409)
     }
+    if (prismaCode === 'P2021' || prismaCode === 'P2022') {
+      console.error('User deletion blocked by unapplied database migration:', {
+        code: prismaCode,
+        meta: error?.meta,
+        message: error?.message,
+      })
+      return apiError(
+        'Faltan migraciones de base de datos necesarias para eliminar cuentas. Aplica las migraciones pendientes y vuelve a intentar.',
+        503
+      )
+    }
 
-    console.error('Error deleting user globally:', error?.message)
+    console.error('Error deleting user globally:', {
+      code: prismaCode,
+      meta: error?.meta,
+      message: error?.message,
+      stack: error?.stack,
+    })
     return apiError('Error al eliminar el usuario', 500)
   }
 }
