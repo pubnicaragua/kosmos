@@ -93,6 +93,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     })
     let generatedPassword: string | null = null
 
+    if (targetUser && !targetUser.isActive) {
+      return apiError(
+        'La cuenta está desactivada. Un SUPER_ADMIN debe eliminarla desde “Cuentas inactivas” para liberar este correo.',
+        409
+      )
+    }
+
     if (targetUser && requestedName && requestedName !== targetUser.name.trim()) {
       return apiError(
         `El correo ya pertenece a ${targetUser.name}. Si ya está en esta empresa, usa “Editar nombre”; si aún debes agregarlo, deja “Nombre completo” vacío y cámbialo después.`,
@@ -131,7 +138,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     if (!targetUser.isActive) {
-      return apiError('La cuenta está desactivada globalmente y no puede agregarse a una empresa', 409)
+      return apiError(
+        'La cuenta está desactivada. Un SUPER_ADMIN debe eliminarla desde “Cuentas inactivas” para liberar este correo.',
+        409
+      )
     }
 
     const existing = await prisma.userCompany.findUnique({

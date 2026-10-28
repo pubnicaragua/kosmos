@@ -70,6 +70,13 @@ interface CompanyMember {
   customRole: CustomRole | null
 }
 
+interface InactiveUserAccount {
+  id: string
+  name: string
+  email: string
+  deactivatedAt: string | null
+}
+
 interface PredefinedRole {
   name: string
   description: string
@@ -198,6 +205,12 @@ export default function AjustesPage() {
   const [userNameMsg, setUserNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null)
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [inactiveUsers, setInactiveUsers] = useState<InactiveUserAccount[]>([])
+  const [inactiveUserSearch, setInactiveUserSearch] = useState('')
+  const [inactiveUserQuery, setInactiveUserQuery] = useState('')
+  const [inactiveUsersLoading, setInactiveUsersLoading] = useState(false)
+  const [inactiveUsersError, setInactiveUsersError] = useState<string | null>(null)
+  const inactiveUsersRequestIdRef = useRef(0)
   const [deactivationTarget, setDeactivationTarget] = useState<CompanyMember | null>(null)
   const [systemNotice, setSystemNotice] = useState<SettingsNotice | null>(null)
   const [systemConfirmation, setSystemConfirmation] = useState<
@@ -461,6 +474,42 @@ export default function AjustesPage() {
       setPredefinedRoles(FALLBACK_PREDEFINED_ROLES)
     } finally {
       if (requestId === rolesRequestIdRef.current) setRolesLoading(false)
+    }
+  }, [])
+
+  const fetchInactiveUsers = useCallback(async (search = '') => {
+    const requestId = ++inactiveUsersRequestIdRef.current
+    const token = localStorage.getItem('accessToken')
+    const query = search.trim()
+    setInactiveUserQuery(query)
+    setInactiveUsersError(null)
+    setInactiveUsers([])
+
+    if (!token) {
+      setInactiveUsersLoading(false)
+      setInactiveUsersError('Sesión no disponible')
+      return
+    }
+
+    setInactiveUsersLoading(true)
+    try {
+      const response = await fetch(`/api/users/inactive?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await response.json()
+      if (requestId !== inactiveUsersRequestIdRef.current) return
+      if (!response.ok || !data.success) {
+        setInactiveUsers([])
+        setInactiveUsersError(data.error || 'No se pudieron cargar las cuentas inactivas')
+        return
+      }
+      setInactiveUsers(Array.isArray(data.data) ? data.data : [])
+    } catch {
+      if (requestId !== inactiveUsersRequestIdRef.current) return
+      setInactiveUsers([])
+      setInactiveUsersError('Error de conexión al buscar cuentas inactivas')
+    } finally {
+      if (requestId === inactiveUsersRequestIdRef.current) setInactiveUsersLoading(false)
     }
   }, [])
 
@@ -803,7 +852,7 @@ export default function AjustesPage() {
     }
   }
 
-  const handleGlobalDelete = async (member: CompanyMember) => {
+  const handleGlobalDelete = async (member: { userId: string; user: { name: string; email: string } }) => {
     const confirmed = await requestSystemConfirmation({
       title: 'Eliminar cuenta permanentemente',
       description: 'Eliminar permanentemente a ' + member.user.name + ' (' + member.user.email + ') de todas las empresas?',
@@ -830,6 +879,7 @@ export default function AjustesPage() {
 
       showSystemNotice('success', 'Cuenta eliminada', data.data.message)
       await fetchRolesData(rolesCompanyId)
+      await fetchInactiveUsers(inactiveUserQuery)
       clearPermissionsCache()
     } catch (err) {
       console.error('Global user deletion error:', err)
@@ -887,6 +937,19 @@ export default function AjustesPage() {
 
   const canEditCompany = companyData && ['ADMIN', 'SUPER_ADMIN'].includes(companyData.role)
   const isSuperAdmin = companies.some((c) => c.role === 'SUPER_ADMIN')
+  useEffect(() => {
+    if (activeTab === 'roles' && isSuperAdmin) {
+      setInactiveUserSearch('')
+      void fetchInactiveUsers('')
+      return
+    }
+
+    inactiveUsersRequestIdRef.current += 1
+    setInactiveUsers([])
+    setInactiveUsersError(null)
+    setInactiveUsersLoading(false)
+  }, [activeTab, isSuperAdmin, fetchInactiveUsers])
+
   const canRenameCompanyUsers = members.some((member) =>
     member.userId === user?.id && ['ADMIN', 'SUPER_ADMIN'].includes(member.role)
   )
@@ -1490,6 +1553,81 @@ export default function AjustesPage() {
                     </div>
                   ))}
                 </div>
+                {isSuperAdmin && (
+                  <section className="mt-6 border-t border-gray-100 pt-4" aria-labelledby="inactive-users-heading">
+                    <div className="mb-3">
+                      <h4 id="inactive-users-heading" className="font-semibold text-gray-900">
+                        Cuentas inactivas <span className="text-gray-400 font-normal text-sm">({inactiveUsers.length})</span>
+                      </h4>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Cuentas desactivadas globalmente. Eliminar una libera su correo y conserva la autoría histórica.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="search"
+                        value={inactiveUserSearch}
+                        onChange={(event) => setInactiveUserSearch(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void fetchInactiveUsers(inactiveUserSearch)
+                          }
+                        }}
+                        placeholder="Buscar por nombre o correo"
+                        aria-label="Buscar cuentas inactivas por nombre o correo"
+                        className="min-w-0 flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void fetchInactiveUsers(inactiveUserSearch)}
+                        disabled={inactiveUsersLoading}
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {inactiveUsersLoading ? 'Buscando...' : 'Buscar'}
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">Se muestran hasta 100 cuentas; busca por nombre o correo para filtrar.</p>
+                    {inactiveUsersError && (
+                      <p className="mt-3 text-sm text-red-600">{inactiveUsersError}</p>
+                    )}
+                    {inactiveUsersLoading && (
+                      <p className="mt-3 text-sm text-gray-500">Cargando cuentas inactivas...</p>
+                    )}
+                    {!inactiveUsersLoading && !inactiveUsersError && inactiveUsers.length === 0 && (
+                      <p className="mt-3 text-sm text-gray-500">No se encontraron cuentas inactivas.</p>
+                    )}
+                    {!inactiveUsersError && inactiveUsers.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {inactiveUsers.map((inactiveUser) => (
+                          <div key={inactiveUser.id} className="flex items-center gap-3 rounded-lg border border-amber-100 bg-amber-50/50 p-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-gray-900">{inactiveUser.name}</p>
+                              <p className="truncate text-xs text-gray-500">{inactiveUser.email}</p>
+                              <p className="mt-1 text-xs text-amber-700">
+                                Desactivada: {inactiveUser.deactivatedAt
+                                  ? new Date(inactiveUser.deactivatedAt).toLocaleString()
+                                  : 'fecha no disponible'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleGlobalDelete({
+                                userId: inactiveUser.id,
+                                user: { name: inactiveUser.name, email: inactiveUser.email },
+                              })}
+                              disabled={deletingUserId === inactiveUser.id}
+                              className="flex-shrink-0 text-xs font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
+                              title="Eliminar permanentemente y liberar el correo"
+                            >
+                              {deletingUserId === inactiveUser.id ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
               </Card>
             </div>
           )}
