@@ -193,6 +193,9 @@ export default function AjustesPage() {
   const [addUserCustomRoleId, setAddUserCustomRoleId] = useState('')
   const [addingUser, setAddingUser] = useState(false)
   const [addUserMsg, setAddUserMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [inactiveAccountMatch, setInactiveAccountMatch] = useState<InactiveUserAccount | null>(null)
+  const inactiveAccountLookupRequestIdRef = useRef(0)
+  const addUserEmailRef = useRef('')
   const [fromPredefined, setFromPredefined] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -662,8 +665,12 @@ export default function AjustesPage() {
   const handleAddUser = async () => {
     const token = localStorage.getItem('accessToken')
     if (!token || !rolesCompanyId || !addUserEmail) return
+    const submittedEmail = addUserEmail.trim().toLowerCase()
+    const lookupRequestId = ++inactiveAccountLookupRequestIdRef.current
+    addUserEmailRef.current = submittedEmail
     setAddingUser(true)
     setAddUserMsg(null)
+    setInactiveAccountMatch(null)
     try {
       const res = await fetch(`/api/companies/${rolesCompanyId}/users`, {
         method: 'POST',
@@ -677,17 +684,51 @@ export default function AjustesPage() {
         }),
       })
       const data = await res.json()
+      if (lookupRequestId !== inactiveAccountLookupRequestIdRef.current) return
       if (data.success) {
         setAddUserMsg({ type: 'success', text: 'Usuario agregado correctamente' })
+        setInactiveAccountMatch(null)
         setAddUserEmail('')
+        addUserEmailRef.current = ''
         setAddUserPassword('')
         setAddUserName('')
         setAddUserCustomRoleId('')
         await fetchRolesData(rolesCompanyId)
       } else {
         setAddUserMsg({ type: 'error', text: data.error || 'Error al agregar usuario' })
+        const isGlobalSuperAdmin = companies.some((company) => company.role === 'SUPER_ADMIN')
+        if (isGlobalSuperAdmin && submittedEmail) {
+          try {
+            const lookupResponse = await fetch(`/api/users/inactive?q=${encodeURIComponent(submittedEmail)}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            const lookupData = await lookupResponse.json()
+            if (
+              lookupRequestId !== inactiveAccountLookupRequestIdRef.current ||
+              addUserEmailRef.current !== submittedEmail
+            ) return
+            const match = lookupResponse.ok && lookupData.success && Array.isArray(lookupData.data)
+              ? lookupData.data.find((inactiveUser: InactiveUserAccount) =>
+                  typeof inactiveUser.email === 'string' && inactiveUser.email.trim().toLowerCase() === submittedEmail
+                )
+              : null
+            if (match) {
+              setInactiveAccountMatch(match)
+              setAddUserMsg({
+                type: 'error',
+                text: `La cuenta de ${match.name} está desactivada. Puedes eliminarla aquí para liberar el correo.`,
+              })
+            }
+          } catch {
+            // Keep the original add-user error if inactive-account lookup is unavailable.
+          }
+        }
       }
-    } catch { setAddUserMsg({ type: 'error', text: 'Error de conexión' }) }
+    } catch {
+      if (lookupRequestId === inactiveAccountLookupRequestIdRef.current) {
+        setAddUserMsg({ type: 'error', text: 'Error de conexión' })
+      }
+    }
     finally { setAddingUser(false) }
   }
 
@@ -878,6 +919,10 @@ export default function AjustesPage() {
       }
 
       showSystemNotice('success', 'Cuenta eliminada', data.data.message)
+      if (addUserEmailRef.current === member.user.email.trim().toLowerCase()) {
+        inactiveAccountLookupRequestIdRef.current += 1
+      }
+      setInactiveAccountMatch((current) => current?.id === member.userId ? null : current)
       await fetchRolesData(rolesCompanyId)
       await fetchInactiveUsers(inactiveUserQuery)
       clearPermissionsCache()
@@ -1342,7 +1387,13 @@ export default function AjustesPage() {
                       type="email"
                       placeholder="Email del usuario *"
                       value={addUserEmail}
-                      onChange={(e) => setAddUserEmail(e.target.value)}
+                      onChange={(e) => {
+                        addUserEmailRef.current = e.target.value.trim().toLowerCase()
+                        inactiveAccountLookupRequestIdRef.current += 1
+                        setAddUserEmail(e.target.value)
+                        setInactiveAccountMatch(null)
+                        setAddUserMsg(null)
+                      }}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                     <input
@@ -1381,6 +1432,28 @@ export default function AjustesPage() {
                     </div>
                     {addUserMsg && (
                       <p className={`text-xs ${addUserMsg.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{addUserMsg.text}</p>
+                    )}
+                    {isSuperAdmin && inactiveAccountMatch &&
+                    inactiveAccountMatch.email.trim().toLowerCase() === addUserEmail.trim().toLowerCase() && (
+                      <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-amber-900">Cuenta inactiva encontrada</p>
+                          <p className="truncate text-xs text-amber-800">
+                            {inactiveAccountMatch.name} · {inactiveAccountMatch.email}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleGlobalDelete({
+                            userId: inactiveAccountMatch.id,
+                            user: { name: inactiveAccountMatch.name, email: inactiveAccountMatch.email },
+                          })}
+                          disabled={deletingUserId === inactiveAccountMatch.id}
+                          className="flex-shrink-0 rounded-md bg-red-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-800 disabled:opacity-50"
+                        >
+                          {deletingUserId === inactiveAccountMatch.id ? 'Eliminando...' : 'Eliminar cuenta'}
+                        </button>
+                      </div>
                     )}
                     <Button onClick={handleAddUser} disabled={addingUser || !addUserEmail} className="w-full">
                       {addingUser ? 'Agregando...' : 'Agregar Usuario'}

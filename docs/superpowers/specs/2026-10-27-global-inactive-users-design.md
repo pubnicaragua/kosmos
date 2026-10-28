@@ -10,6 +10,7 @@ Let an active SUPER_ADMIN find globally deactivated accounts and permanently del
 - Limit both API access and UI visibility to active SUPER_ADMINs.
 - Search inactive accounts by name or email; show name, email, and deactivation date.
 - Delete through the existing `DELETE /api/users/[id]` transaction and its irreversible confirmation.
+- When the add-user form detects an email matching an inactive account, let a SUPER_ADMIN delete that account directly from the form.
 - Return a clear add-user error for an inactive account instead of the misleading name-conflict guidance.
 
 ## Non-goals
@@ -26,6 +27,8 @@ Let an active SUPER_ADMIN find globally deactivated accounts and permanently del
 ## Design
 
 Add `GET /api/users/inactive` with a `q` search parameter over name and email. Return inactive users only, ordered by most recent deactivation, with a bounded initial result set. Settings displays the results and calls the existing global deletion handler after explicit confirmation. After success, remove the account from the inactive list and refresh the active company members. The add-user endpoint checks inactive status before comparing the requested name and returns actionable wording.
+
+When adding a user fails, a SUPER_ADMIN also searches the submitted email through the guarded inactive-user endpoint. If an exact case-insensitive email match exists, the form displays the matching account and reuses the same permanent-delete confirmation and endpoint. Active duplicate accounts do not get a delete action.
 
 ## Files
 

@@ -4,7 +4,7 @@
 
 **Goal:** Let active SUPER_ADMINs search globally inactive accounts and permanently delete them from Settings.
 
-**Architecture:** Add an admin-guarded `GET /api/users/inactive` search endpoint. Add a global inactive-account section to Settings that reuses the existing permanent delete endpoint and confirmation. Make the add-user API report inactive accounts before checking for name conflicts.
+**Architecture:** Add an admin-guarded `GET /api/users/inactive` search endpoint. Add a global inactive-account section to Settings that reuses the existing permanent delete endpoint and confirmation. Make the add-user API report inactive accounts before checking for name conflicts, and let SUPER_ADMIN delete an exact inactive-email match directly from the add-user form.
 
 **Tech Stack:** Next.js App Router, React, TypeScript, Prisma, PostgreSQL.
 
@@ -56,4 +56,6 @@
 - [x] Add a SUPER_ADMIN-only “Cuentas inactivas” section in the Roles/Users settings view, independent of the selected company; fetch recent inactive accounts on entry and search by name/email.
 - [x] Show name, email, deactivation date, empty/loading/error states, and a delete control that calls the existing confirmation and `DELETE /api/users/[id]` flow.
 - [x] After successful deletion, refresh active company members and inactive search results; keep existing active-member deletion behavior.
-- [x] Review the final diff for authorization gates, stale list state, and unchanged active-member actions. Do not run tests or build unless requested.
+- [x] When add-user returns an error, SUPER_ADMIN searches the submitted email through the guarded inactive endpoint; show direct delete action only for exact inactive-account email matches.
+- [x] Reuse the same permanent deletion confirmation and API from the add-user form; clear the match when the email changes or deletion succeeds.
+- [x] Review the final diff for authorization gates, stale list state, and unchanged active-member actions. SUPER_ADMIN-only lookup is backed by the guarded API; the email match is exact and case-insensitive; changed emails invalidate pending lookups; deletion reuses existing confirmation/API and active-member actions. Do not run tests or build unless requested.
